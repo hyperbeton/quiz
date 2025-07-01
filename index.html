@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Creator 2025</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="video-background">
+        <video autoplay muted loop>
+            <source src="assets/background.mp4" type="video/mp4">
+        </video>
+    </div>
+    
+    <div class="app-container">
+        <header class="app-header">
+            <h1 class="app-title">ИСЛАМСКИЕ<span>ВИКТОРИНЫ</span></h1>
+            <div class="app-version">@ISLAMSKIE_VIKTORINI</div>
+        </header>
+        
+        <main class="app-content">
+            <form id="quizForm" class="digital-form">
+                <div class="form-section">
+                    <label class="section-label">Категория</label>
+                    <select id="category" class="digital-select" required>
+                        <option value="">Выберите категорию</option>
+                        <option value="History">Коран</option>
+                        <option value="Science">Хадисы</option>
+                        <option value="Art">Сподвижники</option>
+                        <option value="Sports">История Ислама</option>
+                        <option value="Movies">Общие вопросы по Исламу</option>
+                    </select>
+                </div>
+                
+                <div class="form-section">
+                    <label class="section-label">Вопрос</label>
+                    <textarea id="question" class="digital-textarea" rows="3" required placeholder="Введите ваш вопрос..."></textarea>
+                </div>
+                
+                <div class="form-section">
+                    <label class="section-label">Ответы</label>
+                    <div class="answers-grid">
+                        <div class="answer-option">
+                            <input type="radio" id="answer1" name="correct" value="0" required>
+                            <label for="answer1" class="radio-dot"></label>
+                            <input type="text" id="answerText1" class="digital-input" placeholder="Ответ 1" required>
+                        </div>
+                        <div class="answer-option">
+                            <input type="radio" id="answer2" name="correct" value="1">
+                            <label for="answer2" class="radio-dot"></label>
+                            <input type="text" id="answerText2" class="digital-input" placeholder="Ответ 2" required>
+                        </div>
+                        <div class="answer-option">
+                            <input type="radio" id="answer3" name="correct" value="2">
+                            <label for="answer3" class="radio-dot"></label>
+                            <input type="text" id="answerText3" class="digital-input" placeholder="Ответ 3" required>
+                        </div>
+                        <div class="answer-option">
+                            <input type="radio" id="answer4" name="correct" value="3">
+                            <label for="answer4" class="radio-dot"></label>
+                            <input type="text" id="answerText4" class="digital-input" placeholder="Теперь узнаю" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <label class="section-label">Автор</label>
+                    <input type="text" id="author" class="digital-input" required placeholder="Ваше имя/никнэйм">
+                </div>
+                
+                <button type="submit" id="submitBtn" class="digital-button">
+                    <span class="button-text">Отправить Вопрос</span>
+                    <span class="button-pulse"></span>
+                </button>
+            </form>
+            
+            <div id="statusMessage" class="status-console">
+                <div class="console-line">Система готова</div>
+                <div class="console-cursor">_</div>
+            </div>
+        </main>
+        
+        <footer class="app-footer">
+            <div class="progress-tracker">
+                <div class="progress-fill" id="formProgress"></div>
+            </div>
+            <div class="footer-text">©2025 QUIZCREATOR | ISLAMSKIE VIKTORINI</div>
+        </footer>
+    </div>
+    
+    <audio id="clickSound" src="assets/click-sound.mp3"></audio>
+    <audio id="successSound" src="assets/success-sound.mp3"></audio>
+    
+    <script src="script.js"></script>
+</body>
+</html>
