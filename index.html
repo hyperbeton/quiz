@@ -1,98 +1,748 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz Creator 2025</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RentUz | Аренда недвижимости в Узбекистане</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="video-background">
-        <video autoplay muted loop>
-            <source src="assets/background.mp4" type="video/mp4">
-        </video>
+  <!-- Лоадер -->
+  <div class="loader" id="loader">
+    <div class="loader-content">
+      <div class="logo">Rent<span>Uz</span></div>
+      <div class="spinner"></div>
     </div>
-    
-    <div class="app-container">
-        <header class="app-header">
-            <h1 class="app-title">ИСЛАМСКИЕ<span>ВИКТОРИНЫ</span></h1>
-            <div class="app-version">@ISLAMSKIE_VIKTORINI</div>
-        </header>
-        
-        <main class="app-content">
-            <form id="quizForm" class="digital-form">
-                <div class="form-section">
-                    <label class="section-label">Категория</label>
-                    <select id="category" class="digital-select" required>
-                        <option value="">Выберите категорию</option>
-                        <option value="History">Коран</option>
-                        <option value="Science">Хадисы</option>
-                        <option value="Art">Сподвижники</option>
-                        <option value="Sports">История Ислама</option>
-                        <option value="Movies">Общие вопросы по Исламу</option>
-                    </select>
-                </div>
-                
-                <div class="form-section">
-                    <label class="section-label">Вопрос</label>
-                    <textarea id="question" class="digital-textarea" rows="3" required placeholder="Введите ваш вопрос..."></textarea>
-                </div>
-                
-                <div class="form-section">
-                    <label class="section-label">Ответы</label>
-                    <div class="answers-grid">
-                        <div class="answer-option">
-                            <input type="radio" id="answer1" name="correct" value="0" required>
-                            <label for="answer1" class="radio-dot"></label>
-                            <input type="text" id="answerText1" class="digital-input" placeholder="Ответ 1" required>
-                        </div>
-                        <div class="answer-option">
-                            <input type="radio" id="answer2" name="correct" value="1">
-                            <label for="answer2" class="radio-dot"></label>
-                            <input type="text" id="answerText2" class="digital-input" placeholder="Ответ 2" required>
-                        </div>
-                        <div class="answer-option">
-                            <input type="radio" id="answer3" name="correct" value="2">
-                            <label for="answer3" class="radio-dot"></label>
-                            <input type="text" id="answerText3" class="digital-input" placeholder="Ответ 3" required>
-                        </div>
-                        <div class="answer-option">
-                            <input type="radio" id="answer4" name="correct" value="3">
-                            <label for="answer4" class="radio-dot"></label>
-                            <input type="text" id="answerText4" class="digital-input" placeholder="Теперь узнаю" required>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-section">
-                    <label class="section-label">Автор</label>
-                    <input type="text" id="author" class="digital-input" required placeholder="Ваше имя/никнэйм">
-                </div>
-                
-                <button type="submit" id="submitBtn" class="digital-button">
-                    <span class="button-text">Отправить Вопрос</span>
-                    <span class="button-pulse"></span>
-                </button>
-            </form>
-            
-            <div id="statusMessage" class="status-console">
-                <div class="console-line">Система готова</div>
-                <div class="console-cursor">_</div>
-            </div>
-        </main>
-        
-        <footer class="app-footer">
-            <div class="progress-tracker">
-                <div class="progress-fill" id="formProgress"></div>
-            </div>
-            <div class="footer-text">©2025 QUIZCREATOR | ISLAMSKIE VIKTORINI</div>
-        </footer>
+  </div>
+
+  <!-- Главный экран -->
+  <div class="landing" id="landing">
+    <div class="landing-content">
+      <div class="logo">Rent<span>Uz</span></div>
+      <h1>Найдите идеальное жилье</h1>
+      <p>Сервис аренды недвижимости №1 в Узбекистане</p>
+      <div class="action-buttons">
+        <button id="find-btn">Найти жилье <i class="fas fa-search"></i></button>
+        <button id="add-btn">Сдать недвижимость <i class="fas fa-plus"></i></button>
+      </div>
     </div>
-    
-    <audio id="clickSound" src="assets/click-sound.mp3"></audio>
-    <audio id="successSound" src="assets/success-sound.mp3"></audio>
-    
-    <script src="script.js"></script>
+  </div>
+
+  <!-- Основное приложение -->
+  <div class="app" id="app">
+    <!-- Шапка -->
+    <header>
+      <div class="header-left">
+        <div class="logo">Rent<span>Uz</span></div>
+        <button id="menu-btn"><i class="fas fa-bars"></i></button>
+      </div>
+      <div class="search-bar">
+        <input type="text" placeholder="Поиск по району или метро...">
+        <button><i class="fas fa-search"></i></button>
+      </div>
+      <div class="header-right">
+        <button id="user-btn"><i class="fas fa-user"></i></button>
+        <button id="filter-btn"><i class="fas fa-sliders-h"></i></button>
+      </div>
+    </header>
+
+    <!-- Основной контент -->
+    <div class="main-content">
+      <!-- Карта -->
+      <div id="map"></div>
+      
+      <!-- Список объявлений -->
+      <div class="properties-list" id="properties-list">
+        <!-- Объявления будут загружаться здесь -->
+      </div>
+    </div>
+
+    <!-- Боковое меню -->
+    <div class="side-menu" id="side-menu">
+      <div class="menu-header">
+        <h3>Меню</h3>
+        <button id="close-menu"><i class="fas fa-times"></i></button>
+      </div>
+      <nav>
+        <a href="#"><i class="fas fa-home"></i> Главная</a>
+        <a href="#"><i class="fas fa-heart"></i> Избранное</a>
+        <a href="#"><i class="fas fa-bell"></i> Уведомления</a>
+        <a href="#"><i class="fas fa-history"></i> История</a>
+        <a href="#"><i class="fas fa-cog"></i> Настройки</a>
+      </nav>
+      <div class="menu-footer">
+        <button class="btn-primary" id="add-btn-menu"><i class="fas fa-plus"></i> Добавить объявление</button>
+      </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="filters-panel" id="filters-panel">
+      <div class="filters-header">
+        <h3><i class="fas fa-sliders-h"></i> Фильтры</h3>
+        <button id="close-filters"><i class="fas fa-times"></i></button>
+      </div>
+      
+      <div class="filters-content">
+        <!-- Основные фильтры -->
+        <div class="filter-section">
+          <h4>Основные параметры</h4>
+          <div class="filter-group">
+            <label>Тип недвижимости</label>
+            <select id="property-type">
+              <option value="">Все типы</option>
+              <option value="residential">Жилая</option>
+              <option value="commercial">Коммерческая</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Цена ($)</label>
+            <div class="range-slider">
+              <input type="range" min="0" max="2000" value="500" id="price-min">
+              <input type="range" min="0" max="2000" value="1500" id="price-max">
+              <div class="range-values">
+                <span id="min-value">500</span> - <span id="max-value">1500</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-group residential-filters">
+            <label>Количество комнат</label>
+            <div class="room-selector">
+              <button data-rooms="1">1</button>
+              <button data-rooms="2">2</button>
+              <button data-rooms="3">3</button>
+              <button data-rooms="4+">4+</button>
+              <button data-rooms="studio">Студия</button>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Площадь (м²)</label>
+            <div class="range-inputs">
+              <input type="number" placeholder="От" id="area-min">
+              <input type="number" placeholder="До" id="area-max">
+            </div>
+          </div>
+        </div>
+
+        <!-- Дополнительные фильтры -->
+        <div class="filter-section residential-filters">
+          <h4>Характеристики жилья</h4>
+          <div class="filter-grid">
+            <div class="filter-group">
+              <label>Тип объявления</label>
+              <select id="ad-type">
+                <option value="">Все</option>
+                <option value="private">Частное лицо</option>
+                <option value="business">Бизнес</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Этаж</label>
+              <div class="range-inputs">
+                <input type="number" placeholder="От" id="floor-min">
+                <input type="number" placeholder="До" id="floor-max">
+              </div>
+            </div>
+
+            <div class="filter-group">
+              <label>Этажность дома</label>
+              <input type="number" placeholder="Любая" id="total-floors">
+            </div>
+
+            <div class="filter-group">
+              <label>Тип строения</label>
+              <select id="building-type">
+                <option value="">Любой</option>
+                <option value="brick">Кирпичный</option>
+                <option value="panel">Панельный</option>
+                <option value="monolith">Монолитный</option>
+                <option value="block">Блочный</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Планировка</label>
+              <select id="layout">
+                <option value="">Любая</option>
+                <option value="adjacent">Смежная</option>
+                <option value="separate">Раздельная</option>
+                <option value="studio">Студия</option>
+                <option value="penthouse">Пентхаус</option>
+                <option value="small-family">Малосемейка</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Год постройки</label>
+              <input type="number" placeholder="Любой" id="build-year">
+            </div>
+
+            <div class="filter-group">
+              <label>Санузел</label>
+              <select id="bathroom">
+                <option value="">Любой</option>
+                <option value="separate">Раздельный</option>
+                <option value="combined">Совмещенный</option>
+                <option value="2+">2 и более</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Меблирована</label>
+              <select id="furnished">
+                <option value="">Не важно</option>
+                <option value="yes">Да</option>
+                <option value="no">Нет</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Высота потолков (м)</label>
+              <input type="number" step="0.1" placeholder="Любая" id="ceiling-height">
+            </div>
+
+            <div class="filter-group">
+              <label>Ремонт</label>
+              <select id="repair">
+                <option value="">Любой</option>
+                <option value="design">Авторский проект</option>
+                <option value="euro">Евроремонт</option>
+                <option value="medium">Средний</option>
+                <option value="needs-repair">Требует ремонта</option>
+                <option value="rough">Черновая отделка</option>
+                <option value="pre-finish">Предчистовая отделка</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Комиссионные</label>
+              <select id="commission">
+                <option value="">Не важно</option>
+                <option value="yes">Да</option>
+                <option value="no">Нет</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Фильтры для коммерции -->
+        <div class="filter-section commercial-filters" style="display: none;">
+          <h4>Характеристики коммерции</h4>
+          <div class="filter-grid">
+            <div class="filter-group">
+              <label>Тип бизнеса</label>
+              <select id="business-type">
+                <option value="">Любой</option>
+                <option value="retail">Розничная торговля</option>
+                <option value="office">Офис</option>
+                <option value="cafe">Кафе/Ресторан</option>
+                <option value="warehouse">Склад</option>
+                <option value="production">Производство</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Класс помещения</label>
+              <select id="property-class">
+                <option value="">Любой</option>
+                <option value="A">A (Премиум)</option>
+                <option value="B">B (Бизнес)</option>
+                <option value="C">C (Эконом)</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Отделка</label>
+              <select id="commercial-finish">
+                <option value="">Любая</option>
+                <option value="full">Полная</option>
+                <option value="partial">Частичная</option>
+                <option value="none">Без отделки</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Коммуникации</label>
+              <select id="utilities">
+                <option value="">Любые</option>
+                <option value="all">Все подключены</option>
+                <option value="partial">Частично</option>
+                <option value="none">Требуется подключение</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Удобства -->
+        <div class="filter-section residential-filters">
+          <h4>Удобства в квартире</h4>
+          <div class="amenities-grid">
+            <label><input type="checkbox" name="amenities" value="internet"> Интернет</label>
+            <label><input type="checkbox" name="amenities" value="phone"> Телефон</label>
+            <label><input type="checkbox" name="amenities" value="fridge"> Холодильник</label>
+            <label><input type="checkbox" name="amenities" value="tv"> Телевизор</label>
+            <label><input type="checkbox" name="amenities" value="ac"> Кондиционер</label>
+            <label><input type="checkbox" name="amenities" value="cable-tv"> Кабельное ТВ</label>
+            <label><input type="checkbox" name="amenities" value="washer"> Стиральная машина</label>
+            <label><input type="checkbox" name="amenities" value="kitchen"> Кухня</label>
+            <label><input type="checkbox" name="amenities" value="balcony"> Балкон</label>
+          </div>
+        </div>
+
+        <!-- Инфраструктура -->
+        <div class="filter-section">
+          <h4>Рядом есть</h4>
+          <div class="amenities-grid">
+            <label><input type="checkbox" name="infrastructure" value="hospital"> Больница/Поликлиника</label>
+            <label><input type="checkbox" name="infrastructure" value="playground"> Детская площадка</label>
+            <label><input type="checkbox" name="infrastructure" value="kindergarten"> Детский сад</label>
+            <label><input type="checkbox" name="infrastructure" value="transport"> Остановки</label>
+            <label><input type="checkbox" name="infrastructure" value="park"> Парк/Зеленая зона</label>
+            <label><input type="checkbox" name="infrastructure" value="entertainment"> Развлекательные заведения</label>
+            <label><input type="checkbox" name="infrastructure" value="cafe"> Рестораны/Кафе</label>
+            <label><input type="checkbox" name="infrastructure" value="parking"> Стоянка</label>
+            <label><input type="checkbox" name="infrastructure" value="supermarket"> Супермаркет/Магазины</label>
+            <label><input type="checkbox" name="infrastructure" value="school"> Школа</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="filters-footer">
+        <button class="btn-secondary" id="reset-filters">Сбросить</button>
+        <button class="btn-primary" id="apply-filters">Применить</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно добавления объявления -->
+    <div class="modal" id="ad-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Добавить объявление</h3>
+          <button class="close-modal" id="close-ad-modal">&times;</button>
+        </div>
+        
+        <form id="ad-form">
+          <!-- Шаги формы -->
+          <div class="form-steps">
+            <div class="step active" data-step="1">1. Основное</div>
+            <div class="step" data-step="2">2. Характеристики</div>
+            <div class="step" data-step="3">3. Удобства</div>
+            <div class="step" data-step="4">4. Фото</div>
+            <div class="step" data-step="5">5. Контакты</div>
+          </div>
+
+          <!-- Шаг 1: Основная информация -->
+          <div class="form-step active" data-step="1">
+            <div class="form-group">
+              <label>Тип помещения</label>
+              <div class="radio-group">
+                <label><input type="radio" name="property-category" value="residential" checked> Жилое</label>
+                <label><input type="radio" name="property-category" value="commercial"> Нежилое</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Категория</label>
+              <select id="category" required>
+                <option value="">Выберите категорию</option>
+                <option value="flat">Квартира</option>
+                <option value="house">Дом</option>
+                <option value="room">Комната</option>
+                <option value="commercial" class="commercial-option">Коммерческое</option>
+                <option value="office" class="commercial-option">Офис</option>
+                <option value="restaurant" class="commercial-option">Ресторан</option>
+                <option value="warehouse" class="commercial-option">Склад</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Заголовок (до 40 символов)</label>
+              <input type="text" id="title" maxlength="40" required>
+              <div class="char-counter"><span id="title-counter">0</span>/40</div>
+            </div>
+
+            <div class="form-group">
+              <label>Описание</label>
+              <textarea id="description" rows="4"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Цена ($)</label>
+              <input type="number" id="price" required>
+            </div>
+
+            <div class="form-group">
+              <label>Дополнительная информация</label>
+              <textarea id="additional-info" rows="2"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Тип объявления</label>
+              <div class="radio-group">
+                <label><input type="radio" name="ad-type" value="private" checked> Частное лицо</label>
+                <label><input type="radio" name="ad-type" value="business"> Бизнес</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Местоположение</label>
+              <input type="text" id="location" placeholder="Укажите на карте" readonly>
+              <div class="location-map" id="location-map-preview"></div>
+            </div>
+          </div>
+
+          <!-- Шаг 2: Характеристики (жилое помещение) -->
+          <div class="form-step residential-fields" data-step="2">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Количество комнат</label>
+                <input type="number" id="rooms" min="1">
+              </div>
+
+              <div class="form-group">
+                <label>Жилая площадь (м²)</label>
+                <input type="number" id="living-area" step="0.1">
+              </div>
+
+              <div class="form-group">
+                <label>Общая площадь (м²)</label>
+                <input type="number" id="total-area" step="0.1" required>
+              </div>
+
+              <div class="form-group">
+                <label>Площадь кухни (м²)</label>
+                <input type="number" id="kitchen-area" step="0.1">
+              </div>
+
+              <div class="form-group">
+                <label>Этаж</label>
+                <input type="number" id="floor">
+              </div>
+
+              <div class="form-group">
+                <label>Этажность дома</label>
+                <input type="number" id="total-floors">
+              </div>
+
+              <div class="form-group">
+                <label>Тип строения</label>
+                <select id="building-type">
+                  <option value="">Выберите тип</option>
+                  <option value="brick">Кирпичный</option>
+                  <option value="panel">Панельный</option>
+                  <option value="monolith">Монолитный</option>
+                  <option value="block">Блочный</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Планировка</label>
+                <select id="layout">
+                  <option value="">Выберите планировку</option>
+                  <option value="adjacent">Смежная</option>
+                  <option value="separate">Раздельная</option>
+                  <option value="studio">Студия</option>
+                  <option value="penthouse">Пентхаус</option>
+                  <option value="small-family">Малосемейка</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Год постройки</label>
+                <input type="number" id="build-year" min="1900" max="2025">
+              </div>
+
+              <div class="form-group">
+                <label>Санузел</label>
+                <select id="bathroom">
+                  <option value="">Выберите вариант</option>
+                  <option value="separate">Раздельный</option>
+                  <option value="combined">Совмещенный</option>
+                  <option value="2+">2 и более</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Меблирована</label>
+                <select id="furnished">
+                  <option value="">Выберите вариант</option>
+                  <option value="yes">Да</option>
+                  <option value="no">Нет</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Высота потолков (м)</label>
+                <input type="number" id="ceiling-height" step="0.1" min="2" max="10">
+              </div>
+
+              <div class="form-group">
+                <label>Ремонт</label>
+                <select id="repair">
+                  <option value="">Выберите вариант</option>
+                  <option value="design">Авторский проект</option>
+                  <option value="euro">Евроремонт</option>
+                  <option value="medium">Средний</option>
+                  <option value="needs-repair">Требует ремонта</option>
+                  <option value="rough">Черновая отделка</option>
+                  <option value="pre-finish">Предчистовая отделка</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Комиссионные</label>
+                <select id="commission">
+                  <option value="">Выберите вариант</option>
+                  <option value="yes">Да</option>
+                  <option value="no">Нет</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Шаг 2: Характеристики (нежилое помещение) -->
+          <div class="form-step commercial-fields" data-step="2" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Тип бизнеса</label>
+                <select id="business-type">
+                  <option value="">Выберите тип</option>
+                  <option value="retail">Розничная торговля</option>
+                  <option value="office">Офис</option>
+                  <option value="cafe">Кафе/Ресторан</option>
+                  <option value="warehouse">Склад</option>
+                  <option value="production">Производство</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Общая площадь (м²)</label>
+                <input type="number" id="commercial-area" step="0.1" required>
+              </div>
+
+              <div class="form-group">
+                <label>Класс помещения</label>
+                <select id="property-class">
+                  <option value="">Выберите класс</option>
+                  <option value="A">A (Премиум)</option>
+                  <option value="B">B (Бизнес)</option>
+                  <option value="C">C (Эконом)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Этаж</label>
+                <input type="number" id="commercial-floor">
+              </div>
+
+              <div class="form-group">
+                <label>Этажность здания</label>
+                <input type="number" id="commercial-total-floors">
+              </div>
+
+              <div class="form-group">
+                <label>Отделка</label>
+                <select id="commercial-finish">
+                  <option value="">Выберите вариант</option>
+                  <option value="full">Полная</option>
+                  <option value="partial">Частичная</option>
+                  <option value="none">Без отделки</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Коммуникации</label>
+                <select id="utilities">
+                  <option value="">Выберите вариант</option>
+                  <option value="all">Все подключены</option>
+                  <option value="partial">Частично</option>
+                  <option value="none">Требуется подключение</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Высота потолков (м)</label>
+                <input type="number" id="commercial-ceiling-height" step="0.1" min="2" max="10">
+              </div>
+
+              <div class="form-group">
+                <label>Год постройки/реконструкции</label>
+                <input type="number" id="commercial-build-year" min="1900" max="2025">
+              </div>
+
+              <div class="form-group">
+                <label>Парковка</label>
+                <select id="parking">
+                  <option value="">Выберите вариант</option>
+                  <option value="none">Нет</option>
+                  <option value="street">Уличная</option>
+                  <option value="private">Частная</option>
+                  <option value="underground">Подземная</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Вход</label>
+                <select id="entrance">
+                  <option value="">Выберите вариант</option>
+                  <option value="common">Общий</option>
+                  <option value="separate">Отдельный</option>
+                  <option value="freestanding">Отдельно стоящее здание</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Охранная система</label>
+                <select id="security">
+                  <option value="">Выберите вариант</option>
+                  <option value="none">Нет</option>
+                  <option value="basic">Базовая</option>
+                  <option value="advanced">Продвинутая</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Комиссионные</label>
+                <select id="commercial-commission">
+                  <option value="">Выберите вариант</option>
+                  <option value="yes">Да</option>
+                  <option value="no">Нет</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Шаг 3: Удобства -->
+          <div class="form-step" data-step="3">
+            <div class="form-group residential-fields">
+              <h4>Удобства в квартире</h4>
+              <div class="amenities-grid">
+                <label><input type="checkbox" name="amenities" value="internet"> Интернет</label>
+                <label><input type="checkbox" name="amenities" value="phone"> Телефон</label>
+                <label><input type="checkbox" name="amenities" value="fridge"> Холодильник</label>
+                <label><input type="checkbox" name="amenities" value="tv"> Телевизор</label>
+                <label><input type="checkbox" name="amenities" value="ac"> Кондиционер</label>
+                <label><input type="checkbox" name="amenities" value="cable-tv"> Кабельное ТВ</label>
+                <label><input type="checkbox" name="amenities" value="washer"> Стиральная машина</label>
+                <label><input type="checkbox" name="amenities" value="kitchen"> Кухня</label>
+                <label><input type="checkbox" name="amenities" value="balcony"> Балкон</label>
+              </div>
+            </div>
+
+            <div class="form-group commercial-fields" style="display:none;">
+              <h4>Особенности помещения</h4>
+              <div class="amenities-grid">
+                <label><input type="checkbox" name="commercial-features" value="ventilation"> Вентиляция</label>
+                <label><input type="checkbox" name="commercial-features" value="air-conditioning"> Кондиционирование</label>
+                <label><input type="checkbox" name="commercial-features" value="fire-alarm"> Пожарная сигнализация</label>
+                <label><input type="checkbox" name="commercial-features" value="sprinkler"> Система пожаротушения</label>
+                <label><input type="checkbox" name="commercial-features" value="elevator"> Лифт</label>
+                <label><input type="checkbox" name="commercial-features" value="freight-elevator"> Грузовой лифт</label>
+                <label><input type="checkbox" name="commercial-features" value="ramp"> Пандус</label>
+                <label><input type="checkbox" name="commercial-features" value="toilet"> Санузел</label>
+                <label><input type="checkbox" name="commercial-features" value="kitchen"> Кухня</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <h4>Рядом есть</h4>
+              <div class="amenities-grid">
+                <label><input type="checkbox" name="infrastructure" value="hospital"> Больница/Поликлиника</label>
+                <label><input type="checkbox" name="infrastructure" value="playground"> Детская площадка</label>
+                <label><input type="checkbox" name="infrastructure" value="kindergarten"> Детский сад</label>
+                <label><input type="checkbox" name="infrastructure" value="transport"> Остановки</label>
+                <label><input type="checkbox" name="infrastructure" value="park"> Парк/Зеленая зона</label>
+                <label><input type="checkbox" name="infrastructure" value="entertainment"> Развлекательные заведения</label>
+                <label><input type="checkbox" name="infrastructure" value="cafe"> Рестораны/Кафе</label>
+                <label><input type="checkbox" name="infrastructure" value="parking"> Стоянка</label>
+                <label><input type="checkbox" name="infrastructure" value="supermarket"> Супермаркет/Магазины</label>
+                <label><input type="checkbox" name="infrastructure" value="school"> Школа</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Шаг 4: Фото -->
+          <div class="form-step" data-step="4">
+            <div class="form-group">
+              <label>Фотографии недвижимости</label>
+              <p class="hint">Загрузите минимум 5 фотографий (макс. 10 МБ каждая)</p>
+              <div class="upload-area" id="upload-area">
+                <input type="file" id="photos" accept="image/*" multiple style="display: none;">
+                <label for="photos" class="upload-btn">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <span>Выберите файлы или перетащите их сюда</span>
+                </label>
+              </div>
+              <div class="preview-grid" id="preview-grid"></div>
+            </div>
+          </div>
+
+          <!-- Шаг 5: Контакты -->
+          <div class="form-step" data-step="5">
+            <div class="form-group">
+              <label>Контактная информация</label>
+              <input type="text" id="contact-name" placeholder="Ваше имя" required>
+            </div>
+
+            <div class="form-group">
+              <input type="tel" id="contact-phone" placeholder="Номер телефона" required>
+            </div>
+
+            <div class="form-group">
+              <input type="email" id="contact-email" placeholder="Email (необязательно)">
+            </div>
+
+            <div class="form-group">
+              <label>Дополнительные контакты</label>
+              <input type="text" id="contact-telegram" placeholder="Telegram">
+              <input type="text" id="contact-whatsapp" placeholder="WhatsApp">
+            </div>
+
+            <div class="form-group">
+              <label>Когда можно звонить?</label>
+              <div class="radio-group">
+                <label><input type="radio" name="call-time" value="anytime" checked> В любое время</label>
+                <label><input type="radio" name="call-time" value="daytime"> Только днем (9:00-18:00)</label>
+                <label><input type="radio" name="call-time" value="evening"> Только вечером (18:00-21:00)</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Навигация по шагам -->
+          <div class="form-navigation">
+            <button type="button" class="btn-secondary" id="prev-step" disabled>Назад</button>
+            <button type="button" class="btn-primary" id="next-step">Далее</button>
+            <button type="submit" class="btn-primary" id="submit-form" style="display: none;">
+              <i class="fab fa-telegram"></i> Отправить в Telegram
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Карта для выбора местоположения -->
+    <div class="modal map-modal" id="map-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Выберите местоположение</h3>
+          <button class="close-modal" id="close-map-modal">&times;</button>
+        </div>
+        <div id="location-map"></div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancel-location">Отмена</button>
+          <button class="btn-primary" id="confirm-location">Подтвердить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
