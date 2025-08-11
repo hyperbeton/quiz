@@ -13,17 +13,31 @@ let properties = [];
 let markers = [];
 let activePopup = null;
 let currentPropertyView = null;
+let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+let currentSection = localStorage.getItem('currentSection') || 'main';
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
   // Показываем лоадер на 2 секунды
   setTimeout(() => {
     document.getElementById('loader').style.display = 'none';
-    document.getElementById('landing').style.display = 'flex';
+    
+    // Проверяем, нужно ли показывать главный экран
+    if (currentSection === 'landing') {
+      document.getElementById('landing').style.display = 'flex';
+    } else {
+      showApp();
+      if (currentSection === 'favorites') {
+        showFavorites();
+      }
+    }
   }, 2000);
 
   // Обработчики кнопок главного экрана
-  document.getElementById('find-btn').addEventListener('click', showApp);
+  document.getElementById('find-btn').addEventListener('click', () => {
+    localStorage.setItem('currentSection', 'main');
+    showApp();
+  });
   document.getElementById('add-btn').addEventListener('click', showAppAndOpenForm);
 
   // Инициализация карты
@@ -36,6 +50,27 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('menu-btn').addEventListener('click', openSideMenu);
   document.getElementById('close-menu').addEventListener('click', closeSideMenu);
   document.getElementById('add-btn-menu').addEventListener('click', openAdModal);
+  document.getElementById('back-to-home').addEventListener('click', () => {
+    localStorage.setItem('currentSection', 'landing');
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('landing').style.display = 'flex';
+  });
+
+  // Обработчики ссылок меню
+  document.querySelectorAll('.menu-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const section = this.getAttribute('data-section');
+      localStorage.setItem('currentSection', section);
+      
+      if (section === 'favorites') {
+        showFavorites();
+      } else if (section === 'main') {
+        loadProperties();
+      }
+      closeSideMenu();
+    });
+  });
 
   // Обработчики фильтров
   document.getElementById('filter-btn').addEventListener('click', openFilters);
@@ -134,12 +169,24 @@ function loadProperties() {
   addMarkersToMap();
 }
 
-// Отображение списка объявлений
-function renderProperties() {
+// Показать избранные объявления
+function showFavorites() {
   const container = document.getElementById('properties-list');
-  container.innerHTML = '';
+  container.innerHTML = '<h2 class="section-title">Избранное</h2>';
 
-  properties.forEach(property => {
+  if (favorites.length === 0) {
+    container.innerHTML += '<div class="empty-state">У вас пока нет избранных объявлений</div>';
+    return;
+  }
+
+  const favoriteProperties = properties.filter(property => favorites.includes(property.id));
+  
+  if (favoriteProperties.length === 0) {
+    container.innerHTML += '<div class="empty-state">У вас пока нет избранных объявлений</div>';
+    return;
+  }
+
+  favoriteProperties.forEach(property => {
     const propertyElement = document.createElement('div');
     propertyElement.className = 'property-card';
     propertyElement.setAttribute('data-id', property.id);
@@ -170,7 +217,9 @@ function renderProperties() {
         </div>
         <p class="property-description">${property.description.substring(0, 100)}...</p>
         <div class="property-actions">
-          <button class="btn-secondary"><i class="fas fa-heart"></i> В избранное</button>
+          <button class="btn-secondary btn-favorite active" data-id="${property.id}">
+            <i class="fas fa-heart"></i> В избранном
+          </button>
           <button class="btn-primary btn-view" data-id="${property.id}">
             <i class="fas fa-eye"></i> Подробнее
           </button>
@@ -181,13 +230,108 @@ function renderProperties() {
     container.appendChild(propertyElement);
   });
 
-  // Добавляем обработчики для кнопок "Подробнее"
+  // Добавляем обработчики для кнопок
+  setupPropertyButtons();
+}
+
+// Отображение списка объявлений
+function renderProperties() {
+  const container = document.getElementById('properties-list');
+  container.innerHTML = '<h2 class="section-title">Все объявления</h2>';
+  
+  if (properties.length === 0) {
+    container.innerHTML += '<div class="empty-state">Объявления не найдены</div>';
+    return;
+  }
+
+  properties.forEach(property => {
+    const isFavorite = favorites.includes(property.id);
+    const propertyElement = document.createElement('div');
+    propertyElement.className = 'property-card';
+    propertyElement.setAttribute('data-id', property.id);
+    
+    propertyElement.innerHTML = `
+      <div class="property-image">
+        <img src="${property.image}" alt="${property.title}">
+      </div>
+      <div class="property-details">
+        <div class="property-price">$${property.price}</div>
+        <h3 class="property-title">${property.title}</h3>
+        <div class="property-address">
+          <i class="fas fa-map-marker-alt"></i> ${property.address}
+        </div>
+        <div class="property-features">
+          ${property.category === 'residential' ? `
+            <div class="property-feature">
+              <i class="fas fa-door-open"></i> ${property.rooms} комнаты
+            </div>
+          ` : `
+            <div class="property-feature">
+              <i class="fas fa-building"></i> ${property.type === 'office' ? 'Офис' : 'Коммерческое'}
+            </div>
+          `}
+          <div class="property-feature">
+            <i class="fas fa-ruler-combined"></i> ${property.area} м²
+          </div>
+        </div>
+        <p class="property-description">${property.description.substring(0, 100)}...</p>
+        <div class="property-actions">
+          <button class="btn-secondary btn-favorite ${isFavorite ? 'active' : ''}" data-id="${property.id}">
+            <i class="fas fa-heart"></i> ${isFavorite ? 'В избранном' : 'В избранное'}
+          </button>
+          <button class="btn-primary btn-view" data-id="${property.id}">
+            <i class="fas fa-eye"></i> Подробнее
+          </button>
+        </div>
+      </div>
+    `;
+    
+    container.appendChild(propertyElement);
+  });
+
+  // Добавляем обработчики для кнопок
+  setupPropertyButtons();
+}
+
+// Настройка обработчиков кнопок объявлений
+function setupPropertyButtons() {
+  // Обработчики для кнопок "Подробнее"
   document.querySelectorAll('.btn-view').forEach(btn => {
     btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
+      const id = parseInt(this.getAttribute('data-id'));
       viewPropertyDetails(id);
     });
   });
+
+  // Обработчики для кнопок "Избранное"
+  document.querySelectorAll('.btn-favorite').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = parseInt(this.getAttribute('data-id'));
+      toggleFavorite(id, this);
+    });
+  });
+}
+
+// Добавление/удаление из избранного
+function toggleFavorite(id, button) {
+  const index = favorites.indexOf(id);
+  if (index === -1) {
+    favorites.push(id);
+    button.classList.add('active');
+    button.innerHTML = '<i class="fas fa-heart"></i> В избранном';
+  } else {
+    favorites.splice(index, 1);
+    button.classList.remove('active');
+    button.innerHTML = '<i class="fas fa-heart"></i> В избранное';
+    
+    // Если находимся в разделе избранного, обновляем список
+    if (currentSection === 'favorites') {
+      showFavorites();
+    }
+  }
+  
+  // Сохраняем в localStorage
+  localStorage.setItem('favorites', JSON.stringify(favorites));
 }
 
 // Добавление маркеров на карту (оптимизированная версия)
@@ -330,6 +474,8 @@ function viewPropertyDetails(id) {
     document.getElementById('properties-list').style.height = '100vh';
   }
 
+  const isFavorite = favorites.includes(property.id);
+  
   // Создаем детальное представление
   const container = document.getElementById('properties-list');
   container.innerHTML = `
@@ -392,7 +538,9 @@ function viewPropertyDetails(id) {
         </div>
         
         <div class="detail-actions">
-          <button class="btn-secondary"><i class="fas fa-heart"></i> В избранное</button>
+          <button class="btn-secondary btn-favorite ${isFavorite ? 'active' : ''}" data-id="${property.id}">
+            <i class="fas fa-heart"></i> ${isFavorite ? 'В избранном' : 'В избранное'}
+          </button>
           <button class="btn-primary"><i class="fas fa-phone"></i> Позвонить</button>
         </div>
       </div>
@@ -405,7 +553,12 @@ function viewPropertyDetails(id) {
       document.getElementById('map').style.display = 'block';
       document.getElementById('properties-list').style.height = '60vh';
     }
-    renderProperties();
+    
+    if (currentSection === 'favorites') {
+      showFavorites();
+    } else {
+      renderProperties();
+    }
   });
 
   // Обработчики для миниатюр изображений
@@ -414,6 +567,12 @@ function viewPropertyDetails(id) {
       const imgUrl = this.style.backgroundImage.replace('url("', '').replace('")', '');
       document.querySelector('.main-image').style.backgroundImage = `url('${imgUrl}')`;
     });
+  });
+
+  // Обработчик кнопки "Избранное"
+  document.querySelector('.btn-favorite').addEventListener('click', function() {
+    const id = parseInt(this.getAttribute('data-id'));
+    toggleFavorite(id, this);
   });
 }
 
@@ -469,6 +628,9 @@ function initMapbox() {
 function showApp() {
   document.getElementById('landing').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  currentSection = 'main';
+  localStorage.setItem('currentSection', 'main');
+  
   setTimeout(() => {
     map.resize();
     setupMobileLayout();

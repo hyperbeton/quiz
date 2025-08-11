@@ -36,6 +36,7 @@
     <!-- Шапка -->
     <header>
       <div class="header-left">
+        <button id="back-to-home" class="btn-back"><i class="fas fa-arrow-left"></i></button>
         <div class="logo">Rent<span>Uz</span></div>
         <button id="menu-btn"><i class="fas fa-bars"></i></button>
       </div>
@@ -67,11 +68,11 @@
         <button id="close-menu"><i class="fas fa-times"></i></button>
       </div>
       <nav>
-        <a href="#"><i class="fas fa-home"></i> Главная</a>
-        <a href="#"><i class="fas fa-heart"></i> Избранное</a>
-        <a href="#"><i class="fas fa-bell"></i> Уведомления</a>
-        <a href="#"><i class="fas fa-history"></i> История</a>
-        <a href="#"><i class="fas fa-cog"></i> Настройки</a>
+        <a href="#" class="menu-link" data-section="main"><i class="fas fa-home"></i> Главная</a>
+        <a href="#" class="menu-link" data-section="favorites"><i class="fas fa-heart"></i> Избранное</a>
+        <a href="#" class="menu-link" data-section="notifications"><i class="fas fa-bell"></i> Уведомления</a>
+        <a href="#" class="menu-link" data-section="history"><i class="fas fa-history"></i> История</a>
+        <a href="#" class="menu-link" data-section="settings"><i class="fas fa-cog"></i> Настройки</a>
       </nav>
       <div class="menu-footer">
         <button class="btn-primary" id="add-btn-menu"><i class="fas fa-plus"></i> Добавить объявление</button>
