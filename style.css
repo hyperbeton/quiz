@@ -1464,3 +1464,51 @@ input[name="property-category"][value="residential"]:checked ~ .form-step.commer
     width: 98%;
   }
 }
+
+#logout-btn {
+  margin-top: 0.8rem;
+  width: 100%;
+}
+
+/* Добавьте эти стили в конец файла */
+
+/* Кнопка выхода */
+#logout-btn {
+  margin-top: 0.8rem;
+  width: 100%;
+}
+
+/* Поле адреса в форме */
+#address {
+  margin-bottom: 0.8rem;
+}
+
+/* Кнопка открытия карты */
+#open-map-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* Сообщения об ошибках */
+.error-message {
+  color: var(--red);
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.error {
+  border-color: var(--red) !important;
+}
+
+/* Улучшенный внешний вид карты для выбора местоположения */
+#location-map-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+}
+
+#location-map-preview i {
+  font-size: 2rem;
+  opacity: 0.5;
+}

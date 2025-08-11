@@ -15,6 +15,8 @@ let activePopup = null;
 let currentPropertyView = null;
 let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 let currentSection = localStorage.getItem('currentSection') || 'main';
+let selectedRooms = [];
+let priceRange = { min: 0, max: 2000 };
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
@@ -50,6 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('menu-btn').addEventListener('click', openSideMenu);
   document.getElementById('close-menu').addEventListener('click', closeSideMenu);
   document.getElementById('add-btn-menu').addEventListener('click', openAdModal);
+  document.getElementById('logout-btn').addEventListener('click', logout);
   document.getElementById('back-to-home').addEventListener('click', () => {
     localStorage.setItem('currentSection', 'landing');
     document.getElementById('app').style.display = 'none';
@@ -79,6 +82,21 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('apply-filters').addEventListener('click', applyFilters);
   document.getElementById('property-type').addEventListener('change', updateFilterSections);
 
+  // Обработчики выбора количества комнат
+  document.querySelectorAll('.room-selector button').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const rooms = this.getAttribute('data-rooms');
+      this.classList.toggle('active');
+      if (this.classList.contains('active')) {
+        if (!selectedRooms.includes(rooms)) {
+          selectedRooms.push(rooms);
+        }
+      } else {
+        selectedRooms = selectedRooms.filter(r => r !== rooms);
+      }
+    });
+  });
+
   // Инициализация слайдера цены
   initPriceSlider();
 
@@ -94,13 +112,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Адаптация для мобильных устройств
   setupMobileLayout();
+  window.addEventListener('resize', setupMobileLayout);
 });
 
 function setupMobileLayout() {
   if (window.innerWidth <= 768) {
     document.getElementById('map').style.height = '40vh';
     document.getElementById('properties-list').style.height = '60vh';
+  } else {
+    document.getElementById('map').style.height = '60vh';
+    document.getElementById('properties-list').style.height = '40vh';
   }
+}
+
+function logout() {
+  localStorage.setItem('currentSection', 'landing');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+  closeSideMenu();
 }
 
 // Загрузка объявлений
@@ -632,7 +661,7 @@ function showApp() {
   localStorage.setItem('currentSection', 'main');
   
   setTimeout(() => {
-    map.resize();
+    if (map) map.resize();
     setupMobileLayout();
   }, 300);
 }
@@ -663,6 +692,27 @@ function closeFilters() {
   document.getElementById('filters-panel').classList.remove('active');
 }
 
+// Обновление секций фильтров
+function updateFilterSections() {
+  const type = document.getElementById('property-type').value;
+  
+  if (type === 'commercial') {
+    document.querySelectorAll('.residential-filters').forEach(el => {
+      el.style.display = 'none';
+    });
+    document.querySelectorAll('.commercial-filters').forEach(el => {
+      el.style.display = 'block';
+    });
+  } else {
+    document.querySelectorAll('.residential-filters').forEach(el => {
+      el.style.display = 'block';
+    });
+    document.querySelectorAll('.commercial-filters').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+}
+
 // Сброс фильтров
 function resetFilters() {
   const inputs = document.querySelectorAll('#filters-panel input:not([type="checkbox"])');
@@ -681,13 +731,51 @@ function resetFilters() {
   document.getElementById('price-max').value = 1500;
   document.getElementById('min-value').textContent = '500';
   document.getElementById('max-value').textContent = '1500';
+  
+  selectedRooms = [];
+  priceRange = { min: 0, max: 2000 };
 }
 
 // Применение фильтров
 function applyFilters() {
+  const minPrice = parseInt(document.getElementById('price-min').value);
+  const maxPrice = parseInt(document.getElementById('price-max').value);
+  const minArea = document.getElementById('area-min').value ? parseInt(document.getElementById('area-min').value) : null;
+  const maxArea = document.getElementById('area-max').value ? parseInt(document.getElementById('area-max').value) : null;
+  const propertyType = document.getElementById('property-type').value;
+  
+  priceRange = { min: minPrice, max: maxPrice };
+  
+  // Фильтрация объявлений
+  let filteredProperties = properties.filter(property => {
+    // Фильтр по цене
+    if (property.price < minPrice || property.price > maxPrice) return false;
+    
+    // Фильтр по типу недвижимости
+    if (propertyType && property.category !== propertyType) return false;
+    
+    // Фильтр по площади
+    if (minArea && property.area < minArea) return false;
+    if (maxArea && property.area > maxArea) return false;
+    
+    // Фильтр по количеству комнат (для жилой недвижимости)
+    
+if (property.category === 'residential' && selectedRooms.length > 0) {
+  if (selectedRooms.includes('studio') && property.rooms === 0) return true;
+  if (!selectedRooms.includes(property.rooms.toString())) {
+    if (!(selectedRooms.includes('4+') && property.rooms >= 4)) return false;
+  }
+}
+
+return true;
+  });
+  
+  // Обновляем список объявлений
+  properties = filteredProperties.length > 0 ? filteredProperties : properties;
+  renderProperties();
+  addMarkersToMap();
+  
   closeFilters();
-  const randomCount = Math.floor(Math.random() * 50) + 50;
-  document.getElementById('apply-filters').textContent = `Применить (${randomCount})`;
 }
 
 // Инициализация слайдера цены
@@ -721,7 +809,7 @@ function initAdForm() {
   document.getElementById('close-ad-modal').addEventListener('click', closeAdModal);
   document.getElementById('next-step').addEventListener('click', nextStep);
   document.getElementById('prev-step').addEventListener('click', prevStep);
-  document.getElementById('location').addEventListener('click', openMapModal);
+  document.getElementById('open-map-btn').addEventListener('click', openMapModal);
   document.getElementById('cancel-location').addEventListener('click', closeMapModal);
   document.getElementById('confirm-location').addEventListener('click', confirmLocation);
   document.getElementById('title').addEventListener('input', function() {
@@ -741,6 +829,16 @@ function openAdModal() {
 // Закрытие формы добавления объявления
 function closeAdModal() {
   document.getElementById('ad-modal').classList.remove('active');
+  // Сброс формы
+  document.getElementById('ad-form').reset();
+  uploadedPhotos = [];
+  document.getElementById('preview-grid').innerHTML = '';
+  document.getElementById('title-counter').textContent = '0';
+  selectedLocation = null;
+  document.getElementById('location').value = '';
+  document.getElementById('address').value = '';
+  document.getElementById('location-map-preview').style.backgroundImage = 'none';
+  document.getElementById('location-map-preview').innerHTML = '<i class="fas fa-map-marked-alt"></i>';
 }
 
 // Следующий шаг формы
@@ -767,6 +865,10 @@ function validateStep(step) {
     el.classList.remove('error');
   });
   
+  activeStep.querySelectorAll('.error-message').forEach(el => {
+    el.remove();
+  });
+  
   // Проверяем поля в зависимости от шага
   switch(step) {
     case 1:
@@ -781,6 +883,9 @@ function validateStep(step) {
       
       if (!price.value.trim()) {
         showError(price, 'Пожалуйста, укажите цену');
+        isValid = false;
+      } else if (parseInt(price.value) <= 0) {
+        showError(price, 'Цена должна быть больше 0');
         isValid = false;
       }
       
@@ -798,11 +903,17 @@ function validateStep(step) {
         if (!commercialArea.value.trim()) {
           showError(commercialArea, 'Пожалуйста, укажите площадь');
           isValid = false;
+        } else if (parseInt(commercialArea.value) <= 0) {
+          showError(commercialArea, 'Площадь должна быть больше 0');
+          isValid = false;
         }
       } else {
         const totalArea = document.getElementById('total-area');
         if (!totalArea.value.trim()) {
           showError(totalArea, 'Пожалуйста, укажите общую площадь');
+          isValid = false;
+        } else if (parseInt(totalArea.value) <= 0) {
+          showError(totalArea, 'Площадь должна быть больше 0');
           isValid = false;
         }
       }
@@ -847,6 +958,9 @@ function showError(element, message) {
   }
   
   errorElement.textContent = message;
+  errorElement.style.color = 'var(--red)';
+  errorElement.style.fontSize = '0.8rem';
+  errorElement.style.marginTop = '0.2rem';
 }
 
 // Обновление отображения шагов формы
@@ -872,6 +986,47 @@ function updateFormSteps() {
   }
 }
 
+// Обновление полей формы в зависимости от категории
+function updateFormFieldsByCategory() {
+  const isCommercial = document.querySelector('input[name="property-category"]:checked').value === 'commercial';
+  
+  if (isCommercial) {
+    document.querySelectorAll('.residential-fields').forEach(el => {
+      el.style.display = 'none';
+    });
+    document.querySelectorAll('.commercial-fields').forEach(el => {
+      el.style.display = 'block';
+    });
+    
+    // Обновляем опции в select категории
+    document.querySelectorAll('#category option').forEach(opt => {
+      if (opt.classList.contains('commercial-option')) {
+        opt.style.display = 'block';
+      } else {
+        opt.style.display = 'none';
+      }
+    });
+    document.getElementById('category').value = '';
+  } else {
+    document.querySelectorAll('.residential-fields').forEach(el => {
+      el.style.display = 'block';
+    });
+    document.querySelectorAll('.commercial-fields').forEach(el => {
+      el.style.display = 'none';
+    });
+    
+    // Обновляем опции в select категории
+    document.querySelectorAll('#category option').forEach(opt => {
+      if (opt.classList.contains('commercial-option')) {
+        opt.style.display = 'none';
+      } else {
+        opt.style.display = 'block';
+      }
+    });
+    document.getElementById('category').value = '';
+  }
+}
+
 // Открытие модального окна карты
 function openMapModal() {
   document.getElementById('map-modal').classList.add('active');
@@ -883,6 +1038,17 @@ function openMapModal() {
       center: [69.2401, 41.2995],
       zoom: 12
     });
+    
+    // Добавляем поиск по адресу
+    const geocoder = new MapboxGeocoder({
+      accessToken: mapboxgl.accessToken,
+      mapboxgl: mapboxgl,
+      marker: false,
+      placeholder: 'Поиск адреса',
+      language: 'ru'
+    });
+    
+    document.getElementById('location-map').appendChild(geocoder.onAdd(locationMap));
     
     const marker = new mapboxgl.Marker({
       draggable: true
@@ -896,6 +1062,15 @@ function openMapModal() {
         lng: lngLat.lng,
         lat: lngLat.lat
       };
+      
+      // Получаем адрес по координатам
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lngLat.lng},${lngLat.lat}.json?access_token=${MAPBOX_TOKEN}&language=ru`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.features && data.features.length > 0) {
+            document.getElementById('address').value = data.features[0].place_name;
+          }
+        });
     });
     
     locationMap.on('click', function(e) {
@@ -904,6 +1079,25 @@ function openMapModal() {
         lng: e.lngLat.lng,
         lat: e.lngLat.lat
       };
+      
+      // Получаем адрес по координатам
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${e.lngLat.lng},${e.lngLat.lat}.json?access_token=${MAPBOX_TOKEN}&language=ru`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.features && data.features.length > 0) {
+            document.getElementById('address').value = data.features[0].place_name;
+          }
+        });
+    });
+    
+    // Обработчик выбора адреса из поиска
+    geocoder.on('result', function(e) {
+      selectedLocation = {
+        lng: e.result.center[0],
+        lat: e.result.center[1]
+      };
+      marker.setLngLat(e.result.center);
+      document.getElementById('address').value = e.result.place_name;
     });
   }
 }
@@ -1012,6 +1206,7 @@ function submitForm(e) {
     price: document.getElementById('price').value,
     additionalInfo: document.getElementById('additional-info').value,
     adType: document.querySelector('input[name="ad-type"]:checked').value,
+    address: document.getElementById('address').value,
     location: document.getElementById('location').value,
     contactName: document.getElementById('contact-name').value,
     contactPhone: document.getElementById('contact-phone').value,
@@ -1077,6 +1272,7 @@ function formatTelegramMessage(data) {
   message += `💰 *Цена:* ${data.price} $\n`;
   message += `📌 *Тип:* ${isCommercial ? 'Нежилое' : 'Жилое'}\n`;
   message += `🏷 *Категория:* ${getOptionText('category', data.category)}\n`;
+  message += `📍 *Адрес:* ${data.address || 'Не указан'}\n`;
   message += `📝 *Описание:* ${data.description || 'Не указано'}\n\n`;
   
   if (isCommercial) {
@@ -1118,7 +1314,7 @@ function formatTelegramMessage(data) {
     }
   }
   
-  message += `📍 *Местоположение:* ${data.location || 'Не указано'}\n\n`;
+  message += `📍 *Координаты:* ${data.location || 'Не указаны'}\n\n`;
   
   message += `🔹 *Рядом есть*\n`;
   if (data.infrastructure && data.infrastructure.length > 0) {
@@ -1172,9 +1368,6 @@ function sendToTelegram(message) {
       if (response.ok) {
         alert('✅ Объявление успешно отправлено в Telegram!');
         closeAdModal();
-        document.getElementById('ad-form').reset();
-        uploadedPhotos = [];
-        document.getElementById('preview-grid').innerHTML = '';
         loadProperties();
       } else {
         throw new Error('Ошибка отправки');
@@ -1185,3 +1378,4 @@ function sendToTelegram(message) {
       alert('❌ Произошла ошибка при отправке объявления');
     });
 }
+

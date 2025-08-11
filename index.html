@@ -76,6 +76,7 @@
       </nav>
       <div class="menu-footer">
         <button class="btn-primary" id="add-btn-menu"><i class="fas fa-plus"></i> Добавить объявление</button>
+        <button class="btn-secondary" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Выйти</button>
       </div>
     </div>
 
@@ -393,8 +394,10 @@
 
             <div class="form-group">
               <label>Местоположение</label>
-              <input type="text" id="location" placeholder="Укажите на карте" readonly>
+              <input type="text" id="address" placeholder="Введите точный адрес">
+              <input type="text" id="location" placeholder="Координаты (указываются на карте)" readonly>
               <div class="location-map" id="location-map-preview"></div>
+              <button type="button" class="btn-secondary" id="open-map-btn"><i class="fas fa-map-marker-alt"></i> Указать на карте</button>
             </div>
           </div>
 
@@ -744,6 +747,8 @@
   </div>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
   <script src="script.js"></script>
 </body>
 </html>
