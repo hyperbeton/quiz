@@ -1,1381 +1,823 @@
-// Конфигурация
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiYWxpbW92ZSIsImEiOiJjbTlpa3RjeG0wM2FtMmpweHppbzgzcGlmIn0.ZwOAvSETInXLzNHG0l1Q_A';
-const TELEGRAM_BOT_TOKEN = '7966741167:AAHSGufTD93Dew1P4jEMJsQcXZZs_WEfjfQ';
-const TELEGRAM_CHAT_ID = '-1002334913768';
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyD_dZ3uPra32WQGDIZZ2vyFwCdNgWCBPEM",
+  authDomain: "apprent-e0f19.firebaseapp.com",
+  projectId: "apprent-e0f19",
+  storageBucket: "apprent-e0f19.firebasestorage.app",
+  messagingSenderId: "840126144107",
+  appId: "1:840126144107:web:3e55aa942a46fdeec8db2e",
+  measurementId: "G-7WG51CLWKQ"
+};
 
-// Глобальные переменные
-let map;
-let locationMap;
+
+
+
+
+
+
+
+
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// Global variables
 let currentStep = 1;
-let selectedLocation = null;
-let uploadedPhotos = [];
+let map, markers = [];
+let selectedPropertyType = '';
+let uploadedFiles = [];
 let properties = [];
-let markers = [];
-let activePopup = null;
-let currentPropertyView = null;
-let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-let currentSection = localStorage.getItem('currentSection') || 'main';
-let selectedRooms = [];
-let priceRange = { min: 0, max: 2000 };
 
-// Инициализация приложения
+// Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-  // Показываем лоадер на 2 секунды
-  setTimeout(() => {
-    document.getElementById('loader').style.display = 'none';
-    
-    // Проверяем, нужно ли показывать главный экран
-    if (currentSection === 'landing') {
-      document.getElementById('landing').style.display = 'flex';
-    } else {
-      showApp();
-      if (currentSection === 'favorites') {
-        showFavorites();
-      }
-    }
-  }, 2000);
-
-  // Обработчики кнопок главного экрана
-  document.getElementById('find-btn').addEventListener('click', () => {
-    localStorage.setItem('currentSection', 'main');
-    showApp();
-  });
-  document.getElementById('add-btn').addEventListener('click', showAppAndOpenForm);
-
-  // Инициализация карты
-  initMapbox();
-
-  // Загрузка объявлений
-  loadProperties();
-
-  // Обработчики меню
-  document.getElementById('menu-btn').addEventListener('click', openSideMenu);
-  document.getElementById('close-menu').addEventListener('click', closeSideMenu);
-  document.getElementById('add-btn-menu').addEventListener('click', openAdModal);
-  document.getElementById('logout-btn').addEventListener('click', logout);
-  document.getElementById('back-to-home').addEventListener('click', () => {
-    localStorage.setItem('currentSection', 'landing');
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('landing').style.display = 'flex';
-  });
-
-  // Обработчики ссылок меню
-  document.querySelectorAll('.menu-link').forEach(link => {
-    link.addEventListener('click', function(e) {
-      e.preventDefault();
-      const section = this.getAttribute('data-section');
-      localStorage.setItem('currentSection', section);
-      
-      if (section === 'favorites') {
-        showFavorites();
-      } else if (section === 'main') {
-        loadProperties();
-      }
-      closeSideMenu();
-    });
-  });
-
-  // Обработчики фильтров
-  document.getElementById('filter-btn').addEventListener('click', openFilters);
-  document.getElementById('close-filters').addEventListener('click', closeFilters);
-  document.getElementById('reset-filters').addEventListener('click', resetFilters);
-  document.getElementById('apply-filters').addEventListener('click', applyFilters);
-  document.getElementById('property-type').addEventListener('change', updateFilterSections);
-
-  // Обработчики выбора количества комнат
-  document.querySelectorAll('.room-selector button').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const rooms = this.getAttribute('data-rooms');
-      this.classList.toggle('active');
-      if (this.classList.contains('active')) {
-        if (!selectedRooms.includes(rooms)) {
-          selectedRooms.push(rooms);
-        }
-      } else {
-        selectedRooms = selectedRooms.filter(r => r !== rooms);
-      }
-    });
-  });
-
-  // Инициализация слайдера цены
-  initPriceSlider();
-
-  // Обработчики формы добавления объявления
-  initAdForm();
-
-  // Переключение между жилыми/нежилыми помещениями
-  document.querySelectorAll('input[name="property-category"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-      updateFormFieldsByCategory();
-    });
-  });
-
-  // Адаптация для мобильных устройств
-  setupMobileLayout();
-  window.addEventListener('resize', setupMobileLayout);
+    initFirebase();
+    initMap();
+    setupEventListeners();
+    showSection('homeSection');
 });
 
-function setupMobileLayout() {
-  if (window.innerWidth <= 768) {
-    document.getElementById('map').style.height = '40vh';
-    document.getElementById('properties-list').style.height = '60vh';
-  } else {
-    document.getElementById('map').style.height = '60vh';
-    document.getElementById('properties-list').style.height = '40vh';
-  }
-}
-
-function logout() {
-  localStorage.setItem('currentSection', 'landing');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('landing').style.display = 'flex';
-  closeSideMenu();
-}
-
-// Загрузка объявлений
-function loadProperties() {
-  // В реальном приложении здесь будет запрос к API
-  properties = [
-    {
-      id: 1,
-      title: "2-комнатная квартира в центре",
-      description: "Светлая просторная квартира с ремонтом, все удобства. Рядом парк, метро и магазины. Идеально для семьи или пары.",
-      price: 450,
-      type: "flat",
-      category: "residential",
-      rooms: 2,
-      area: 65,
-      address: "Ташкент, Мирабадский район, ул. Навои 12",
-      location: [69.2401, 41.2995],
-      image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-      amenities: ["internet", "ac", "washer", "fridge", "tv"],
-      images: [
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-        "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-        "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
-      ]
-    },
-    {
-      id: 2,
-      title: "Офисное помещение 50 м²",
-      description: "Готовый офис в бизнес-центре, отдельный вход. Кондиционер, интернет, охрана. Отличное расположение в центре города.",
-      price: 800,
-      type: "office",
-      category: "commercial",
-      area: 50,
-      address: "Ташкент, Шайхантахурский район, ул. Амира Темура 108",
-      location: [69.2450, 41.3050],
-      image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-      amenities: ["internet", "ac", "phone"],
-      images: [
-        "https://images.unsplash.com/photo-1497366811353-6870744d04b2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-        "https://images.unsplash.com/photo-1522199755839-a2bacb67c546?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
-      ]
-    },
-    {
-      id: 3,
-      title: "1-комнатная квартира",
-      description: "Уютная квартира в новом доме. Ремонт, мебель, техника. Рядом метро и парк.",
-      price: 350,
-      type: "flat",
-      category: "residential",
-      rooms: 1,
-      area: 42,
-      address: "Ташкент, Чиланзарский район, ул. Бунёдкор 25",
-      location: [69.2350, 41.2950],
-      image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-      amenities: ["internet", "ac", "fridge", "tv"],
-      images: [
-        "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-        "https://images.unsplash.com/photo-1484154218962-a197022b5858?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
-      ]
-    }
-  ];
-
-  // Отображаем объявления
-  renderProperties();
-  // Добавляем маркеры на карту
-  addMarkersToMap();
-}
-
-// Показать избранные объявления
-function showFavorites() {
-  const container = document.getElementById('properties-list');
-  container.innerHTML = '<h2 class="section-title">Избранное</h2>';
-
-  if (favorites.length === 0) {
-    container.innerHTML += '<div class="empty-state">У вас пока нет избранных объявлений</div>';
-    return;
-  }
-
-  const favoriteProperties = properties.filter(property => favorites.includes(property.id));
-  
-  if (favoriteProperties.length === 0) {
-    container.innerHTML += '<div class="empty-state">У вас пока нет избранных объявлений</div>';
-    return;
-  }
-
-  favoriteProperties.forEach(property => {
-    const propertyElement = document.createElement('div');
-    propertyElement.className = 'property-card';
-    propertyElement.setAttribute('data-id', property.id);
-    
-    propertyElement.innerHTML = `
-      <div class="property-image">
-        <img src="${property.image}" alt="${property.title}">
-      </div>
-      <div class="property-details">
-        <div class="property-price">$${property.price}</div>
-        <h3 class="property-title">${property.title}</h3>
-        <div class="property-address">
-          <i class="fas fa-map-marker-alt"></i> ${property.address}
-        </div>
-        <div class="property-features">
-          ${property.category === 'residential' ? `
-            <div class="property-feature">
-              <i class="fas fa-door-open"></i> ${property.rooms} комнаты
-            </div>
-          ` : `
-            <div class="property-feature">
-              <i class="fas fa-building"></i> ${property.type === 'office' ? 'Офис' : 'Коммерческое'}
-            </div>
-          `}
-          <div class="property-feature">
-            <i class="fas fa-ruler-combined"></i> ${property.area} м²
-          </div>
-        </div>
-        <p class="property-description">${property.description.substring(0, 100)}...</p>
-        <div class="property-actions">
-          <button class="btn-secondary btn-favorite active" data-id="${property.id}">
-            <i class="fas fa-heart"></i> В избранном
-          </button>
-          <button class="btn-primary btn-view" data-id="${property.id}">
-            <i class="fas fa-eye"></i> Подробнее
-          </button>
-        </div>
-      </div>
-    `;
-    
-    container.appendChild(propertyElement);
-  });
-
-  // Добавляем обработчики для кнопок
-  setupPropertyButtons();
-}
-
-// Отображение списка объявлений
-function renderProperties() {
-  const container = document.getElementById('properties-list');
-  container.innerHTML = '<h2 class="section-title">Все объявления</h2>';
-  
-  if (properties.length === 0) {
-    container.innerHTML += '<div class="empty-state">Объявления не найдены</div>';
-    return;
-  }
-
-  properties.forEach(property => {
-    const isFavorite = favorites.includes(property.id);
-    const propertyElement = document.createElement('div');
-    propertyElement.className = 'property-card';
-    propertyElement.setAttribute('data-id', property.id);
-    
-    propertyElement.innerHTML = `
-      <div class="property-image">
-        <img src="${property.image}" alt="${property.title}">
-      </div>
-      <div class="property-details">
-        <div class="property-price">$${property.price}</div>
-        <h3 class="property-title">${property.title}</h3>
-        <div class="property-address">
-          <i class="fas fa-map-marker-alt"></i> ${property.address}
-        </div>
-        <div class="property-features">
-          ${property.category === 'residential' ? `
-            <div class="property-feature">
-              <i class="fas fa-door-open"></i> ${property.rooms} комнаты
-            </div>
-          ` : `
-            <div class="property-feature">
-              <i class="fas fa-building"></i> ${property.type === 'office' ? 'Офис' : 'Коммерческое'}
-            </div>
-          `}
-          <div class="property-feature">
-            <i class="fas fa-ruler-combined"></i> ${property.area} м²
-          </div>
-        </div>
-        <p class="property-description">${property.description.substring(0, 100)}...</p>
-        <div class="property-actions">
-          <button class="btn-secondary btn-favorite ${isFavorite ? 'active' : ''}" data-id="${property.id}">
-            <i class="fas fa-heart"></i> ${isFavorite ? 'В избранном' : 'В избранное'}
-          </button>
-          <button class="btn-primary btn-view" data-id="${property.id}">
-            <i class="fas fa-eye"></i> Подробнее
-          </button>
-        </div>
-      </div>
-    `;
-    
-    container.appendChild(propertyElement);
-  });
-
-  // Добавляем обработчики для кнопок
-  setupPropertyButtons();
-}
-
-// Настройка обработчиков кнопок объявлений
-function setupPropertyButtons() {
-  // Обработчики для кнопок "Подробнее"
-  document.querySelectorAll('.btn-view').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = parseInt(this.getAttribute('data-id'));
-      viewPropertyDetails(id);
-    });
-  });
-
-  // Обработчики для кнопок "Избранное"
-  document.querySelectorAll('.btn-favorite').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = parseInt(this.getAttribute('data-id'));
-      toggleFavorite(id, this);
-    });
-  });
-}
-
-// Добавление/удаление из избранного
-function toggleFavorite(id, button) {
-  const index = favorites.indexOf(id);
-  if (index === -1) {
-    favorites.push(id);
-    button.classList.add('active');
-    button.innerHTML = '<i class="fas fa-heart"></i> В избранном';
-  } else {
-    favorites.splice(index, 1);
-    button.classList.remove('active');
-    button.innerHTML = '<i class="fas fa-heart"></i> В избранное';
-    
-    // Если находимся в разделе избранного, обновляем список
-    if (currentSection === 'favorites') {
-      showFavorites();
-    }
-  }
-  
-  // Сохраняем в localStorage
-  localStorage.setItem('favorites', JSON.stringify(favorites));
-}
-
-// Добавление маркеров на карту (оптимизированная версия)
-function addMarkersToMap() {
-  // Удаляем старые маркеры
-  markers.forEach(marker => marker.remove());
-  markers = [];
-
-  // Кластеризация для большого количества объявлений
-  const clusterMarkers = {};
-  const clusterRadius = 0.0005; // Радиус кластеризации в градусах
-
-  properties.forEach(property => {
-    // Проверяем, можно ли объединить маркер с существующим кластером
-    let clustered = false;
-    for (const key in clusterMarkers) {
-      const cluster = clusterMarkers[key];
-      const distance = Math.sqrt(
-        Math.pow(property.location[0] - cluster.center[0], 2) + 
-        Math.pow(property.location[1] - cluster.center[1], 2)
-      );
-
-      if (distance < clusterRadius) {
-        cluster.properties.push(property);
-        clustered = true;
-        break;
-      }
-    }
-
-    // Если не объединили в кластер, создаем новый
-    if (!clustered) {
-      const key = `${property.location[0]}_${property.location[1]}`;
-      clusterMarkers[key] = {
-        center: property.location,
-        properties: [property]
-      };
-    }
-  });
-
-  // Создаем маркеры для кластеров
-  for (const key in clusterMarkers) {
-    const cluster = clusterMarkers[key];
-    const count = cluster.properties.length;
-    const property = cluster.properties[0]; // Берем первое свойство для отображения
-
-    // Создаем элемент маркера
-    const markerElement = document.createElement('div');
-    markerElement.className = 'property-marker';
-    markerElement.innerHTML = count > 1 ? 
-      `<div class="marker-cluster">${count}</div>` : 
-      `<div class="marker-price ${property.category === 'commercial' ? 'commercial' : ''}">$${property.price}</div>`;
-
-    // Создаем попап с информацией
-    const popupContent = document.createElement('div');
-    popupContent.className = 'map-popup';
-    
-    if (count > 1) {
-      popupContent.innerHTML = `
-        <div class="popup-header">
-          <h4>${count} объявлений в этом районе</h4>
-        </div>
-        <div class="popup-list">
-          ${cluster.properties.slice(0, 3).map(p => `
-            <div class="popup-item" data-id="${p.id}">
-              <div class="popup-item-price">$${p.price}</div>
-              <div class="popup-item-title">${p.title}</div>
-            </div>
-          `).join('')}
-          ${count > 3 ? `<div class="popup-more">+${count - 3} ещё</div>` : ''}
-        </div>
-      `;
-    } else {
-      popupContent.innerHTML = `
-        <div class="popup-image" style="background-image: url('${property.image}')"></div>
-        <div class="popup-details">
-          <h4>${property.title}</h4>
-          <div class="popup-price">$${property.price}</div>
-          <div class="popup-address">
-            <i class="fas fa-map-marker-alt"></i> ${property.address}
-          </div>
-          <div class="popup-features">
-            ${property.category === 'residential' ? 
-              `<span><i class="fas fa-door-open"></i> ${property.rooms} комн.</span>` : 
-              `<span><i class="fas fa-building"></i> ${property.type === 'office' ? 'Офис' : 'Коммерческое'}</span>`}
-            <span><i class="fas fa-ruler-combined"></i> ${property.area} м²</span>
-          </div>
-          <button class="btn-primary btn-sm btn-view" data-id="${property.id}">Подробнее</button>
-        </div>
-      `;
-    }
-
-    // Создаем попап
-    const popup = new mapboxgl.Popup({
-      offset: 25,
-      closeButton: false,
-      className: 'custom-popup'
-    }).setDOMContent(popupContent);
-
-    // Создаем маркер
-    const marker = new mapboxgl.Marker({
-      element: markerElement,
-      anchor: 'bottom'
-    })
-      .setLngLat(cluster.center)
-      .setPopup(popup)
-      .addTo(map);
-
-    // Добавляем обработчики событий для маркера
-    markerElement.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (activePopup) activePopup.remove();
-      marker.togglePopup();
-      activePopup = popup;
-      
-      // Обработка клика по элементам в попапе
-      setTimeout(() => {
-        document.querySelectorAll('.popup-item, .btn-view').forEach(el => {
-          el.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            if (id) viewPropertyDetails(id);
-          });
+// Initialize Firebase and load properties
+async function initFirebase() {
+    try {
+        // Load properties from Firestore
+        const snapshot = await db.collection('properties')
+            .where('status', '==', 'active')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        properties = [];
+        snapshot.forEach(doc => {
+            properties.push({ id: doc.id, ...doc.data() });
         });
-      }, 100);
-    });
-
-    markers.push(marker);
-  }
-}
-
-// Просмотр деталей объявления
-function viewPropertyDetails(id) {
-  const property = properties.find(p => p.id == id);
-  if (!property) return;
-
-  currentPropertyView = id;
-
-  // Скрываем карту на мобильных устройствах
-  if (window.innerWidth <= 768) {
-    document.getElementById('map').style.display = 'none';
-    document.getElementById('properties-list').style.height = '100vh';
-  }
-
-  const isFavorite = favorites.includes(property.id);
-  
-  // Создаем детальное представление
-  const container = document.getElementById('properties-list');
-  container.innerHTML = `
-    <div class="property-detail">
-      <button class="btn-back" id="back-to-list">
-        <i class="fas fa-arrow-left"></i> Назад к списку
-      </button>
-      
-      <div class="detail-gallery">
-        <div class="main-image" style="background-image: url('${property.image}')"></div>
-        <div class="thumbnails">
-          ${property.images.map(img => `
-            <div class="thumbnail" style="background-image: url('${img}')"></div>
-          `).join('')}
-        </div>
-      </div>
-      
-      <div class="detail-content">
-        <div class="detail-header">
-          <h2>${property.title}</h2>
-          <div class="detail-price">$${property.price}</div>
-        </div>
         
-        <div class="detail-address">
-          <i class="fas fa-map-marker-alt"></i> ${property.address}
-        </div>
-        
-        <div class="detail-features">
-          ${property.category === 'residential' ? `
-            <div class="feature">
-              <i class="fas fa-door-open"></i>
-              <span>${property.rooms} комнаты</span>
-            </div>
-          ` : `
-            <div class="feature">
-              <i class="fas fa-building"></i>
-              <span>${property.type === 'office' ? 'Офис' : 'Коммерческое'}</span>
-            </div>
-          `}
-          <div class="feature">
-            <i class="fas fa-ruler-combined"></i>
-            <span>${property.area} м²</span>
-          </div>
-        </div>
-        
-        <div class="detail-description">
-          <h3>Описание</h3>
-          <p>${property.description}</p>
-        </div>
-        
-        <div class="detail-amenities">
-          <h3>Удобства</h3>
-          <div class="amenities-grid">
-            ${property.amenities.map(amenity => `
-              <div class="amenity">
-                <i class="fas fa-check"></i> ${getAmenityName(amenity)}
-              </div>
-            `).join('')}
-          </div>
-        </div>
-        
-        <div class="detail-actions">
-          <button class="btn-secondary btn-favorite ${isFavorite ? 'active' : ''}" data-id="${property.id}">
-            <i class="fas fa-heart"></i> ${isFavorite ? 'В избранном' : 'В избранное'}
-          </button>
-          <button class="btn-primary"><i class="fas fa-phone"></i> Позвонить</button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Обработчик кнопки "Назад"
-  document.getElementById('back-to-list').addEventListener('click', () => {
-    if (window.innerWidth <= 768) {
-      document.getElementById('map').style.display = 'block';
-      document.getElementById('properties-list').style.height = '60vh';
-    }
-    
-    if (currentSection === 'favorites') {
-      showFavorites();
-    } else {
-      renderProperties();
-    }
-  });
-
-  // Обработчики для миниатюр изображений
-  document.querySelectorAll('.thumbnail').forEach(thumb => {
-    thumb.addEventListener('click', function() {
-      const imgUrl = this.style.backgroundImage.replace('url("', '').replace('")', '');
-      document.querySelector('.main-image').style.backgroundImage = `url('${imgUrl}')`;
-    });
-  });
-
-  // Обработчик кнопки "Избранное"
-  document.querySelector('.btn-favorite').addEventListener('click', function() {
-    const id = parseInt(this.getAttribute('data-id'));
-    toggleFavorite(id, this);
-  });
-}
-
-function getAmenityName(amenity) {
-  const names = {
-    'internet': 'Интернет',
-    'ac': 'Кондиционер',
-    'washer': 'Стиральная машина',
-    'fridge': 'Холодильник',
-    'tv': 'Телевизор',
-    'phone': 'Телефон'
-  };
-  return names[amenity] || amenity;
-}
-
-// Инициализация Mapbox (оптимизированная)
-function initMapbox() {
-  mapboxgl.accessToken = MAPBOX_TOKEN;
-  
-  map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v11',
-    center: [69.2401, 41.2995],
-    zoom: 12,
-    interactive: true,
-    renderWorldCopies: false // Отключаем дублирование карты мира
-  });
-
-  // Добавление элементов управления
-  map.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
-  map.addControl(new mapboxgl.GeolocateControl({
-    positionOptions: { enableHighAccuracy: true },
-    trackUserLocation: true,
-    fitBoundsOptions: { maxZoom: 14 }
-  }));
-
-  // Оптимизация производительности
-  map.on('load', function() {
-    map.resize();
-    addMarkersToMap();
-    
-    // Обработчик клика по карте (закрытие попапов)
-    map.on('click', () => {
-      if (activePopup) {
-        activePopup.remove();
-        activePopup = null;
-      }
-    });
-  });
-}
-
-// Показать основное приложение
-function showApp() {
-  document.getElementById('landing').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  currentSection = 'main';
-  localStorage.setItem('currentSection', 'main');
-  
-  setTimeout(() => {
-    if (map) map.resize();
-    setupMobileLayout();
-  }, 300);
-}
-
-// Показать приложение и открыть форму
-function showAppAndOpenForm() {
-  showApp();
-  openAdModal();
-}
-
-// Открытие бокового меню
-function openSideMenu() {
-  document.getElementById('side-menu').classList.add('active');
-}
-
-// Закрытие бокового меню
-function closeSideMenu() {
-  document.getElementById('side-menu').classList.remove('active');
-}
-
-// Открытие фильтров
-function openFilters() {
-  document.getElementById('filters-panel').classList.add('active');
-}
-
-// Закрытие фильтров
-function closeFilters() {
-  document.getElementById('filters-panel').classList.remove('active');
-}
-
-// Обновление секций фильтров
-function updateFilterSections() {
-  const type = document.getElementById('property-type').value;
-  
-  if (type === 'commercial') {
-    document.querySelectorAll('.residential-filters').forEach(el => {
-      el.style.display = 'none';
-    });
-    document.querySelectorAll('.commercial-filters').forEach(el => {
-      el.style.display = 'block';
-    });
-  } else {
-    document.querySelectorAll('.residential-filters').forEach(el => {
-      el.style.display = 'block';
-    });
-    document.querySelectorAll('.commercial-filters').forEach(el => {
-      el.style.display = 'none';
-    });
-  }
-}
-
-// Сброс фильтров
-function resetFilters() {
-  const inputs = document.querySelectorAll('#filters-panel input:not([type="checkbox"])');
-  const selects = document.querySelectorAll('#filters-panel select');
-  const checkboxes = document.querySelectorAll('#filters-panel input[type="checkbox"]');
-  
-  inputs.forEach(input => input.value = '');
-  selects.forEach(select => select.selectedIndex = 0);
-  checkboxes.forEach(checkbox => checkbox.checked = false);
-  
-  document.querySelectorAll('.room-selector button').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  
-  document.getElementById('price-min').value = 500;
-  document.getElementById('price-max').value = 1500;
-  document.getElementById('min-value').textContent = '500';
-  document.getElementById('max-value').textContent = '1500';
-  
-  selectedRooms = [];
-  priceRange = { min: 0, max: 2000 };
-}
-
-// Применение фильтров
-function applyFilters() {
-  const minPrice = parseInt(document.getElementById('price-min').value);
-  const maxPrice = parseInt(document.getElementById('price-max').value);
-  const minArea = document.getElementById('area-min').value ? parseInt(document.getElementById('area-min').value) : null;
-  const maxArea = document.getElementById('area-max').value ? parseInt(document.getElementById('area-max').value) : null;
-  const propertyType = document.getElementById('property-type').value;
-  
-  priceRange = { min: minPrice, max: maxPrice };
-  
-  // Фильтрация объявлений
-  let filteredProperties = properties.filter(property => {
-    // Фильтр по цене
-    if (property.price < minPrice || property.price > maxPrice) return false;
-    
-    // Фильтр по типу недвижимости
-    if (propertyType && property.category !== propertyType) return false;
-    
-    // Фильтр по площади
-    if (minArea && property.area < minArea) return false;
-    if (maxArea && property.area > maxArea) return false;
-    
-    // Фильтр по количеству комнат (для жилой недвижимости)
-    
-if (property.category === 'residential' && selectedRooms.length > 0) {
-  if (selectedRooms.includes('studio') && property.rooms === 0) return true;
-  if (!selectedRooms.includes(property.rooms.toString())) {
-    if (!(selectedRooms.includes('4+') && property.rooms >= 4)) return false;
-  }
-}
-
-return true;
-  });
-  
-  // Обновляем список объявлений
-  properties = filteredProperties.length > 0 ? filteredProperties : properties;
-  renderProperties();
-  addMarkersToMap();
-  
-  closeFilters();
-}
-
-// Инициализация слайдера цены
-function initPriceSlider() {
-  const priceMin = document.getElementById('price-min');
-  const priceMax = document.getElementById('price-max');
-  const minValue = document.getElementById('min-value');
-  const maxValue = document.getElementById('max-value');
-  
-  minValue.textContent = priceMin.value;
-  maxValue.textContent = priceMax.value;
-  
-  priceMin.addEventListener('input', function() {
-    if (parseInt(priceMin.value) > parseInt(priceMax.value)) {
-      priceMin.value = priceMax.value;
-    }
-    minValue.textContent = priceMin.value;
-  });
-  
-  priceMax.addEventListener('input', function() {
-    if (parseInt(priceMax.value) < parseInt(priceMin.value)) {
-      priceMax.value = priceMin.value;
-    }
-    maxValue.textContent = priceMax.value;
-  });
-}
-
-// Инициализация формы добавления объявления
-function initAdForm() {
-  document.getElementById('add-btn').addEventListener('click', openAdModal);
-  document.getElementById('close-ad-modal').addEventListener('click', closeAdModal);
-  document.getElementById('next-step').addEventListener('click', nextStep);
-  document.getElementById('prev-step').addEventListener('click', prevStep);
-  document.getElementById('open-map-btn').addEventListener('click', openMapModal);
-  document.getElementById('cancel-location').addEventListener('click', closeMapModal);
-  document.getElementById('confirm-location').addEventListener('click', confirmLocation);
-  document.getElementById('title').addEventListener('input', function() {
-    document.getElementById('title-counter').textContent = this.value.length;
-  });
-  document.getElementById('photos').addEventListener('change', handleFileUpload);
-  document.getElementById('ad-form').addEventListener('submit', submitForm);
-}
-
-// Открытие формы добавления объявления
-function openAdModal() {
-  document.getElementById('ad-modal').classList.add('active');
-  currentStep = 1;
-  updateFormSteps();
-}
-
-// Закрытие формы добавления объявления
-function closeAdModal() {
-  document.getElementById('ad-modal').classList.remove('active');
-  // Сброс формы
-  document.getElementById('ad-form').reset();
-  uploadedPhotos = [];
-  document.getElementById('preview-grid').innerHTML = '';
-  document.getElementById('title-counter').textContent = '0';
-  selectedLocation = null;
-  document.getElementById('location').value = '';
-  document.getElementById('address').value = '';
-  document.getElementById('location-map-preview').style.backgroundImage = 'none';
-  document.getElementById('location-map-preview').innerHTML = '<i class="fas fa-map-marked-alt"></i>';
-}
-
-// Следующий шаг формы
-function nextStep() {
-  if (validateStep(currentStep)) {
-    currentStep++;
-    updateFormSteps();
-  }
-}
-
-// Предыдущий шаг формы
-function prevStep() {
-  currentStep--;
-  updateFormSteps();
-}
-
-// Валидация шага формы
-function validateStep(step) {
-  let isValid = true;
-  const activeStep = document.querySelector(`.form-step[data-step="${step}"]`);
-  
-  // Очищаем предыдущие ошибки
-  activeStep.querySelectorAll('.error').forEach(el => {
-    el.classList.remove('error');
-  });
-  
-  activeStep.querySelectorAll('.error-message').forEach(el => {
-    el.remove();
-  });
-  
-  // Проверяем поля в зависимости от шага
-  switch(step) {
-    case 1:
-      const title = document.getElementById('title');
-      const price = document.getElementById('price');
-      const category = document.getElementById('category');
-      
-      if (!title.value.trim()) {
-        showError(title, 'Пожалуйста, укажите заголовок объявления');
-        isValid = false;
-      }
-      
-      if (!price.value.trim()) {
-        showError(price, 'Пожалуйста, укажите цену');
-        isValid = false;
-      } else if (parseInt(price.value) <= 0) {
-        showError(price, 'Цена должна быть больше 0');
-        isValid = false;
-      }
-      
-      if (!category.value) {
-        showError(category, 'Пожалуйста, выберите категорию');
-        isValid = false;
-      }
-      break;
-      
-    case 2:
-      const isCommercial = document.querySelector('input[name="property-category"]:checked').value === 'commercial';
-      
-      if (isCommercial) {
-        const commercialArea = document.getElementById('commercial-area');
-        if (!commercialArea.value.trim()) {
-          showError(commercialArea, 'Пожалуйста, укажите площадь');
-          isValid = false;
-        } else if (parseInt(commercialArea.value) <= 0) {
-          showError(commercialArea, 'Площадь должна быть больше 0');
-          isValid = false;
-        }
-      } else {
-        const totalArea = document.getElementById('total-area');
-        if (!totalArea.value.trim()) {
-          showError(totalArea, 'Пожалуйста, укажите общую площадь');
-          isValid = false;
-        } else if (parseInt(totalArea.value) <= 0) {
-          showError(totalArea, 'Площадь должна быть больше 0');
-          isValid = false;
-        }
-      }
-      break;
-      
-    case 4:
-      if (uploadedPhotos.length < 3) {
-        alert('Пожалуйста, загрузите минимум 3 фотографии');
-        isValid = false;
-      }
-      break;
-      
-    case 5:
-      const contactName = document.getElementById('contact-name');
-      const contactPhone = document.getElementById('contact-phone');
-      
-      if (!contactName.value.trim()) {
-        showError(contactName, 'Пожалуйста, укажите ваше имя');
-        isValid = false;
-      }
-      
-      if (!contactPhone.value.trim()) {
-        showError(contactPhone, 'Пожалуйста, укажите номер телефона');
-        isValid = false;
-      }
-      break;
-  }
-  
-  return isValid;
-}
-
-// Показать ошибку валидации
-function showError(element, message) {
-  element.classList.add('error');
-  
-  // Создаем или обновляем сообщение об ошибке
-  let errorElement = element.nextElementSibling;
-  if (!errorElement || !errorElement.classList.contains('error-message')) {
-    errorElement = document.createElement('div');
-    errorElement.className = 'error-message';
-    element.parentNode.insertBefore(errorElement, element.nextSibling);
-  }
-  
-  errorElement.textContent = message;
-  errorElement.style.color = 'var(--red)';
-  errorElement.style.fontSize = '0.8rem';
-  errorElement.style.marginTop = '0.2rem';
-}
-
-// Обновление отображения шагов формы
-function updateFormSteps() {
-  document.querySelectorAll('.form-step').forEach(step => {
-    step.classList.remove('active');
-  });
-  document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.add('active');
-  
-  document.querySelectorAll('.step').forEach(step => {
-    step.classList.remove('active');
-  });
-  document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
-  
-  document.getElementById('prev-step').disabled = currentStep === 1;
-  
-  if (currentStep < 5) {
-    document.getElementById('next-step').style.display = 'block';
-    document.getElementById('submit-form').style.display = 'none';
-  } else {
-    document.getElementById('next-step').style.display = 'none';
-    document.getElementById('submit-form').style.display = 'block';
-  }
-}
-
-// Обновление полей формы в зависимости от категории
-function updateFormFieldsByCategory() {
-  const isCommercial = document.querySelector('input[name="property-category"]:checked').value === 'commercial';
-  
-  if (isCommercial) {
-    document.querySelectorAll('.residential-fields').forEach(el => {
-      el.style.display = 'none';
-    });
-    document.querySelectorAll('.commercial-fields').forEach(el => {
-      el.style.display = 'block';
-    });
-    
-    // Обновляем опции в select категории
-    document.querySelectorAll('#category option').forEach(opt => {
-      if (opt.classList.contains('commercial-option')) {
-        opt.style.display = 'block';
-      } else {
-        opt.style.display = 'none';
-      }
-    });
-    document.getElementById('category').value = '';
-  } else {
-    document.querySelectorAll('.residential-fields').forEach(el => {
-      el.style.display = 'block';
-    });
-    document.querySelectorAll('.commercial-fields').forEach(el => {
-      el.style.display = 'none';
-    });
-    
-    // Обновляем опции в select категории
-    document.querySelectorAll('#category option').forEach(opt => {
-      if (opt.classList.contains('commercial-option')) {
-        opt.style.display = 'none';
-      } else {
-        opt.style.display = 'block';
-      }
-    });
-    document.getElementById('category').value = '';
-  }
-}
-
-// Открытие модального окна карты
-function openMapModal() {
-  document.getElementById('map-modal').classList.add('active');
-  
-  if (!locationMap) {
-    locationMap = new mapboxgl.Map({
-      container: 'location-map',
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [69.2401, 41.2995],
-      zoom: 12
-    });
-    
-    // Добавляем поиск по адресу
-    const geocoder = new MapboxGeocoder({
-      accessToken: mapboxgl.accessToken,
-      mapboxgl: mapboxgl,
-      marker: false,
-      placeholder: 'Поиск адреса',
-      language: 'ru'
-    });
-    
-    document.getElementById('location-map').appendChild(geocoder.onAdd(locationMap));
-    
-    const marker = new mapboxgl.Marker({
-      draggable: true
-    })
-      .setLngLat([69.2401, 41.2995])
-      .addTo(locationMap);
-    
-    marker.on('dragend', function() {
-      const lngLat = marker.getLngLat();
-      selectedLocation = {
-        lng: lngLat.lng,
-        lat: lngLat.lat
-      };
-      
-      // Получаем адрес по координатам
-      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lngLat.lng},${lngLat.lat}.json?access_token=${MAPBOX_TOKEN}&language=ru`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.features && data.features.length > 0) {
-            document.getElementById('address').value = data.features[0].place_name;
-          }
-        });
-    });
-    
-    locationMap.on('click', function(e) {
-      marker.setLngLat(e.lngLat);
-      selectedLocation = {
-        lng: e.lngLat.lng,
-        lat: e.lngLat.lat
-      };
-      
-      // Получаем адрес по координатам
-      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${e.lngLat.lng},${e.lngLat.lat}.json?access_token=${MAPBOX_TOKEN}&language=ru`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.features && data.features.length > 0) {
-            document.getElementById('address').value = data.features[0].place_name;
-          }
-        });
-    });
-    
-    // Обработчик выбора адреса из поиска
-    geocoder.on('result', function(e) {
-      selectedLocation = {
-        lng: e.result.center[0],
-        lat: e.result.center[1]
-      };
-      marker.setLngLat(e.result.center);
-      document.getElementById('address').value = e.result.place_name;
-    });
-  }
-}
-
-// Закрытие модального окна карты
-function closeMapModal() {
-  document.getElementById('map-modal').classList.remove('active');
-}
-
-// Подтверждение выбора местоположения
-function confirmLocation() {
-  if (selectedLocation) {
-    document.getElementById('location').value = `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`;
-    
-    const preview = document.getElementById('location-map-preview');
-    preview.innerHTML = '';
-    preview.style.backgroundImage = `url(https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+ff0000(${selectedLocation.lng},${selectedLocation.lat})/${selectedLocation.lng},${selectedLocation.lat},15,0/300x200?access_token=${MAPBOX_TOKEN})`;
-    preview.style.backgroundSize = 'cover';
-  }
-  closeMapModal();
-}
-
-// Обработка загрузки файлов
-function handleFileUpload(e) {
-  const files = e.target.files;
-  const previewGrid = document.getElementById('preview-grid');
-  
-  previewGrid.innerHTML = '';
-  uploadedPhotos = [];
-  
-  if (files.length > 10) {
-    alert('Можно загрузить не более 10 фотографий');
-    return;
-  }
-  
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    
-    if (file.size > 10 * 1024 * 1024) {
-      alert(`Файл "${file.name}" слишком большой (макс. 10 МБ)`);
-      continue;
-    }
-    
-    if (!file.type.match('image.*')) {
-      alert(`Файл "${file.name}" не является изображением`);
-      continue;
-    }
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-      const previewItem = document.createElement('div');
-      previewItem.className = 'preview-item';
-      previewItem.innerHTML = `
-        <img src="${e.target.result}" alt="Preview">
-        <button class="remove-btn" data-index="${uploadedPhotos.length}">&times;</button>
-      `;
-      
-      previewGrid.appendChild(previewItem);
-      
-      previewItem.querySelector('.remove-btn').addEventListener('click', function() {
-        removePhoto(parseInt(this.getAttribute('data-index')));
-      });
-      
-      uploadedPhotos.push(file);
-    };
-    
-    reader.readAsDataURL(file);
-  }
-}
-
-// Удаление фотографии
-function removePhoto(index) {
-  uploadedPhotos.splice(index, 1);
-  
-  const previewGrid = document.getElementById('preview-grid');
-  previewGrid.innerHTML = '';
-  
-  uploadedPhotos.forEach((file, i) => {
-    const previewItem = document.createElement('div');
-    previewItem.className = 'preview-item';
-    previewItem.innerHTML = `
-      <img src="${URL.createObjectURL(file)}" alt="Preview">
-      <button class="remove-btn" data-index="${i}">&times;</button>
-    `;
-    
-    previewGrid.appendChild(previewItem);
-    
-    previewItem.querySelector('.remove-btn').addEventListener('click', function() {
-      removePhoto(parseInt(this.getAttribute('data-index')));
-    });
-  });
-}
-
-// Отправка формы
-function submitForm(e) {
-  e.preventDefault();
-  
-  if (!validateStep(currentStep)) return;
-  
-  const isCommercial = document.querySelector('input[name="property-category"]:checked').value === 'commercial';
-  const formData = {
-    category: document.getElementById('category').value,
-    title: document.getElementById('title').value,
-    description: document.getElementById('description').value,
-    price: document.getElementById('price').value,
-    additionalInfo: document.getElementById('additional-info').value,
-    adType: document.querySelector('input[name="ad-type"]:checked').value,
-    address: document.getElementById('address').value,
-    location: document.getElementById('location').value,
-    contactName: document.getElementById('contact-name').value,
-    contactPhone: document.getElementById('contact-phone').value,
-    contactEmail: document.getElementById('contact-email').value,
-    contactTelegram: document.getElementById('contact-telegram').value,
-    contactWhatsapp: document.getElementById('contact-whatsapp').value,
-    callTime: document.querySelector('input[name="call-time"]:checked').value,
-    amenities: getSelectedCheckboxes('amenities'),
-    infrastructure: getSelectedCheckboxes('infrastructure'),
-    photos: uploadedPhotos.length
-  };
-
-  if (isCommercial) {
-    formData.businessType = document.getElementById('business-type').value;
-    formData.totalArea = document.getElementById('commercial-area').value;
-    formData.propertyClass = document.getElementById('property-class').value;
-    formData.floor = document.getElementById('commercial-floor').value;
-    formData.totalFloors = document.getElementById('commercial-total-floors').value;
-    formData.finish = document.getElementById('commercial-finish').value;
-    formData.utilities = document.getElementById('utilities').value;
-    formData.ceilingHeight = document.getElementById('commercial-ceiling-height').value;
-    formData.buildYear = document.getElementById('commercial-build-year').value;
-    formData.parking = document.getElementById('parking').value;
-    formData.entrance = document.getElementById('entrance').value;
-    formData.security = document.getElementById('security').value;
-    formData.commission = document.getElementById('commercial-commission').value;
-    formData.commercialFeatures = getSelectedCheckboxes('commercial-features');
-  } else {
-    formData.rooms = document.getElementById('rooms').value;
-    formData.livingArea = document.getElementById('living-area').value;
-    formData.totalArea = document.getElementById('total-area').value;
-    formData.kitchenArea = document.getElementById('kitchen-area').value;
-    formData.floor = document.getElementById('floor').value;
-    formData.totalFloors = document.getElementById('total-floors').value;
-    formData.buildingType = document.getElementById('building-type').value;
-    formData.layout = document.getElementById('layout').value;
-    formData.buildYear = document.getElementById('build-year').value;
-    formData.bathroom = document.getElementById('bathroom').value;
-    formData.furnished = document.getElementById('furnished').value;
-    formData.ceilingHeight = document.getElementById('ceiling-height').value;
-    formData.repair = document.getElementById('repair').value;
-    formData.commission = document.getElementById('commission').value;
-  }
-  
-  const message = formatTelegramMessage(formData);
-  sendToTelegram(message);
-}
-
-// Получение выбранных чекбоксов
-function getSelectedCheckboxes(name) {
-  const checkboxes = document.querySelectorAll(`input[name="${name}"]:checked`);
-  return Array.from(checkboxes).map(cb => cb.value);
-}
-
-// Форматирование сообщения для Telegram
-function formatTelegramMessage(data) {
-  const isCommercial = data.category === 'commercial' || 
-                      data.category === 'office' || 
-                      data.category === 'restaurant' || 
-                      data.category === 'warehouse';
-  
-  let message = `🏠 *Новое объявление: ${data.title}*\n\n`;
-  message += `💰 *Цена:* ${data.price} $\n`;
-  message += `📌 *Тип:* ${isCommercial ? 'Нежилое' : 'Жилое'}\n`;
-  message += `🏷 *Категория:* ${getOptionText('category', data.category)}\n`;
-  message += `📍 *Адрес:* ${data.address || 'Не указан'}\n`;
-  message += `📝 *Описание:* ${data.description || 'Не указано'}\n\n`;
-  
-  if (isCommercial) {
-    message += `🔹 *Характеристики коммерческого помещения*\n`;
-    message += `📐 *Площадь:* ${data.totalArea || '?'} м²\n`;
-    message += `🏢 *Тип бизнеса:* ${data.businessType ? getOptionText('business-type', data.businessType) : 'Не указано'}\n`;
-    message += `⭐ *Класс:* ${data.propertyClass || 'Не указан'}\n`;
-    message += `🏗 *Отделка:* ${data.finish || 'Не указана'}\n`;
-    message += `⚡ *Коммуникации:* ${data.utilities || 'Не указаны'}\n`;
-    message += `📏 *Высота потолков:* ${data.ceilingHeight || '?'} м\n`;
-    message += `📅 *Год постройки:* ${data.buildYear || 'Не указан'}\n`;
-    message += `🅿 *Парковка:* ${data.parking || 'Не указана'}\n`;
-    message += `🚪 *Вход:* ${data.entrance || 'Не указан'}\n`;
-    message += `👮 *Охрана:* ${data.security || 'Не указана'}\n`;
-    message += `💼 *Комиссионные:* ${data.commission === 'yes' ? 'Да' : 'Нет'}\n\n`;
-    
-    if (data.commercialFeatures && data.commercialFeatures.length > 0) {
-      message += `🔹 *Особенности помещения*\n`;
-      message += `${data.commercialFeatures.join(', ')}\n\n`;
-    }
-  } else {
-    message += `🔹 *Характеристики жилья*\n`;
-    message += `🛏 *Комнат:* ${data.rooms || 'Не указано'}\n`;
-    message += `📐 *Площадь:* ${data.livingArea || '?'} м² (жилая), ${data.totalArea || '?'} м² (общая)\n`;
-    message += `🍳 *Кухня:* ${data.kitchenArea || '?'} м²\n`;
-    message += `🏢 *Этаж:* ${data.floor || '?'}/${data.totalFloors || '?'}\n`;
-    message += `🧱 *Тип дома:* ${getOptionText('building-type', data.buildingType)}\n`;
-    message += `🚪 *Планировка:* ${getOptionText('layout', data.layout)}\n`;
-    message += `📅 *Год постройки:* ${data.buildYear || 'Не указан'}\n`;
-    message += `🚽 *Санузел:* ${getOptionText('bathroom', data.bathroom)}\n`;
-    message += `🛋 *Меблирована:* ${data.furnished === 'yes' ? 'Да' : 'Нет'}\n`;
-    message += `📏 *Высота потолков:* ${data.ceilingHeight || '?'} м\n`;
-    message += `🛠 *Ремонт:* ${getOptionText('repair', data.repair)}\n`;
-    message += `💼 *Комиссионные:* ${data.commission === 'yes' ? 'Да' : 'Нет'}\n\n`;
-    
-    if (data.amenities && data.amenities.length > 0) {
-      message += `🔹 *Удобства в квартире*\n`;
-      message += `${data.amenities.join(', ')}\n\n`;
-    }
-  }
-  
-  message += `📍 *Координаты:* ${data.location || 'Не указаны'}\n\n`;
-  
-  message += `🔹 *Рядом есть*\n`;
-  if (data.infrastructure && data.infrastructure.length > 0) {
-    message += `${data.infrastructure.join(', ')}\n\n`;
-  } else {
-    message += `Не указано\n\n`;
-  }
-  
-  message += `📞 *Контактная информация*\n`;
-  message += `👤 *Имя:* ${data.contactName}\n`;
-  message += `📱 *Телефон:* ${data.contactPhone}\n`;
-  if (data.contactEmail) message += `📧 *Email:* ${data.contactEmail}\n`;
-  if (data.contactTelegram) message += `✈️ *Telegram:* ${data.contactTelegram}\n`;
-  if (data.contactWhatsapp) message += `💚 *WhatsApp:* ${data.contactWhatsapp}\n`;
-  message += `⏰ *Когда звонить:* ${getCallTimeText(data.callTime)}\n\n`;
-  
-  message += `📷 *Фотографии:* ${data.photos} шт.`;
-  
-  return message;
-}
-
-// Получение текста для выбранного значения select
-function getOptionText(selectId, value) {
-  if (!value) return 'Не указано';
-  const select = document.getElementById(selectId);
-  const options = select.options;
-  for (let i = 0; i < options.length; i++) {
-    if (options[i].value === value) {
-      return options[i].text;
-    }
-  }
-  return value;
-}
-
-// Получение текста для времени звонков
-function getCallTimeText(value) {
-  switch(value) {
-    case 'anytime': return 'В любое время';
-    case 'daytime': return 'Только днем (9:00-18:00)';
-    case 'evening': return 'Только вечером (18:00-21:00)';
-    default: return 'Не указано';
-  }
-}
-
-// Отправка сообщения в Telegram
-function sendToTelegram(message) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=Markdown`;
-  
-  fetch(url)
-    .then(response => {
-      if (response.ok) {
-        alert('✅ Объявление успешно отправлено в Telegram!');
-        closeAdModal();
         loadProperties();
-      } else {
-        throw new Error('Ошибка отправки');
-      }
-    })
-    .catch(error => {
-      console.error('Ошибка:', error);
-      alert('❌ Произошла ошибка при отправке объявления');
+        
+    } catch (error) {
+        console.error('Error loading properties:', error);
+        // Load sample data if Firebase fails
+        loadSampleProperties();
+    }
+}
+
+// Load sample properties (fallback)
+function loadSampleProperties() {
+    properties = [
+        {
+            id: 1,
+            title: "Современная 2-комнатная квартира",
+            price: 450,
+            type: "apartment",
+            description: "Просторная квартира с современным ремонтом в центре города",
+            location: "Мирзо-Улугбекский район",
+            rooms: 2,
+            area: 65,
+            features: ["Кондиционер", "Меблирована", "Интернет"],
+            image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+            lat: 41.3111,
+            lng: 69.2797,
+            status: "active",
+            createdAt: new Date()
+        },
+        {
+            id: 2,
+            title: "Уютный дом с садом",
+            price: 800,
+            type: "house",
+            description: "Частный дом с большим садом и гаражом в тихом районе",
+            location: "Яшнабадский район",
+            rooms: 4,
+            area: 120,
+            features: ["Сад", "Гараж", "Меблирована", "Кухонная техника"],
+            image: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
+            lat: 41.2811,
+            lng: 69.3581,
+            status: "active",
+            createdAt: new Date()
+        }
+    ];
+    loadProperties();
+}
+
+// Initialize map
+function initMap() {
+    // Center map on Tashkent
+    map = L.map('map').setView([41.3111, 69.2797], 12);
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    // Markers will be added when properties are loaded
+}
+
+// Update map markers
+function updateMapMarkers() {
+    // Clear existing markers
+    if (markers.length > 0) {
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
+    }
+    
+    // Add new markers
+    properties.forEach(property => {
+        if (property.lat && property.lng) {
+            const marker = L.marker([property.lat, property.lng]).addTo(map);
+            
+            // Custom popup without "Подробнее" button
+            marker.bindPopup(`
+                <div class="map-popup" style="min-width: 200px;">
+                    <img src="${property.image}" alt="${property.title}" style="width:100%; height:120px; object-fit:cover; border-radius:8px;">
+                    <h4 style="margin:10px 0 5px; font-size:16px;">${property.title}</h4>
+                    <p style="margin:0; color:#6e44ff; font-weight:bold;">${property.price}$ / мес</p>
+                    <p style="margin:5px 0; font-size:14px;">${property.location}</p>
+                    <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;">
+                        ${property.features.map(feature => `<span style="background:rgba(110, 68, 255, 0.15); padding:3px 8px; border-radius:12px; font-size:11px; color:#6e44ff;">${feature}</span>`).join('')}
+                    </div>
+                </div>
+            `);
+            
+            markers.push(marker);
+        }
     });
 }
 
+// Load properties into the list
+function loadProperties(filteredProperties = null) {
+    const propertyList = document.getElementById('propertyList');
+    const propertiesToShow = filteredProperties || properties;
+    
+    propertyList.innerHTML = '';
+    
+    // Update properties count
+    document.getElementById('propertiesCount').textContent = propertiesToShow.length;
+    
+    // Update map markers
+    updateMapMarkers();
+    
+    propertiesToShow.forEach(property => {
+        const propertyCard = document.createElement('div');
+        propertyCard.className = 'property-card';
+        propertyCard.innerHTML = `
+            <img src="${property.image}" alt="${property.title}" class="property-image">
+            <div class="property-details">
+                <h3 class="property-title">${property.title}</h3>
+                <div class="property-price">${property.price}$ / мес</div>
+                <p class="property-description">${property.description}</p>
+                <div class="property-features">
+                    ${property.features.map(feature => `<span class="property-feature">${feature}</span>`).join('')}
+                </div>
+                <div class="property-location">
+                    <i class="fas fa-map-marker-alt"></i> ${property.location}
+                </div>
+                <button class="btn btn-primary btn-block view-details" data-id="${property.id}">
+                    <i class="fas fa-eye"></i> Подробнее
+                </button>
+            </div>
+        `;
+        propertyList.appendChild(propertyCard);
+    });
+    
+    // Add event listeners to view details buttons
+    document.querySelectorAll('.view-details').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            showPropertyDetails(id);
+        });
+    });
+}
+
+// Show property details in modal
+function showPropertyDetails(id) {
+    const property = properties.find(p => p.id === id);
+    if (!property) return;
+    
+    const propertyDetails = document.getElementById('propertyDetails');
+    propertyDetails.innerHTML = `
+        <div class="property-details-modal">
+            <img src="${property.image}" alt="${property.title}" style="width:100%; height:250px; object-fit:cover; border-radius:12px; margin-bottom:20px;">
+            <h3>${property.title}</h3>
+            <div style="font-size:24px; font-weight:700; color:var(--primary-light); margin:10px 0;">${property.price}$ / мес</div>
+            <p>${property.description}</p>
+            <div style="display:flex; align-items:center; gap:8px; margin:15px 0;">
+                <i class="fas fa-map-marker-alt" style="color:var(--gray);"></i>
+                <span>${property.location}</span>
+            </div>
+            <div style="display:flex; gap:10px; margin:15px 0;">
+                <div style="background:var(--glass-bg); padding:8px 16px; border-radius:8px;">
+                    <div style="font-size:12px; color:var(--gray);">Комнат</div>
+                    <div style="font-weight:600;">${property.rooms}</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:8px 16px; border-radius:8px;">
+                    <div style="font-size:12px; color:var(--gray);">Площадь</div>
+                    <div style="font-weight:600;">${property.area} м²</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:8px 16px; border-radius:8px;">
+                    <div style="font-size:12px; color:var(--gray);">Тип</div>
+                    <div style="font-weight:600;">${getPropertyTypeName(property.type)}</div>
+                </div>
+            </div>
+            <h4 style="margin:20px 0 10px;">Удобства</h4>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px;">
+                ${property.features.map(feature => `<span style="background:rgba(110, 68, 255, 0.15); padding:5px 12px; border-radius:20px; font-size:12px; color:var(--primary-light);">${feature}</span>`).join('')}
+            </div>
+            <button class="btn btn-primary btn-large contact-owner" data-phone="${property.contactPhone || ''}" style="width:100%;">
+                <i class="fas fa-phone"></i> Связаться с арендодателем
+            </button>
+        </div>
+    `;
+    
+    // Add contact functionality
+    const contactBtn = propertyDetails.querySelector('.contact-owner');
+    if (contactBtn) {
+        contactBtn.addEventListener('click', function() {
+            const phone = this.getAttribute('data-phone');
+            if (phone) {
+                window.open(`tel:${phone}`, '_blank');
+            } else {
+                alert('Контактный телефон не указан');
+            }
+        });
+    }
+    
+    document.getElementById('propertyModal').style.display = 'flex';
+}
+
+// Get property type name
+function getPropertyTypeName(type) {
+    const types = {
+        'apartment': 'Квартира',
+        'house': 'Дом',
+        'office': 'Офис',
+        'store': 'Магазин',
+        'warehouse': 'Склад',
+        'cafe': 'Кафе/Бар'
+    };
+    return types[type] || type;
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Navigation links
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const section = this.getAttribute('data-section');
+            showSection(section);
+        });
+    });
+    
+    // CTA buttons
+    document.getElementById('findPropertyBtn').addEventListener('click', function() {
+        showSection('mapSection');
+    });
+    
+    document.getElementById('rentOutBtn').addEventListener('click', function() {
+        showSection('formSection');
+        resetForm();
+    });
+    
+    // Form navigation
+    document.getElementById('nextToStep2').addEventListener('click', function() {
+        if (validateStep(1)) {
+            selectedPropertyType = document.getElementById('category').value;
+            loadPropertyTypeForm(selectedPropertyType);
+            goToStep(2);
+        }
+    });
+    
+    document.getElementById('backToStep1').addEventListener('click', function() {
+        goToStep(1);
+    });
+    
+    document.getElementById('nextToStep3').addEventListener('click', function() {
+        if (validateStep(2)) {
+            goToStep(3);
+        }
+    });
+    
+    document.getElementById('backToStep2').addEventListener('click', function() {
+        goToStep(2);
+    });
+    
+    document.getElementById('nextToStep4').addEventListener('click', function() {
+        if (validateStep(3)) {
+            goToStep(4);
+        }
+    });
+    
+    document.getElementById('backToStep3').addEventListener('click', function() {
+        goToStep(3);
+    });
+    
+    // Form submission
+    document.getElementById('rentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (validateStep(4)) {
+            submitForm();
+        }
+    });
+    
+    // Modal close
+    document.getElementById('closeModal').addEventListener('click', function() {
+        document.getElementById('propertyModal').style.display = 'none';
+    });
+    
+    // Price range slider
+    const priceRange = document.getElementById('priceRange');
+    const priceValue = document.getElementById('priceValue');
+    
+    priceRange.addEventListener('input', function() {
+        priceValue.textContent = '$' + this.value;
+    });
+    
+    // View toggle
+    document.getElementById('gridView').addEventListener('click', function() {
+        document.getElementById('propertyList').className = 'property-list grid-view';
+        this.classList.add('active');
+        document.getElementById('listView').classList.remove('active');
+    });
+    
+    document.getElementById('listView').addEventListener('click', function() {
+        document.getElementById('propertyList').className = 'property-list list-view';
+        this.classList.add('active');
+        document.getElementById('gridView').classList.remove('active');
+    });
+    
+    // Apply filters
+    document.getElementById('applyFilters').addEventListener('click', function() {
+        applyFilters();
+    });
+    
+    // Reset filters
+    document.getElementById('resetFilters').addEventListener('click', function() {
+        document.getElementById('location').value = '';
+        document.getElementById('propertyTypeFilter').value = '';
+        document.getElementById('priceRange').value = 5000;
+        document.getElementById('priceValue').textContent = '$5000';
+        document.getElementById('roomsFilter').value = '';
+        document.getElementById('minArea').value = '';
+        document.getElementById('maxArea').value = '';
+        loadProperties();
+    });
+    
+    // File upload preview
+    document.getElementById('photos').addEventListener('change', function(e) {
+        const filePreview = document.getElementById('filePreview');
+        filePreview.innerHTML = '';
+        uploadedFiles = [];
+        
+        if (this.files && this.files.length > 0) {
+            Array.from(this.files).forEach(file => {
+                uploadedFiles.push(file);
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'file-preview-item';
+                    previewItem.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}">
+                        <button type="button"><i class="fas fa-times"></i></button>
+                    `;
+                    
+                    previewItem.querySelector('button').addEventListener('click', function() {
+                        const index = uploadedFiles.findIndex(f => f.name === file.name);
+                        if (index !== -1) {
+                            uploadedFiles.splice(index, 1);
+                        }
+                        previewItem.remove();
+                    });
+                    
+                    filePreview.appendChild(previewItem);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    });
+}
+
+// Apply filters to properties
+function applyFilters() {
+    const locationFilter = document.getElementById('location').value;
+    const typeFilter = document.getElementById('propertyTypeFilter').value;
+    const priceFilter = parseInt(document.getElementById('priceRange').value);
+    const roomsFilter = document.getElementById('roomsFilter').value;
+    const minArea = document.getElementById('minArea').value ? parseInt(document.getElementById('minArea').value) : 0;
+    const maxArea = document.getElementById('maxArea').value ? parseInt(document.getElementById('maxArea').value) : Infinity;
+    
+    const filteredProperties = properties.filter(property => {
+        // Location filter
+        if (locationFilter && property.location !== locationFilter) return false;
+        
+        // Type filter
+        if (typeFilter && property.type !== typeFilter) return false;
+        
+        // Price filter
+        if (property.price > priceFilter) return false;
+        
+        // Rooms filter
+        if (roomsFilter && property.rooms) {
+            if (roomsFilter === '4' && property.rooms < 4) return false;
+            if (roomsFilter !== '4' && property.rooms != roomsFilter) return false;
+        }
+        
+        // Area filter
+        if (property.area < minArea || property.area > maxArea) return false;
+        
+        return true;
+    });
+    
+    loadProperties(filteredProperties);
+}
+
+// Show/hide sections
+function showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show the requested section
+    document.getElementById(sectionId).style.display = 'block';
+    
+    // Special handling for map section
+    if (sectionId === 'mapSection') {
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+    }
+}
+
+// Form navigation functions
+function goToStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.form-step').forEach(stepEl => {
+        stepEl.classList.remove('active');
+    });
+    
+    // Show the current step
+    document.getElementById(`step${step}`).classList.add('active');
+    
+    // Update progress indicators
+    document.querySelectorAll('.progress-step').forEach(progressStep => {
+        const stepNum = parseInt(progressStep.getAttribute('data-step'));
+        if (stepNum === step) {
+            progressStep.classList.add('active');
+        } else if (stepNum < step) {
+            progressStep.classList.add('completed');
+        } else {
+            progressStep.classList.remove('active', 'completed');
+        }
+    });
+    
+    currentStep = step;
+}
+
+// Validate form step
+function validateStep(step) {
+    let isValid = true;
+    
+    if (step === 1) {
+        const title = document.getElementById('title');
+        const category = document.getElementById('category');
+        const photos = document.getElementById('photos');
+        const description = document.getElementById('description');
+        const price = document.getElementById('price');
+        const ownerType = document.getElementById('ownerType');
+        
+        if (!title.value.trim()) {
+            highlightError(title);
+            isValid = false;
+        }
+        
+        if (!category.value) {
+            highlightError(category);
+            isValid = false;
+        }
+        
+        if (uploadedFiles.length === 0) {
+            highlightError(photos);
+            isValid = false;
+        }
+        
+        if (!description.value.trim()) {
+            highlightError(description);
+            isValid = false;
+        }
+        
+        if (!price.value || price.value <= 0) {
+            highlightError(price);
+            isValid = false;
+        }
+        
+        if (!ownerType.value) {
+            highlightError(ownerType);
+            isValid = false;
+        }
+    }
+    
+    // Add validation for other steps as needed
+    
+    return isValid;
+}
+
+// Highlight field with error
+function highlightError(field) {
+    field.style.borderColor = 'red';
+    setTimeout(() => {
+        field.style.borderColor = '';
+    }, 3000);
+}
+
+// Load property type specific form
+function loadPropertyTypeForm(type) {
+    const formContainer = document.getElementById('propertyDetailsForm');
+    
+    let formHTML = '';
+    
+    switch(type) {
+        case 'apartment':
+            formHTML = `
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="rooms"><i class="fas fa-door-open"></i> Количество комнат *</label>
+                        <select id="rooms" required>
+                            <option value="">Выберите количество</option>
+                            <option value="1">1 комната</option>
+                            <option value="2">2 комнаты</option>
+                            <option value="3">3 комнаты</option>
+                            <option value="4">4+ комнаты</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="floor"><i class="fas fa-layer-group"></i> Этаж *</label>
+                        <input type="number" id="floor" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="totalFloors"><i class="fas fa-building"></i> Всего этажей в доме *</label>
+                        <input type="number" id="totalFloors" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="area"><i class="fas fa-vector-square"></i> Площадь (м²) *</label>
+                        <input type="number" id="area" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="yearBuilt"><i class="fas fa-calendar-alt"></i> Год постройки</label>
+                        <input type="number" id="yearBuilt" min="1900" max="2023">
+                    </div>
+                    <div class="form-group">
+                        <label for="bathrooms"><i class="fas fa-bath"></i> Санузлы *</label>
+                        <select id="bathrooms" required>
+                            <option value="">Выберите количество</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3+</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'house':
+            formHTML = `
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="houseRooms"><i class="fas fa-door-open"></i> Количество комнат *</label>
+                        <select id="houseRooms" required>
+                            <option value="">Выберите количество</option>
+                            <option value="1">1 комната</option>
+                            <option value="2">2 комнаты</option>
+                            <option value="3">3 комнаты</option>
+                            <option value="4">4 комнаты</option>
+                            <option value="5">5+ комнат</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="houseArea"><i class="fas fa-vector-square"></i> Площадь дома (м²) *</label>
+                        <input type="number" id="houseArea" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="landArea"><i class="fas fa-vector-square"></i> Площадь участка (соток)</label>
+                        <input type="number" id="landArea" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="houseFloors"><i class="fas fa-layer-group"></i> Этажность *</label>
+                        <input type="number" id="houseFloors" required min="1" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="houseYearBuilt"><i class="fas fa-calendar-alt"></i> Год постройки</label>
+                        <input type="number" id="houseYearBuilt" min="1900" max="2023">
+                    </div>
+                    <div class="form-group">
+                        <label for="houseBathrooms"><i class="fas fa-bath"></i> Санузлы *</label>
+                        <select id="houseBathrooms" required>
+                            <option value="">Выберите количество</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3+</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        default:
+            formHTML = `
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="propertyArea"><i class="fas fa-vector-square"></i> Площадь (м²) *</label>
+                        <input type="number" id="propertyArea" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="propertyFloors"><i class="fas fa-layer-group"></i> Этаж</label>
+                        <input type="number" id="propertyFloors" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="propertyYearBuilt"><i class="fas fa-calendar-alt"></i> Год постройки/ремонта</label>
+                        <input type="number" id="propertyYearBuilt" min="1900" max="2023">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="additionalInfo"><i class="fas fa-info-circle"></i> Дополнительная информация</label>
+                        <textarea id="additionalInfo" placeholder="Особенности помещения, планировка и т.д."></textarea>
+                    </div>
+                </div>
+            `;
+    }
+    
+    formContainer.innerHTML = formHTML;
+}
+
+// Upload image to Firebase Storage
+async function uploadImage(file) {
+    try {
+        const storageRef = storage.ref();
+        const fileRef = storageRef.child(`properties/${Date.now()}_${file.name}`);
+        const snapshot = await fileRef.put(file);
+        const downloadURL = await snapshot.ref.getDownloadURL();
+        return downloadURL;
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        throw error;
+    }
+}
+
+// Submit form to Firebase
+async function submitForm() {
+    try {
+        // Show loading state
+        const submitBtn = document.querySelector('#rentForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+        submitBtn.disabled = true;
+
+        // Upload images
+        const imageUrls = [];
+        for (const file of uploadedFiles) {
+            try {
+                const url = await uploadImage(file);
+                imageUrls.push(url);
+            } catch (error) {
+                console.error('Failed to upload image:', error);
+            }
+        }
+
+        // Collect form data
+        const formData = {
+            title: document.getElementById('title').value,
+            category: document.getElementById('category').value,
+            description: document.getElementById('description').value,
+            price: parseInt(document.getElementById('price').value),
+            ownerType: document.getElementById('ownerType').value,
+            location: document.getElementById('locationInput').value,
+            contactName: document.getElementById('contactName').value,
+            contactPhone: document.getElementById('contactPhone').value,
+            contactEmail: document.getElementById('contactEmail').value || '',
+            images: imageUrls,
+            status: 'pending', // pending, active, rejected
+            createdAt: new Date(),
+            views: 0
+        };
+
+        // Get amenities
+        const amenities = [];
+        document.querySelectorAll('input[name="amenities"]:checked').forEach(checkbox => {
+            amenities.push(checkbox.value);
+        });
+        
+        // Get nearby facilities
+        const nearby = [];
+        document.querySelectorAll('input[name="nearby"]:checked').forEach(checkbox => {
+            nearby.push(checkbox.value);
+        });
+        
+        formData.amenities = amenities;
+        formData.nearby = nearby;
+
+        // Get property-specific details
+        if (selectedPropertyType === 'apartment') {
+            formData.rooms = parseInt(document.getElementById('rooms').value);
+            formData.floor = parseInt(document.getElementById('floor').value);
+            formData.totalFloors = parseInt(document.getElementById('totalFloors').value);
+            formData.area = parseInt(document.getElementById('area').value);
+            formData.yearBuilt = document.getElementById('yearBuilt').value ? parseInt(document.getElementById('yearBuilt').value) : null;
+            formData.bathrooms = parseInt(document.getElementById('bathrooms').value);
+        } else if (selectedPropertyType === 'house') {
+            formData.rooms = parseInt(document.getElementById('houseRooms').value);
+            formData.area = parseInt(document.getElementById('houseArea').value);
+            formData.landArea = document.getElementById('landArea').value ? parseInt(document.getElementById('landArea').value) : null;
+            formData.floors = parseInt(document.getElementById('houseFloors').value);
+            formData.yearBuilt = document.getElementById('houseYearBuilt').value ? parseInt(document.getElementById('houseYearBuilt').value) : null;
+            formData.bathrooms = parseInt(document.getElementById('houseBathrooms').value);
+        } else {
+            formData.area = parseInt(document.getElementById('propertyArea').value);
+            formData.floor = document.getElementById('propertyFloors').value ? parseInt(document.getElementById('propertyFloors').value) : null;
+            formData.yearBuilt = document.getElementById('propertyYearBuilt').value ? parseInt(document.getElementById('propertyYearBuilt').value) : null;
+            formData.additionalInfo = document.getElementById('additionalInfo').value;
+        }
+
+        // Save to Firestore
+        const docRef = await db.collection('properties').add(formData);
+
+        // Also send to Telegram for notification
+        await sendToTelegram(formData);
+
+        alert('✅ Ваше объявление успешно отправлено на модерацию! Мы свяжемся с вами после проверки.');
+        resetForm();
+        showSection('homeSection');
+
+    } catch (error) {
+        console.error('Error submitting form:', error);
+        alert('❌ Произошла ошибка при отправке объявления. Пожалуйста, попробуйте еще раз.');
+    } finally {
+        // Restore button state
+        const submitBtn = document.querySelector('#rentForm button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Разместить объявление';
+        submitBtn.disabled = false;
+    }
+}
+
+// Send notification to Telegram
+async function sendToTelegram(formData) {
+    try {
+        const token = '7966741167:AAHSGufTD93Dew1P4jEMJsQcXZZs_WEfjfQ';
+        const chatId = '-1002334913768';
+        
+        let message = `🏠 *НОВОЕ ОБЪЯВЛЕНИЕ ОБ АРЕНДЕ* 🏠\n\n`;
+        message += `*Название:* ${formData.title}\n`;
+        message += `*Тип недвижимости:* ${getPropertyTypeName(formData.category)}\n`;
+        message += `*Цена:* $${formData.price} / мес\n`;
+        message += `*Описание:* ${formData.description}\n\n`;
+        
+        message += `*Детали объекта:*\n`;
+        if (formData.rooms) message += `• Комнат: ${formData.rooms}\n`;
+        if (formData.area) message += `• Площадь: ${formData.area} м²\n`;
+        if (formData.floor) message += `• Этаж: ${formData.floor}\n`;
+        if (formData.totalFloors) message += `• Этажность дома: ${formData.totalFloors}\n`;
+        if (formData.yearBuilt) message += `• Год постройки: ${formData.yearBuilt}\n`;
+        if (formData.bathrooms) message += `• Санузлы: ${formData.bathrooms}\n\n`;
+        
+        if (formData.amenities.length > 0) {
+            message += `*Удобства:* ${formData.amenities.join(', ')}\n`;
+        }
+        
+        if (formData.nearby.length > 0) {
+            message += `*Рядом есть:* ${formData.nearby.join(', ')}\n`;
+        }
+        
+        message += `\n*Контактная информация:*\n`;
+        message += `• Имя: ${formData.contactName}\n`;
+        message += `• Телефон: ${formData.contactPhone}\n`;
+        if (formData.contactEmail) message += `• Email: ${formData.contactEmail}\n`;
+        message += `• Местоположение: ${formData.location}\n`;
+        message += `• Тип арендодателя: ${formData.ownerType === 'private' ? 'Частное лицо' : 'Бизнес'}\n`;
+        
+        message += `\n*Количество фото:* ${formData.images.length}`;
+
+        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        });
+
+        return response.ok;
+    } catch (error) {
+        console.error('Error sending to Telegram:', error);
+        return false;
+    }
+}
+
+// Reset form to initial state
+function resetForm() {
+    document.getElementById('rentForm').reset();
+    document.getElementById('filePreview').innerHTML = '';
+    uploadedFiles = [];
+    goToStep(1);
+}
