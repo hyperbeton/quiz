@@ -1,22 +1,5 @@
 // Mapbox configuration
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiYWxpbW92ZSIsImEiOiJjbWV3ZHYwMGwwa3NvMmxxeHYxdHhyeTU4In0.gL9yCo1nk86SyIciCZOLQQ';
-const MAPBOX_STYLE = 'mapbox://styles/mapbox/streets-v11';
-
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyD_dZ3uPra32WQGDIZZ2vyFwCdNgWCBPEM",
-    authDomain: "apprent-e0f19.firebaseapp.com",
-    projectId: "apprent-e0f19",
-    storageBucket: "apprent-e0f19.firebasestorage.app",
-    messagingSenderId: "840126144107",
-    appId: "1:840126144107:web:3e55aa942a46fdeec8db2e",
-    measurementId: "G-7WG51CLWKQ"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const storage = firebase.storage();
 
 // Global variables
 let currentStep = 1;
@@ -24,146 +7,119 @@ let map, markers = [];
 let selectedPropertyType = '';
 let uploadedFiles = [];
 let properties = [];
+let isOnline = navigator.onLine;
+let selectionMap, selectionMarker;
+let selectedLocation = null;
+
+// Sample properties data
+const sampleProperties = [
+    {
+        id: 1,
+        title: "Современная 2-комнатная квартира",
+        price: 450,
+        type: "apartment",
+        description: "Просторная квартира с современным ремонтом в центре города. Большие окна, высокие потолки, современная кухня и санузел.",
+        location: "Мирзо-Улугбекский район",
+        rooms: 2,
+        area: 65,
+        features: ["Кондиционер", "Меблирована", "Интернет", "Телевизор", "Холодильник"],
+        image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+        lat: 41.3111,
+        lng: 69.2797,
+        contactPhone: "+998901234567",
+        contactName: "Алишер"
+    },
+    {
+        id: 2,
+        title: "Уютный дом с садом",
+        price: 800,
+        type: "house",
+        description: "Частный дом с большим садом и гаражом в тихом районе. Идеально для семьи с детьми.",
+        location: "Яшнабадский район",
+        rooms: 4,
+        area: 120,
+        features: ["Сад", "Гараж", "Меблирована", "Кухонная техника", "Стиральная машина"],
+        image: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+        lat: 41.2811,
+        lng: 69.3581,
+        contactPhone: "+998902345678",
+        contactName: "Дилорам"
+    },
+    {
+        id: 3,
+        title: "Офисное помещение в бизнес-центре",
+        price: 1200,
+        type: "office",
+        description: "Просторный офис с панорамными окнами в современном бизнес-центре. Готов к работе.",
+        location: "Юнусабадский район",
+        rooms: 1,
+        area: 85,
+        features: ["Кондиционер", "Интернет", "Мебель", "Парковка", "Ресепшен"],
+        image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+        lat: 41.3689,
+        lng: 69.2847,
+        contactPhone: "+998903456789",
+        contactName: "Бизнес-центр 'Плаза'"
+    },
+    {
+        id: 4,
+        title: "Торговое помещение на оживленной улице",
+        price: 1500,
+        type: "store",
+        description: "Помещение под магазин с витринными окнами и высокой проходимостью. Отличное расположение.",
+        location: "Чиланзарский район",
+        rooms: 1,
+        area: 70,
+        features: ["Витринные окна", "Складское помещение", "Охранная система", "Кондиционер"],
+        image: "https://images.unsplash.com/photo-1565182999561-18d7dc61c393?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+        lat: 41.2889,
+        lng: 69.2167,
+        contactPhone: "+998904567890",
+        contactName: "Коммерческая недвижимость"
+    },
+    {
+        id: 5,
+        title: "Современная 3-комнатная квартира",
+        price: 600,
+        type: "apartment",
+        description: "Новая квартира с евроремонтом в спальном районе. Тихий двор, детская площадка.",
+        location: "Чиланзарский район",
+        rooms: 3,
+        area: 80,
+        features: ["Новый ремонт", "Лоджия", "Встроенная кухня", "Санузел раздельный"],
+        image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+        lat: 41.2750,
+        lng: 69.2250,
+        contactPhone: "+998905678901",
+        contactName: "Марина"
+    }
+];
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    initFirebase();
     initMap();
     setupEventListeners();
+    loadProperties();
     showSection('homeSection');
+    
+    // Check if we have saved properties in localStorage
+    const savedProperties = localStorage.getItem('rentuz_properties');
+    if (savedProperties) {
+        try {
+            const parsedProperties = JSON.parse(savedProperties);
+            // Combine sample properties with saved ones
+            properties = [...sampleProperties, ...parsedProperties];
+            loadProperties();
+        } catch (e) {
+            console.error('Error loading saved properties:', e);
+            properties = sampleProperties;
+        }
+    } else {
+        properties = sampleProperties;
+    }
 });
 
-// Initialize Firebase and load properties
-async function initFirebase() {
-    try {
-        console.log('Initializing Firebase...');
-        
-        // Load properties from Firestore
-        const snapshot = await db.collection('properties')
-            .where('status', '==', 'active')
-            .orderBy('createdAt', 'desc')
-            .get();
-        
-        properties = [];
-        snapshot.forEach(doc => {
-            properties.push({ id: doc.id, ...doc.data() });
-        });
-        
-        console.log('Loaded properties:', properties.length);
-        loadProperties();
-        
-    } catch (error) {
-        console.error('Error loading properties:', error);
-        // Load sample data if Firebase fails
-        console.log('Loading sample properties...');
-        loadSampleProperties();
-    }
-}
-
-// Load sample properties (fallback)
-function loadSampleProperties() {
-    properties = [
-        {
-            id: 1,
-            title: "Современная 2-комнатная квартира",
-            price: 450,
-            type: "apartment",
-            description: "Просторная квартира с современным ремонтом в центре города",
-            location: "Мирзо-Улугбекский район",
-            rooms: 2,
-            area: 65,
-            features: ["Кондиционер", "Меблирована", "Интернет"],
-            image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
-            lat: 41.3111,
-            lng: 69.2797,
-            status: "active",
-            createdAt: new Date()
-        },
-        {
-            id: 2,
-            title: "Уютный дом с садом",
-            price: 800,
-            type: "house",
-            description: "Частный дом с большим садом и гаражом в тихом районе",
-            location: "Яшнабадский район",
-            rooms: 4,
-            area: 120,
-            features: ["Сад", "Гараж", "Меблирована", "Кухонная техника"],
-            image: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
-            lat: 41.2811,
-            lng: 69.3581,
-            status: "active",
-            createdAt: new Date()
-        },
-        {
-            id: 3,
-            title: "Офисное помещение в бизнес-центре",
-            price: 1200,
-            type: "office",
-            description: "Просторный офис с панорамными окнами в современном бизнес-центре",
-            location: "Юнусабадский район",
-            rooms: 1,
-            area: 85,
-            features: ["Кондиционер", "Интернет", "Мебель", "Парковка"],
-            image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
-            lat: 41.3689,
-            lng: 69.2847,
-            status: "active",
-            createdAt: new Date()
-        },
-        {
-            id: 4,
-            title: "Торговое помещение на оживленной улице",
-            price: 1500,
-            type: "store",
-            description: "Помещение под магазин с витринными окнами и высокой проходимостью",
-            location: "Чиланзарский район",
-            rooms: 1,
-            area: 70,
-            features: ["Витринные окна", "Складское помещение", "Охранная система"],
-            image: "https://images.unsplash.com/photo-1565182999561-18d7dc61c393?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwa90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
-            lat: 41.2889,
-            lng: 69.2167,
-            status: "active",
-            createdAt: new Date()
-        },
-        {
-            id: 5,
-            title: "Складское помещение с подъездными путями",
-            price: 2000,
-            type: "warehouse",
-            description: "Просторный склад с подъездными путями для грузового транспорта",
-            location: "Сергелийский район",
-            rooms: 1,
-            area: 300,
-            features: ["Высокие потолки", "Подъездные пути", "Охрана", "Погрузочная рампа"],
-            image: "https://images.unsplash.com/photo-1441123694162-e54a981ceba5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
-            lat: 41.2153,
-            lng: 69.2375,
-            status: "active",
-            createdAt: new Date()
-        },
-        {
-            id: 6,
-            title: "Готовый бизнес: кафе с оборудованием",
-            price: 2500,
-            type: "cafe",
-            description: "Полностью оборудованное кафе с кухней и мебелью, готово к работе",
-            location: "Шайхантахурский район",
-            rooms: 3,
-            area: 120,
-            features: ["Кухонное оборудование", "Мебель", "Лицензия", "Вывеска"],
-            image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80",
-            lat: 41.3186,
-            lng: 69.2464,
-            status: "active",
-            createdAt: new Date()
-        }
-    ];
-    loadProperties();
-}
-
-// Initialize map with OpenStreetMap as fallback
+// Initialize map
 function initMap() {
     try {
         console.log('Initializing map...');
@@ -171,33 +127,70 @@ function initMap() {
         // Center map on Tashkent
         map = L.map('map').setView([41.3111, 69.2797], 12);
         
-        // Try to use Mapbox if available, otherwise use OpenStreetMap
-        try {
-            // Add Mapbox tile layer using standard Leaflet tile layer
-            L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
-                attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>',
-                tileSize: 512,
-                zoomOffset: -1,
-                id: 'mapbox/streets-v11',
-                accessToken: MAPBOX_TOKEN
-            }).addTo(map);
-            console.log('Mapbox tiles loaded');
-        } catch (mapboxError) {
-            console.log('Mapbox not available, using OpenStreetMap');
-            // Fallback to OpenStreetMap
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-        }
+        // Use Mapbox tiles with your token
+        L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`, {
+            attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> <strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>',
+            tileSize: 512,
+            zoomOffset: -1,
+            accessToken: MAPBOX_TOKEN
+        }).addTo(map);
         
-        // Markers will be added when properties are loaded
         console.log('Map initialized successfully');
         
     } catch (error) {
         console.error('Error initializing map:', error);
-        // Hide map container if map fails to initialize
-        document.getElementById('map').style.display = 'none';
+        const mapElement = document.getElementById('map');
+        if (mapElement) {
+            mapElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Карта временно недоступна</div>';
+        }
     }
+}
+
+// Initialize selection map for location picking
+function initSelectionMap() {
+    try {
+        // Center map on Tashkent
+        selectionMap = L.map('selectionMap').setView([41.3111, 69.2797], 12);
+        
+        // Use Mapbox tiles with your token
+        L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`, {
+            attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> <strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>',
+            tileSize: 512,
+            zoomOffset: -1,
+            accessToken: MAPBOX_TOKEN
+        }).addTo(selectionMap);
+        
+        // Add click event to set location
+        selectionMap.on('click', function(e) {
+            setSelectionMarker(e.latlng);
+        });
+        
+        console.log('Selection map initialized successfully');
+        
+    } catch (error) {
+        console.error('Error initializing selection map:', error);
+    }
+}
+
+// Set marker on selection map
+function setSelectionMarker(latlng) {
+    // Remove existing marker
+    if (selectionMarker) {
+        selectionMap.removeLayer(selectionMarker);
+    }
+    
+    // Add new marker
+    selectionMarker = L.marker(latlng, {
+        icon: L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background-color: #6e44ff; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30]
+        })
+    }).addTo(selectionMap);
+    
+    // Update selected location
+    selectedLocation = latlng;
 }
 
 // Custom marker icon creation
@@ -244,7 +237,7 @@ function getPropertyIcon(type) {
     const icons = {
         'apartment': '🏢',
         'house': '🏠',
-        'office': '🏢',
+        'office': '💼',
         'store': '🏪',
         'warehouse': '🏭',
         'cafe': '☕'
@@ -277,20 +270,15 @@ function updateMapMarkers(filteredProperties = null) {
                 // Enhanced popup
                 const popupContent = `
                     <div style="min-width: 250px; font-family: 'Manrope', sans-serif;">
-                        <div style="position: relative; height: 150px; overflow: hidden; border-radius: 8px; margin-bottom: 10px;">
-                            <img src="${property.image}" alt="${property.title}" style="width: 100%; height: 100%; object-fit: cover;">
-                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 10px; color: white;">
-                                <h4 style="margin: 0; font-size: 16px;">${property.title}</h4>
-                                <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold;">$${property.price}/мес</p>
-                            </div>
+                        <div style="position: relative; height: 120px; overflow: hidden; border-radius: 8px; margin-bottom: 10px;">
+                            <img src="${property.image}" alt="${property.title}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200?text=Фото'">
                         </div>
-                        <p style="margin: 10px 0; color: #555;">${property.description.substring(0, 80)}...</p>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="background: #f1f3f4; padding: 4px 8px; border-radius: 12px; font-size: 12px;">${getPropertyTypeLabel(property.type)}</span>
-                            <button onclick="showPropertyDetails(${property.id})" style="background: #6e44ff; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                                Подробнее
-                            </button>
-                        </div>
+                        <h4 style="margin: 0 0 8px 0; font-size: 16px; color: #2d3436;">${property.title}</h4>
+                        <div style="color: #6e44ff; font-size: 18px; font-weight: bold; margin-bottom: 8px;">$${property.price}/мес</div>
+                        <p style="margin: 0 0 10px 0; color: #636e72; font-size: 14px;">${property.description.substring(0, 60)}...</p>
+                        <button onclick="showPropertyDetails(${property.id})" style="background: #6e44ff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; width: 100%;">
+                            Подробнее
+                        </button>
                     </div>
                 `;
                 
@@ -311,15 +299,21 @@ function loadProperties(filteredProperties = null) {
         const propertiesToShow = filteredProperties || properties;
         
         // Update count
-        propertiesCount.textContent = propertiesToShow.length;
+        if (propertiesCount) {
+            propertiesCount.textContent = propertiesToShow.length;
+        }
         
         // Clear existing properties
-        propertyList.innerHTML = '';
+        if (propertyList) {
+            propertyList.innerHTML = '';
+        }
         
         // Add properties to the list
         propertiesToShow.forEach(property => {
             const propertyCard = createPropertyCard(property);
-            propertyList.appendChild(propertyCard);
+            if (propertyList) {
+                propertyList.appendChild(propertyCard);
+            }
         });
         
         // Update map markers
@@ -336,22 +330,24 @@ function createPropertyCard(property) {
     card.className = 'property-card';
     card.innerHTML = `
         <div class="property-image">
-            <img src="${property.image}" alt="${property.title}" onerror="this.src='https://via.placeholder.com/400x300?text=Нет+изображения'">
+            <img src="${property.image}" alt="${property.title}" onerror="this.src='https://via.placeholder.com/400x300?text=Фото+недвижимости'">
             <div class="property-type">${getPropertyTypeLabel(property.type)}</div>
             <div class="property-price">$${property.price}/мес</div>
         </div>
         <div class="property-content">
             <h3>${property.title}</h3>
             <p class="property-location"><i class="fas fa-map-marker-alt"></i> ${property.location}</p>
-            <p class="property-description">${property.description}</p>
+            <p class="property-description">${property.description.substring(0, 100)}...</p>
             <div class="property-features">
-                ${property.features ? property.features.map(feature => 
+                ${property.features ? property.features.slice(0, 3).map(feature => 
                     `<span class="feature-tag">${feature}</span>`
                 ).join('') : ''}
+                ${property.features && property.features.length > 3 ? 
+                    `<span class="feature-tag">+${property.features.length - 3} еще</span>` : ''}
             </div>
             <div class="property-details">
-                <span><i class="fas fa-door-open"></i> ${property.rooms || 'N/A'} комн.</span>
-                <span><i class="fas fa-vector-square"></i> ${property.area || 'N/A'} м²</span>
+                <span><i class="fas fa-door-open"></i> ${property.rooms || '-'} комн.</span>
+                <span><i class="fas fa-vector-square"></i> ${property.area || '-'} м²</span>
             </div>
             <button class="btn btn-primary btn-block" onclick="showPropertyDetails(${property.id})">
                 <i class="fas fa-eye"></i> Подробнее
@@ -383,10 +379,12 @@ function showPropertyDetails(propertyId) {
         const modal = document.getElementById('propertyModal');
         const detailsContainer = document.getElementById('propertyDetails');
         
+        if (!modal || !detailsContainer) return;
+        
         detailsContainer.innerHTML = `
             <div class="property-detail-header">
                 <div class="property-detail-gallery">
-                    <img src="${property.image}" alt="${property.title}" onerror="this.src='https://via.placeholder.com/600x400?text=Нет+изображения'">
+                    <img src="${property.image}" alt="${property.title}" onerror="this.src='https://via.placeholder.com/600x400?text=Фото+недвижимости'">
                 </div>
                 <div class="property-detail-info">
                     <h2>${property.title}</h2>
@@ -403,11 +401,11 @@ function showPropertyDetails(propertyId) {
                 <div class="property-specs">
                     <div class="spec-item">
                         <i class="fas fa-door-open"></i>
-                        <span>Комнат: ${property.rooms || 'N/A'}</span>
+                        <span>Комнат: ${property.rooms || '-'}</span>
                     </div>
                     <div class="spec-item">
                         <i class="fas fa-vector-square"></i>
-                        <span>Площадь: ${property.area || 'N/A'} м²</span>
+                        <span>Площадь: ${property.area || '-'} м²</span>
                     </div>
                     <div class="spec-item">
                         <i class="fas fa-building"></i>
@@ -424,10 +422,19 @@ function showPropertyDetails(propertyId) {
                 
                 <div class="property-contact">
                     <h3>Контактная информация</h3>
-                    <p>Для получения дополнительной информации свяжитесь с нами:</p>
+                    <div class="contact-info">
+                        <p><i class="fas fa-user"></i> ${property.contactName || 'Не указано'}</p>
+                        <p><i class="fas fa-phone"></i> ${property.contactPhone || 'Не указано'}</p>
+                    </div>
                     <div class="contact-buttons">
-                        <button class="btn btn-primary"><i class="fas fa-phone"></i> Позвонить</button>
-                        <button class="btn btn-outline"><i class="fas fa-envelope"></i> Написать</button>
+                        ${property.contactPhone ? `
+                            <button class="btn btn-primary" onclick="callNumber('${property.contactPhone}')">
+                                <i class="fas fa-phone"></i> Позвонить
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-outline" onclick="sendMessage(${property.id})">
+                            <i class="fas fa-envelope"></i> Написать
+                        </button>
                     </div>
                 </div>
             </div>
@@ -437,6 +444,22 @@ function showPropertyDetails(propertyId) {
         
     } catch (error) {
         console.error('Error showing property details:', error);
+    }
+}
+
+// Call phone number
+function callNumber(phoneNumber) {
+    if (phoneNumber) {
+        window.open(`tel:${phoneNumber}`, '_self');
+    }
+}
+
+// Send message (simulated)
+function sendMessage(propertyId) {
+    const property = properties.find(p => p.id === propertyId);
+    if (property) {
+        const message = `Здравствуйте! Интересует недвижимость: ${property.title} за $${property.price}/мес`;
+        alert(`Сообщение отправлено:\n${message}\n\n(Это демонстрационная функция)`);
     }
 }
 
@@ -453,60 +476,128 @@ function setupEventListeners() {
         });
         
         // CTA buttons
-        document.getElementById('findPropertyBtn').addEventListener('click', function() {
-            showSection('mapSection');
-        });
+        const findPropertyBtn = document.getElementById('findPropertyBtn');
+        const rentOutBtn = document.getElementById('rentOutBtn');
         
-        document.getElementById('rentOutBtn').addEventListener('click', function() {
-            showSection('formSection');
-        });
+        if (findPropertyBtn) {
+            findPropertyBtn.addEventListener('click', function() {
+                showSection('mapSection');
+            });
+        }
+        
+        if (rentOutBtn) {
+            rentOutBtn.addEventListener('click', function() {
+                showSection('formSection');
+            });
+        }
         
         // Modal close
-        document.getElementById('closeModal').addEventListener('click', function() {
-            document.getElementById('propertyModal').style.display = 'none';
-        });
+        const closeModalBtn = document.getElementById('closeModal');
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', function() {
+                const modal = document.getElementById('propertyModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Map controls
+        const toggleMapBtn = document.getElementById('toggleMapBtn');
+        const resetMapBtn = document.getElementById('resetMapBtn');
+        
+        if (toggleMapBtn) {
+            toggleMapBtn.addEventListener('click', function() {
+                toggleMapVisibility();
+            });
+        }
+        
+        if (resetMapBtn) {
+            resetMapBtn.addEventListener('click', function() {
+                resetMapView();
+            });
+        }
+        
+        // Map selection modal
+        const mapSelectionModal = document.getElementById('mapSelectionModal');
+        const closeMapModal = document.getElementById('closeMapModal');
+        const selectOnMapBtn = document.getElementById('selectOnMapBtn');
+        const cancelMapSelection = document.getElementById('cancelMapSelection');
+        const confirmLocation = document.getElementById('confirmLocation');
+        
+        if (selectOnMapBtn) {
+            selectOnMapBtn.addEventListener('click', function() {
+                if (!selectionMap) {
+                    initSelectionMap();
+                }
+                mapSelectionModal.style.display = 'flex';
+            });
+        }
+        
+        if (closeMapModal) {
+            closeMapModal.addEventListener('click', function() {
+                mapSelectionModal.style.display = 'none';
+            });
+        }
+        
+        if (cancelMapSelection) {
+            cancelMapSelection.addEventListener('click', function() {
+                mapSelectionModal.style.display = 'none';
+            });
+        }
+        
+        if (confirmLocation) {
+            confirmLocation.addEventListener('click', function() {
+                if (selectedLocation) {
+                    document.getElementById('selectedLocationText').textContent = 
+                        `Выбрано: ${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`;
+                    mapSelectionModal.style.display = 'none';
+                } else {
+                    alert('Пожалуйста, выберите местоположение на карте');
+                }
+            });
+        }
         
         // Form navigation
-        document.getElementById('nextToStep2').addEventListener('click', function() {
-            navigateToStep(2);
-        });
+        const nextToStep2 = document.getElementById('nextToStep2');
+        const backToStep1 = document.getElementById('backToStep1');
+        const nextToStep3 = document.getElementById('nextToStep3');
+        const backToStep2 = document.getElementById('backToStep2');
+        const nextToStep4 = document.getElementById('nextToStep4');
+        const backToStep3 = document.getElementById('backToStep3');
         
-        document.getElementById('backToStep1').addEventListener('click', function() {
-            navigateToStep(1);
-        });
-        
-        document.getElementById('nextToStep3').addEventListener('click', function() {
-            navigateToStep(3);
-        });
-        
-        document.getElementById('backToStep2').addEventListener('click', function() {
-            navigateToStep(2);
-        });
-        
-        document.getElementById('nextToStep4').addEventListener('click', function() {
-            navigateToStep(4);
-        });
-        
-        document.getElementById('backToStep3').addEventListener('click', function() {
-            navigateToStep(3);
-        });
+        if (nextToStep2) nextToStep2.addEventListener('click', () => navigateToStep(2));
+        if (backToStep1) backToStep1.addEventListener('click', () => navigateToStep(1));
+        if (nextToStep3) nextToStep3.addEventListener('click', () => navigateToStep(3));
+        if (backToStep2) backToStep2.addEventListener('click', () => navigateToStep(2));
+        if (nextToStep4) nextToStep4.addEventListener('click', () => navigateToStep(4));
+        if (backToStep3) backToStep3.addEventListener('click', () => navigateToStep(3));
         
         // Form submission
-        document.getElementById('rentForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitProperty();
-        });
+        const rentForm = document.getElementById('rentForm');
+        if (rentForm) {
+            rentForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitProperty();
+            });
+        }
         
         // Property type change
-        document.getElementById('category').addEventListener('change', function() {
-            selectedPropertyType = this.value;
-            loadPropertyTypeForm(selectedPropertyType);
-        });
+        const categorySelect = document.getElementById('category');
+        if (categorySelect) {
+            categorySelect.addEventListener('change', function() {
+                selectedPropertyType = this.value;
+                loadPropertyTypeForm(selectedPropertyType);
+            });
+        }
         
         // File upload preview
-        document.getElementById('photos').addEventListener('change', function(e) {
-            handleFileUpload(e.target.files);
-        });
+        const photosInput = document.getElementById('photos');
+        if (photosInput) {
+            photosInput.addEventListener('change', function(e) {
+                handleFileUpload(e.target.files);
+            });
+        }
         
         // Price range slider
         const priceRange = document.getElementById('priceRange');
@@ -519,28 +610,69 @@ function setupEventListeners() {
         }
         
         // View toggle
-        document.getElementById('gridView').addEventListener('click', function() {
-            toggleView('grid');
-        });
+        const gridViewBtn = document.getElementById('gridView');
+        const listViewBtn = document.getElementById('listView');
         
-        document.getElementById('listView').addEventListener('click', function() {
-            toggleView('list');
-        });
+        if (gridViewBtn) {
+            gridViewBtn.addEventListener('click', function() {
+                toggleView('grid');
+            });
+        }
+        
+        if (listViewBtn) {
+            listViewBtn.addEventListener('click', function() {
+                toggleView('list');
+            });
+        }
         
         // Apply filters
-        document.getElementById('applyFilters').addEventListener('click', function() {
-            applyFilters();
-        });
+        const applyFiltersBtn = document.getElementById('applyFilters');
+        if (applyFiltersBtn) {
+            applyFiltersBtn.addEventListener('click', function() {
+                applyFilters();
+            });
+        }
         
         // Reset filters
-        document.getElementById('resetFilters').addEventListener('click', function() {
-            resetFilters();
-        });
+        const resetFiltersBtn = document.getElementById('resetFilters');
+        if (resetFiltersBtn) {
+            resetFiltersBtn.addEventListener('click', function() {
+                resetFilters();
+            });
+        }
         
         console.log('Event listeners setup completed');
         
     } catch (error) {
         console.error('Error setting up event listeners:', error);
+    }
+}
+
+// Toggle map visibility
+function toggleMapVisibility() {
+    const mapContainer = document.getElementById('map');
+    const toggleBtn = document.getElementById('toggleMapBtn');
+    
+    if (mapContainer.classList.contains('visible')) {
+        mapContainer.classList.remove('visible');
+        mapContainer.classList.add('hidden');
+        toggleBtn.innerHTML = '<i class="fas fa-eye"></i> Показать карту';
+    } else {
+        mapContainer.classList.remove('hidden');
+        mapContainer.classList.add('visible');
+        toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Скрыть карту';
+        
+        // Update map size after showing
+        setTimeout(() => {
+            if (map) map.invalidateSize();
+        }, 300);
+    }
+}
+
+// Reset map view
+function resetMapView() {
+    if (map) {
+        map.setView([41.3111, 69.2797], 12);
     }
 }
 
@@ -561,7 +693,7 @@ function showSection(sectionId) {
         // Special handling for map section
         if (sectionId === 'mapSection' && map) {
             setTimeout(() => {
-                map.invalidateSize();
+                if (map) map.invalidateSize();
             }, 100);
         }
         
@@ -633,10 +765,6 @@ function loadPropertyTypeForm(type) {
                             <label for="bathrooms"><i class="fas fa-bath"></i> Санузлы *</label>
                             <input type="number" id="bathrooms" required min="1" max="5">
                         </div>
-                        <div class="form-group">
-                            <label for="yearBuilt"><i class="fas fa-calendar-alt"></i> Год постройки</label>
-                            <input type="number" id="yearBuilt" min="1900" max="${new Date().getFullYear()}">
-                        </div>
                     </div>
                 `;
                 break;
@@ -659,10 +787,6 @@ function loadPropertyTypeForm(type) {
                         <div class="form-group">
                             <label for="houseFloors"><i class="fas fa-layer-group"></i> Этажность *</label>
                             <input type="number" id="houseFloors" required min="1" max="5">
-                        </div>
-                        <div class="form-group">
-                            <label for="houseYearBuilt"><i class="fas fa-calendar-alt"></i> Год постройки</label>
-                            <input type="number" id="houseYearBuilt" min="1900" max="${new Date().getFullYear()}">
                         </div>
                     </div>
                 `;
@@ -757,7 +881,10 @@ function removeFile(index) {
         // Update the file input
         const dataTransfer = new DataTransfer();
         uploadedFiles.forEach(file => dataTransfer.items.add(file));
-        document.getElementById('photos').files = dataTransfer.files;
+        const photosInput = document.getElementById('photos');
+        if (photosInput) {
+            photosInput.files = dataTransfer.files;
+        }
         
         // Refresh preview
         handleFileUpload(uploadedFiles);
@@ -860,97 +987,74 @@ function resetFilters() {
 }
 
 // Submit property form
-async function submitProperty() {
+function submitProperty() {
     try {
         // Basic validation
         const title = document.getElementById('title').value;
         const category = document.getElementById('category').value;
         const description = document.getElementById('description').value;
         const price = document.getElementById('price').value;
+        const contactName = document.getElementById('contactName').value;
+        const contactPhone = document.getElementById('contactPhone').value;
+        const locationInput = document.getElementById('locationInput').value;
         
-        if (!title || !category || !description || !price || uploadedFiles.length === 0) {
-            alert('Пожалуйста, заполните все обязательные поля и загрузите хотя бы одно фото.');
+        if (!title || !category || !description || !price || !contactName || !contactPhone || !locationInput) {
+            alert('Пожалуйста, заполните все обязательные поля.');
             return;
         }
         
         // Show loading state
         const submitBtn = document.querySelector('#rentForm button[type="submit"]');
         const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
         submitBtn.disabled = true;
         
-        try {
-            // Upload images to Firebase Storage
-            const imageUrls = [];
-            for (const file of uploadedFiles) {
-                const storageRef = storage.ref(`properties/${Date.now()}_${file.name}`);
-                const snapshot = await storageRef.put(file);
-                const url = await snapshot.ref.getDownloadURL();
-                imageUrls.push(url);
-            }
-            
-            // Prepare property data
-            const propertyData = {
-                title: title,
-                type: category,
-                description: description,
-                price: parseInt(price),
-                image: imageUrls[0],
-                images: imageUrls,
-                status: 'active',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                location: document.getElementById('locationInput').value || 'Ташкент',
-                contactName: document.getElementById('contactName').value || '',
-                contactPhone: document.getElementById('contactPhone').value || '',
-                lat: 41.3111,
-                lng: 69.2797
-            };
-            
-            // Add property-specific details
-            if (category === 'apartment') {
-                propertyData.rooms = parseInt(document.getElementById('rooms').value) || 1;
-                propertyData.floor = parseInt(document.getElementById('floor').value) || 1;
-                propertyData.totalFloors = parseInt(document.getElementById('totalFloors').value) || 1;
-                propertyData.area = parseInt(document.getElementById('area').value) || 0;
-                propertyData.bathrooms = parseInt(document.getElementById('bathrooms').value) || 1;
-            }
-            
-            // Save to Firestore
-            const docRef = await db.collection('properties').add(propertyData);
-            
-            alert('Объявление успешно размещено! ID: ' + docRef.id);
-            
-            // Reset form
-            document.getElementById('rentForm').reset();
-            document.getElementById('filePreview').innerHTML = '';
-            uploadedFiles = [];
-            navigateToStep(1);
-            
-            // Reload properties
-            initFirebase();
-            
-        } catch (firebaseError) {
-            console.error('Firebase error:', firebaseError);
-            alert('Объявление сохранено локально. При подключении к интернету оно будет отправлено на сервер.');
-            
-            // Save locally for offline use
-            const propertyData = {
-                id: 'local_' + Date.now(),
-                title: title,
-                type: category,
-                description: description,
-                price: parseInt(price),
-                image: URL.createObjectURL(uploadedFiles[0]),
-                status: 'active',
-                createdAt: new Date(),
-                location: document.getElementById('locationInput').value || 'Ташкент',
-                lat: 41.3111,
-                lng: 69.2797
-            };
-            
-            properties.unshift(propertyData);
-            loadProperties();
+        // Prepare property data
+        const propertyData = {
+            id: Date.now(), // Use timestamp as ID
+            title: title,
+            type: category,
+            description: description,
+            price: parseInt(price),
+            image: uploadedFiles.length > 0 ? URL.createObjectURL(uploadedFiles[0]) : 'https://via.placeholder.com/600x400?text=Нет+фото',
+            status: 'active',
+            createdAt: new Date(),
+            location: locationInput,
+            contactName: contactName,
+            contactPhone: contactPhone,
+            lat: selectedLocation ? selectedLocation.lat : (41.3111 + (Math.random() - 0.5) * 0.1),
+            lng: selectedLocation ? selectedLocation.lng : (69.2797 + (Math.random() - 0.5) * 0.1)
+        };
+        
+        // Add property-specific details
+        if (category === 'apartment') {
+            propertyData.rooms = parseInt(document.getElementById('rooms').value) || 1;
+            propertyData.floor = parseInt(document.getElementById('floor').value) || 1;
+            propertyData.totalFloors = parseInt(document.getElementById('totalFloors').value) || 1;
+            propertyData.area = parseInt(document.getElementById('area').value) || 0;
+            propertyData.bathrooms = parseInt(document.getElementById('bathrooms').value) || 1;
+            propertyData.features = getSelectedAmenities();
         }
+        
+        // Add to properties array
+        properties.unshift(propertyData);
+        
+        // Save to localStorage
+        const userProperties = properties.filter(p => p.id > 1000); // Filter out sample properties
+        localStorage.setItem('rentuz_properties', JSON.stringify(userProperties));
+        
+        alert('Объявление успешно размещено!');
+        
+        // Reset form
+        document.getElementById('rentForm').reset();
+        document.getElementById('filePreview').innerHTML = '';
+        document.getElementById('selectedLocationText').textContent = 'Местоположение не выбрано';
+        uploadedFiles = [];
+        selectedLocation = null;
+        navigateToStep(1);
+        
+        // Reload properties
+        loadProperties();
         
     } catch (error) {
         console.error('Error submitting property:', error);
@@ -965,11 +1069,26 @@ async function submitProperty() {
     }
 }
 
+// Get selected amenities
+function getSelectedAmenities() {
+    const amenities = [];
+    const checkboxes = document.querySelectorAll('input[name="amenities"]:checked');
+    checkboxes.forEach(checkbox => {
+        amenities.push(checkbox.value);
+    });
+    return amenities;
+}
+
 // Close modal when clicking outside
 window.onclick = function(event) {
     const modal = document.getElementById('propertyModal');
     if (event.target === modal) {
         modal.style.display = 'none';
+    }
+    
+    const mapModal = document.getElementById('mapSelectionModal');
+    if (event.target === mapModal) {
+        mapModal.style.display = 'none';
     }
 };
 
@@ -977,7 +1096,13 @@ window.onclick = function(event) {
 window.addEventListener('resize', function() {
     if (map && document.getElementById('mapSection').style.display === 'block') {
         setTimeout(() => {
-            map.invalidateSize();
+            if (map) map.invalidateSize();
+        }, 300);
+    }
+    
+    if (selectionMap && document.getElementById('mapSelectionModal').style.display === 'flex') {
+        setTimeout(() => {
+            if (selectionMap) selectionMap.invalidateSize();
         }, 300);
     }
 });
@@ -985,3 +1110,5 @@ window.addEventListener('resize', function() {
 // Global functions for HTML onclick
 window.showPropertyDetails = showPropertyDetails;
 window.removeFile = removeFile;
+window.callNumber = callNumber;
+window.sendMessage = sendMessage;
