@@ -11,11 +11,23 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <div class="app-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="loading-screen active">
+            <div class="loading-content">
+                <div class="loading-spinner">
+                    <i data-lucide="loader-2" class="spinner-icon"></i>
+                </div>
+                <h2>Строительная техника</h2>
+                <p>Загружаем приложение...</p>
+            </div>
+        </div>
+
         <!-- Main Content -->
-        <main>
+        <main id="main-content" class="hidden">
             <!-- Home Page -->
             <section id="home-page" class="page active">
                 <div class="page-header">
@@ -29,8 +41,11 @@
                 <div class="categories">
                     <div class="category-list">
                         <div class="category-item" data-category="mixers">
-                            <div class="category-icon">
-                                <i data-lucide="mixer"></i>
+                            <div class="category-image">
+                                <img src="img/миксер.jpg" alt="Автомиксеры" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="category-icon fallback">
+                                    <i data-lucide="mixer"></i>
+                                </div>
                             </div>
                             <div class="category-info">
                                 <h3>Автомиксеры</h3>
@@ -39,8 +54,11 @@
                         </div>
 
                         <div class="category-item" data-category="pumps">
-                            <div class="category-icon">
-                                <i data-lucide="sprout"></i>
+                            <div class="category-image">
+                                <img src="img/насос.jpg" alt="Автобетононасосы" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="category-icon fallback">
+                                    <i data-lucide="sprout"></i>
+                                </div>
                             </div>
                             <div class="category-info">
                                 <h3>Автобетононасосы</h3>
@@ -49,8 +67,11 @@
                         </div>
 
                         <div class="category-item" data-category="dump-trucks">
-                            <div class="category-icon">
-                                <i data-lucide="truck"></i>
+                            <div class="category-image">
+                                <img src="img/самосвал.jpg" alt="Самосвалы" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="category-icon fallback">
+                                    <i data-lucide="truck"></i>
+                                </div>
                             </div>
                             <div class="category-info">
                                 <h3>Самосвалы</h3>
@@ -59,8 +80,11 @@
                         </div>
 
                         <div class="category-item" data-category="tonars">
-                            <div class="category-icon">
-                                <i data-lucide="truck"></i>
+                            <div class="category-image">
+                                <img src="img/самосвал.jpg" alt="Тонары" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="category-icon fallback">
+                                    <i data-lucide="truck"></i>
+                                </div>
                             </div>
                             <div class="category-info">
                                 <h3>Тонары</h3>
@@ -69,8 +93,11 @@
                         </div>
 
                         <div class="category-item" data-category="cranes">
-                            <div class="category-icon">
-                                <i data-lucide="crane"></i>
+                            <div class="category-image">
+                                <img src="img/кран.jpg" alt="Краны" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="category-icon fallback">
+                                    <i data-lucide="crane"></i>
+                                </div>
                             </div>
                             <div class="category-info">
                                 <h3>Краны</h3>
@@ -79,8 +106,11 @@
                         </div>
 
                         <div class="category-item" data-category="excavators">
-                            <div class="category-icon">
-                                <i data-lucide="digging"></i>
+                            <div class="category-image">
+                                <img src="img/экскаватор.jpg" alt="Экскаваторы" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="category-icon fallback">
+                                    <i data-lucide="digging"></i>
+                                </div>
                             </div>
                             <div class="category-info">
                                 <h3>Экскаваторы</h3>
@@ -123,6 +153,9 @@
             <section id="profile-page" class="page">
                 <div class="page-header">
                     <h2>Мой профиль</h2>
+                    <button class="btn-logout" id="logout-btn">
+                        <i data-lucide="log-out"></i>
+                    </button>
                 </div>
 
                 <div class="profile-info">
@@ -131,7 +164,7 @@
                     </div>
                     <div class="user-data">
                         <h3 id="user-name">Гость</h3>
-                        <p>Ташкент, Узбекистан</p>
+                        <p id="user-phone">Ташкент, Узбекистан</p>
                         <div class="user-rating">
                             <span class="rating-stars">★★★★☆</span>
                             <span class="rating-value">4.5 (23 отзыва)</span>
@@ -260,27 +293,100 @@
                     </div>
                 </div>
             </section>
+        </main>
 
-            <!-- Auth Modal -->
-            <div id="auth-modal" class="modal">
-                <div class="modal-content">
+        <!-- Auth Modal -->
+        <div id="auth-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
                     <h3>Вход в систему</h3>
-                    <div class="auth-form">
-                        <div class="form-group">
-                            <label for="user-name-input">Ваше имя</label>
-                            <input type="text" id="user-name-input" placeholder="Введите ваше имя">
+                    <button class="btn-close" id="close-auth-modal">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="phone">По телефону</button>
+                    <button class="auth-tab" data-tab="test">Тестовый вход</button>
+                </div>
+
+                <div class="auth-form" id="phone-auth">
+                    <div class="form-group">
+                        <label for="user-phone">Номер телефона</label>
+                        <div class="phone-input-container">
+                            <span class="phone-prefix">+998</span>
+                            <input type="tel" id="user-phone" placeholder="90 123 45 67" maxlength="9">
                         </div>
-                        <div class="form-group">
-                            <label for="user-phone">Телефон</label>
-                            <input type="tel" id="user-phone" placeholder="+998 __ ___ __ __">
+                        <p class="input-hint">Введите номер без +998 (только 9 цифр)</p>
+                    </div>
+                    
+                    <div class="form-group hidden" id="code-group">
+                        <label for="verification-code">Код подтверждения</label>
+                        <input type="text" id="verification-code" placeholder="Введите 6-значный код" maxlength="6">
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn-primary" id="send-code-btn">Получить код</button>
+                        <button class="btn-primary hidden" id="verify-code-btn">Подтвердить</button>
+                    </div>
+                    
+                    <div class="auth-footer">
+                        <p>Нажимая «Получить код», вы соглашаетесь с условиями использования</p>
+                    </div>
+                </div>
+
+                <div class="auth-form hidden" id="test-auth">
+                    <div class="test-users">
+                        <h4>Тестовые пользователи (для демонстрации):</h4>
+                        <div class="test-user-list">
+                            <div class="test-user-item" data-phone="901234567">
+                                <div class="test-user-info">
+                                    <strong>Иван Петров</strong>
+                                    <span>+998 90 123 45 67</span>
+                                </div>
+                                <button class="btn-test-login">Войти</button>
+                            </div>
+                            <div class="test-user-item" data-phone="901234568">
+                                <div class="test-user-info">
+                                    <strong>Алексей Смирнов</strong>
+                                    <span>+998 90 123 45 68</span>
+                                </div>
+                                <button class="btn-test-login">Войти</button>
+                            </div>
                         </div>
-                        <div class="form-actions">
-                            <button class="btn-primary" id="login-btn">Войти</button>
-                        </div>
+                    </div>
+                    <div class="auth-footer">
+                        <p>Тестовый вход работает без отправки SMS</p>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
+
+        <!-- Verification Modal -->
+        <div id="verification-modal" class="modal">
+            <div class="modal-content">
+                <div class="verification-header">
+                    <i data-lucide="shield-check" class="verification-icon"></i>
+                    <h3>Подтверждение номера</h3>
+                </div>
+                <div class="verification-content">
+                    <p>Мы отправили SMS с кодом подтверждения на номер:</p>
+                    <p class="verification-phone" id="verification-phone-number"></p>
+                    <div class="form-group">
+                        <label for="verification-code-input">Код подтверждения</label>
+                        <input type="text" id="verification-code-input" placeholder="000000" maxlength="6">
+                        <p class="input-hint">Для демо-версии используйте код: <strong>123456</strong></p>
+                    </div>
+                    <div class="verification-timer">
+                        <p>Отправить код повторно через: <span id="countdown">60</span> сек.</p>
+                    </div>
+                </div>
+                <div class="verification-actions">
+                    <button class="btn-secondary" id="resend-code-btn" disabled>Отправить повторно</button>
+                    <button class="btn-primary" id="confirm-code-btn">Подтвердить</button>
+                </div>
+            </div>
+        </div>
 
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
