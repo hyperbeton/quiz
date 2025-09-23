@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -5,39 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Строительная техника в Ташкенте</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script type="module" src="script.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
-        <header>
-            <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-hard-hat"></i>
-                    <span>СтройТехника</span>
-                </div>
-                <div class="location">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Ташкент</span>
-                </div>
-            </div>
-        </header>
-
         <!-- Main Content -->
         <main>
             <!-- Home Page -->
             <section id="home-page" class="page active">
-                <div class="page-title">
-                    <h1>Строительная техника в Ташкенте</h1>
-                    <p>Арендуйте технику для вашего проекта</p>
+                <div class="page-header">
+                    <div class="location">
+                        <i data-lucide="map-pin"></i>
+                        <span>Ташкент</span>
+                    </div>
+                    <h1>Строительная техника</h1>
                 </div>
 
                 <div class="categories">
                     <div class="category-list">
                         <div class="category-item" data-category="mixers">
                             <div class="category-icon">
-                                <i class="fas fa-truck-mix"></i>
+                                <i data-lucide="mixer"></i>
                             </div>
                             <div class="category-info">
                                 <h3>Автомиксеры</h3>
@@ -47,7 +40,7 @@
 
                         <div class="category-item" data-category="pumps">
                             <div class="category-icon">
-                                <i class="fas fa-pump-soap"></i>
+                                <i data-lucide="sprout"></i>
                             </div>
                             <div class="category-info">
                                 <h3>Автобетононасосы</h3>
@@ -57,7 +50,7 @@
 
                         <div class="category-item" data-category="dump-trucks">
                             <div class="category-icon">
-                                <i class="fas fa-truck"></i>
+                                <i data-lucide="truck"></i>
                             </div>
                             <div class="category-info">
                                 <h3>Самосвалы</h3>
@@ -67,7 +60,7 @@
 
                         <div class="category-item" data-category="tonars">
                             <div class="category-icon">
-                                <i class="fas fa-truck-pickup"></i>
+                                <i data-lucide="truck"></i>
                             </div>
                             <div class="category-info">
                                 <h3>Тонары</h3>
@@ -77,7 +70,7 @@
 
                         <div class="category-item" data-category="cranes">
                             <div class="category-icon">
-                                <i class="fas fa-crane"></i>
+                                <i data-lucide="crane"></i>
                             </div>
                             <div class="category-info">
                                 <h3>Краны</h3>
@@ -87,7 +80,7 @@
 
                         <div class="category-item" data-category="excavators">
                             <div class="category-icon">
-                                <i class="fas fa-digging"></i>
+                                <i data-lucide="digging"></i>
                             </div>
                             <div class="category-info">
                                 <h3>Экскаваторы</h3>
@@ -102,7 +95,7 @@
             <section id="category-page" class="page">
                 <div class="page-header">
                     <button class="btn-back">
-                        <i class="fas fa-arrow-left"></i>
+                        <i data-lucide="arrow-left"></i>
                     </button>
                     <h2 id="category-title">Автомиксеры</h2>
                 </div>
@@ -116,7 +109,7 @@
             <section id="details-page" class="page">
                 <div class="page-header">
                     <button class="btn-back">
-                        <i class="fas fa-arrow-left"></i>
+                        <i data-lucide="arrow-left"></i>
                     </button>
                     <h2 id="equipment-title">Детали техники</h2>
                 </div>
@@ -134,7 +127,7 @@
 
                 <div class="profile-info">
                     <div class="user-avatar">
-                        <i class="fas fa-user"></i>
+                        <i data-lucide="user"></i>
                     </div>
                     <div class="user-data">
                         <h3 id="user-name">Гость</h3>
@@ -148,12 +141,16 @@
 
                 <div class="profile-actions">
                     <button class="profile-action-btn" id="add-equipment-btn">
-                        <i class="fas fa-plus"></i>
+                        <i data-lucide="plus"></i>
                         <span>Добавить технику</span>
                     </button>
                     <button class="profile-action-btn" id="my-equipment-btn">
-                        <i class="fas fa-list"></i>
+                        <i data-lucide="list"></i>
                         <span>Моя техника</span>
+                    </button>
+                    <button class="profile-action-btn" id="toggle-availability-btn">
+                        <i data-lucide="toggle-right"></i>
+                        <span>Управление доступностью</span>
                     </button>
                 </div>
 
@@ -169,7 +166,7 @@
             <section id="add-equipment-page" class="page">
                 <div class="page-header">
                     <button class="btn-back">
-                        <i class="fas fa-arrow-left"></i>
+                        <i data-lucide="arrow-left"></i>
                     </button>
                     <h2>Добавить технику</h2>
                 </div>
@@ -193,13 +190,33 @@
                         <input type="text" id="equipment-name" placeholder="Например: Камаз 65115">
                     </div>
 
-                    <div class="form-group">
-                        <label for="equipment-capacity">Вместимость</label>
+                    <div id="capacity-group" class="form-group">
+                        <label for="equipment-capacity">Вместимость (м³)</label>
                         <input type="number" id="equipment-capacity" placeholder="Например: 10">
                     </div>
 
+                    <div id="length-group" class="form-group hidden">
+                        <label for="equipment-length">Длина стрелы (м)</label>
+                        <input type="number" id="equipment-length" placeholder="Например: 36">
+                    </div>
+
+                    <div id="performance-group" class="form-group hidden">
+                        <label for="equipment-performance">Производительность (м³/ч)</label>
+                        <input type="number" id="equipment-performance" placeholder="Например: 90">
+                    </div>
+
+                    <div id="weight-group" class="form-group hidden">
+                        <label for="equipment-weight">Грузоподъемность (т)</label>
+                        <input type="number" id="equipment-weight" placeholder="Например: 25">
+                    </div>
+
+                    <div id="bucket-group" class="form-group hidden">
+                        <label for="equipment-bucket">Объем ковша (м³)</label>
+                        <input type="number" id="equipment-bucket" placeholder="Например: 1.2">
+                    </div>
+
                     <div class="form-group">
-                        <label for="equipment-price">Цена за ходку (сум)</label>
+                        <label for="equipment-price">Цена за маш/час (сум)</label>
                         <input type="number" id="equipment-price" placeholder="Например: 80000">
                     </div>
 
@@ -228,11 +245,31 @@
                 </div>
             </section>
 
+            <!-- Availability Management Page -->
+            <section id="availability-page" class="page">
+                <div class="page-header">
+                    <button class="btn-back">
+                        <i data-lucide="arrow-left"></i>
+                    </button>
+                    <h2>Управление доступностью</h2>
+                </div>
+
+                <div class="availability-management">
+                    <div class="equipment-list" id="availability-equipment">
+                        <!-- Equipment for availability management will be loaded here -->
+                    </div>
+                </div>
+            </section>
+
             <!-- Auth Modal -->
             <div id="auth-modal" class="modal">
                 <div class="modal-content">
                     <h3>Вход в систему</h3>
                     <div class="auth-form">
+                        <div class="form-group">
+                            <label for="user-name-input">Ваше имя</label>
+                            <input type="text" id="user-name-input" placeholder="Введите ваше имя">
+                        </div>
                         <div class="form-group">
                             <label for="user-phone">Телефон</label>
                             <input type="tel" id="user-phone" placeholder="+998 __ ___ __ __">
@@ -249,35 +286,37 @@
         <nav class="bottom-nav">
             <div class="nav-item active" data-page="home-page">
                 <div class="nav-icon">
-                    <i class="fas fa-home"></i>
+                    <i data-lucide="home"></i>
                 </div>
                 <span>Главная</span>
             </div>
             <div class="nav-item" data-page="category-page" data-category="mixers">
                 <div class="nav-icon">
-                    <i class="fas fa-truck-mix"></i>
+                    <i data-lucide="mixer"></i>
                 </div>
                 <span>Миксеры</span>
             </div>
             <div class="nav-item" data-page="category-page" data-category="pumps">
                 <div class="nav-icon">
-                    <i class="fas fa-pump-soap"></i>
+                    <i data-lucide="sprout"></i>
                 </div>
                 <span>Насосы</span>
             </div>
             <div class="nav-item" data-page="category-page" data-category="dump-trucks">
                 <div class="nav-icon">
-                    <i class="fas fa-truck"></i>
+                    <i data-lucide="truck"></i>
                 </div>
                 <span>Самосвалы</span>
             </div>
             <div class="nav-item" data-page="profile-page">
                 <div class="nav-icon">
-                    <i class="fas fa-user"></i>
+                    <i data-lucide="user"></i>
                 </div>
                 <span>Профиль</span>
             </div>
         </nav>
     </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
