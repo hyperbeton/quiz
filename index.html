@@ -6,6 +6,7 @@
     <title>Строительная техника в Ташкенте</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="module" src="script.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -42,9 +43,6 @@
                                 <h3>Автомиксеры</h3>
                                 <p>Бетономешалки 8-12 м³</p>
                             </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
                         </div>
 
                         <div class="category-item" data-category="pumps">
@@ -54,9 +52,6 @@
                             <div class="category-info">
                                 <h3>Автобетононасосы</h3>
                                 <p>Насосы 30-50 метров</p>
-                            </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </div>
 
@@ -68,9 +63,6 @@
                                 <h3>Самосвалы</h3>
                                 <p>Грузовики 10-20 тонн</p>
                             </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
                         </div>
 
                         <div class="category-item" data-category="tonars">
@@ -80,9 +72,6 @@
                             <div class="category-info">
                                 <h3>Тонары</h3>
                                 <p>Малые грузовики 3-5 тонн</p>
-                            </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </div>
 
@@ -94,9 +83,6 @@
                                 <h3>Краны</h3>
                                 <p>Подъемные 25-100 тонн</p>
                             </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
                         </div>
 
                         <div class="category-item" data-category="excavators">
@@ -106,9 +92,6 @@
                             <div class="category-info">
                                 <h3>Экскаваторы</h3>
                                 <p>Землеройная техника</p>
-                            </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </div>
                     </div>
@@ -154,7 +137,7 @@
                         <i class="fas fa-user"></i>
                     </div>
                     <div class="user-data">
-                        <h3>Алексей Иванов</h3>
+                        <h3 id="user-name">Гость</h3>
                         <p>Ташкент, Узбекистан</p>
                         <div class="user-rating">
                             <span class="rating-stars">★★★★☆</span>
@@ -164,13 +147,13 @@
                 </div>
 
                 <div class="profile-actions">
-                    <button class="profile-action-btn">
+                    <button class="profile-action-btn" id="add-equipment-btn">
                         <i class="fas fa-plus"></i>
                         <span>Добавить технику</span>
                     </button>
-                    <button class="profile-action-btn">
-                        <i class="fas fa-cog"></i>
-                        <span>Настройки</span>
+                    <button class="profile-action-btn" id="my-equipment-btn">
+                        <i class="fas fa-list"></i>
+                        <span>Моя техника</span>
                     </button>
                 </div>
 
@@ -182,55 +165,84 @@
                 </div>
             </section>
 
-            <!-- Others Page -->
-            <section id="others-page" class="page">
+            <!-- Add Equipment Page -->
+            <section id="add-equipment-page" class="page">
                 <div class="page-header">
-                    <h2>Другие категории</h2>
+                    <button class="btn-back">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2>Добавить технику</h2>
                 </div>
 
-                <div class="categories">
-                    <div class="category-list">
-                        <div class="category-item" data-category="bulldozers">
-                            <div class="category-icon">
-                                <i class="fas fa-tractor"></i>
-                            </div>
-                            <div class="category-info">
-                                <h3>Бульдозеры</h3>
-                                <p>Техника для планировки</p>
-                            </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
-                        </div>
+                <div class="add-equipment-form">
+                    <div class="form-group">
+                        <label for="equipment-type">Тип техники</label>
+                        <select id="equipment-type">
+                            <option value="">Выберите тип</option>
+                            <option value="mixers">Автомиксер</option>
+                            <option value="pumps">Автобетононасос</option>
+                            <option value="dump-trucks">Самосвал</option>
+                            <option value="tonars">Тонар</option>
+                            <option value="cranes">Кран</option>
+                            <option value="excavators">Экскаватор</option>
+                        </select>
+                    </div>
 
-                        <div class="category-item" data-category="loaders">
-                            <div class="category-icon">
-                                <i class="fas fa-shovel"></i>
-                            </div>
-                            <div class="category-info">
-                                <h3>Погрузчики</h3>
-                                <p>Погрузочно-разгрузочные</p>
-                            </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="equipment-name">Название техники</label>
+                        <input type="text" id="equipment-name" placeholder="Например: Камаз 65115">
+                    </div>
 
-                        <div class="category-item" data-category="rollers">
-                            <div class="category-icon">
-                                <i class="fas fa-road"></i>
-                            </div>
-                            <div class="category-info">
-                                <h3>Катки</h3>
-                                <p>Уплотнение грунта</p>
-                            </div>
-                            <div class="category-arrow">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="equipment-capacity">Вместимость</label>
+                        <input type="number" id="equipment-capacity" placeholder="Например: 10">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="equipment-price">Цена за ходку (сум)</label>
+                        <input type="number" id="equipment-price" placeholder="Например: 80000">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="equipment-location">Местоположение</label>
+                        <input type="text" id="equipment-location" placeholder="Например: Ташкент, Юнусабадский район">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="equipment-description">Описание</label>
+                        <textarea id="equipment-description" placeholder="Опишите состояние и особенности техники"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="payment-method">Способ оплаты</label>
+                        <select id="payment-method">
+                            <option value="cash">Наличные</option>
+                            <option value="transfer">Безналичный расчет</option>
+                            <option value="both">Оба способа</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn-primary" id="save-equipment">Добавить технику</button>
                     </div>
                 </div>
             </section>
+
+            <!-- Auth Modal -->
+            <div id="auth-modal" class="modal">
+                <div class="modal-content">
+                    <h3>Вход в систему</h3>
+                    <div class="auth-form">
+                        <div class="form-group">
+                            <label for="user-phone">Телефон</label>
+                            <input type="tel" id="user-phone" placeholder="+998 __ ___ __ __">
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="login-btn">Войти</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- Bottom Navigation -->
@@ -259,12 +271,6 @@
                 </div>
                 <span>Самосвалы</span>
             </div>
-            <div class="nav-item" data-page="others-page">
-                <div class="nav-icon">
-                    <i class="fas fa-ellipsis-h"></i>
-                </div>
-                <span>Другие</span>
-            </div>
             <div class="nav-item" data-page="profile-page">
                 <div class="nav-icon">
                     <i class="fas fa-user"></i>
@@ -273,7 +279,5 @@
             </div>
         </nav>
     </div>
-
-    <script src="script.js"></script>
 </body>
 </html>
