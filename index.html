@@ -3,510 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RentUz - Аренда недвижимости в Ташкенте</title>
-    
-    <!-- Mapbox CSS -->
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.2/mapbox-gl.css' rel='stylesheet' />
-    
-    <!-- Leaflet для совместимости -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Строительная техника в Ташкенте</title>
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-    
-    <!-- Mapbox JS -->
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.2/mapbox-gl.js'></script>
-    
-    <!-- Leaflet Mapbox GL -->
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-mapbox-gl@1.0.0/leaflet-mapbox-gl.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="background-animation"></div>
-    
-    <header>
-        <div class="container header-content">
-            <a href="#" class="logo">
-                <i class="fas fa-home"></i>
-                <span>RentUz</span>
-            </a>
-            <nav>
-                <ul>
-                    <li><a href="#" class="nav-link" data-section="homeSection"><i class="fas fa-home"></i> Главная</a></li>
-                    <li><a href="#" class="nav-link" data-section="mapSection"><i class="fas fa-building"></i> Объявления</a></li>
-                    <li><a href="#" class="nav-link" data-section="aboutSection"><i class="fas fa-info-circle"></i> О нас</a></li>
-                </ul>
-            </nav>
-            <div class="auth-buttons">
-                <button class="btn btn-outline"><i class="fas fa-user"></i> Войти</button>
-                <button class="btn btn-primary"><i class="fas fa-user-plus"></i> Регистрация</button>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-hard-hat"></i>
+                    <span>СтройТехника</span>
+                </div>
+                <div class="location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Ташкент</span>
+                </div>
             </div>
-        </div>
-    </header>
+        </header>
 
-    <section class="hero" id="homeSection">
-        <div class="container">
-            <h1>Найдите идеальную недвижимость в Ташкенте</h1>
-            <p>Самый простой способ арендовать или сдать квартиру, офис или коммерческое помещение</p>
-            <div class="cta-buttons">
-                <button id="findPropertyBtn" class="btn btn-primary btn-large">
-                    <i class="fas fa-search"></i> Найти недвижимость
-                </button>
-                <button id="rentOutBtn" class="btn btn-outline btn-large">
-                    <i class="fas fa-key"></i> Сдать в аренду
-                </button>
-            </div>
-        </div>
-    </section>
+        <!-- Main Content -->
+        <main>
+            <!-- Home Page -->
+            <section id="home-page" class="page active">
+                <div class="page-title">
+                    <h1>Строительная техника в Ташкенте</h1>
+                    <p>Арендуйте технику для вашего проекта</p>
+                </div>
 
-    <main class="main-content container">
-        <!-- Map and Listings Section -->
-        <section id="mapSection" class="map-section">
-            <div class="section-header">
-                <h2>Карта недвижимости Ташкента</h2>
-                <p>Изучите доступные варианты на интерактивной карте</p>
-            </div>
-            
-            <div class="map-controls">
-                <button id="toggleMapBtn" class="btn btn-outline">
-                    <i class="fas fa-eye-slash"></i> Скрыть карту
-                </button>
-                <button id="resetMapBtn" class="btn btn-outline">
-                    <i class="fas fa-sync-alt"></i> Сбросить вид
-                </button>
-            </div>
-            
-            <div id="map" class="map-container visible"></div>
-            
-            <div class="filters">
-                <div class="filters-header">
-                    <h3><i class="fas fa-filter"></i> Фильтры</h3>
-                    <button class="btn btn-link" id="resetFilters">Сбросить</button>
-                </div>
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label for="location"><i class="fas fa-map-marker-alt"></i> Расположение</label>
-                        <select id="location">
-                            <option value="">Все районы</option>
-                            <option value="mirzo-ulugbek">Мирзо-Улугбекский</option>
-                            <option value="yashnabad">Яшнабадский</option>
-                            <option value="yunusabad">Юнусабадский</option>
-                            <option value="almazar">Алмазарский</option>
-                            <option value="shayhontohur">Шайхантахурский</option>
-                            <option value="chilanzar">Чиланзарский</option>
-                            <option value="bektemir">Бектемирский</option>
-                            <option value="mirabad">Мирабадский</option>
-                            <option value="sergeli">Сергелийский</option>
-                            <option value="uchtepa">Учтепинский</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="propertyTypeFilter"><i class="fas fa-building"></i> Тип недвижимости</label>
-                        <select id="propertyTypeFilter">
-                            <option value="">Все типы</option>
-                            <option value="apartment">Квартира</option>
-                            <option value="house">Дом</option>
-                            <option value="office">Офис</option>
-                            <option value="store">Магазин</option>
-                            <option value="warehouse">Склад</option>
-                            <option value="cafe">Кафе/Бар</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="priceRange"><i class="fas fa-dollar-sign"></i> Ценовой диапазон ($)</label>
-                        <div class="range-container">
-                            <input type="range" id="priceRange" min="0" max="5000" step="100" value="5000">
-                            <span id="priceValue">$5000</span>
+                <div class="categories">
+                    <div class="category-list">
+                        <div class="category-item" data-category="mixers">
+                            <div class="category-icon">
+                                <i class="fas fa-truck-mix"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Автомиксеры</h3>
+                                <p>Бетономешалки 8-12 м³</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label for="roomsFilter"><i class="fas fa-door-open"></i> Количество комнат</label>
-                        <select id="roomsFilter">
-                            <option value="">Любое</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4+</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="minArea"><i class="fas fa-vector-square"></i> Площадь (м²)</label>
-                        <div class="range-group">
-                            <input type="number" id="minArea" placeholder="От" min="0">
-                            <span>-</span>
-                            <input type="number" id="maxArea" placeholder="До" min="0">
-                        </div>
-                    </div>
-                    <div class="filter-group">
-                        <button class="btn btn-primary btn-block" id="applyFilters">
-                            <i class="fas fa-search"></i> Применить фильтры
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-header">
-                <h2>Доступные объекты</h2>
-                <p>Найдено <span id="propertiesCount">6</span> объектов</p>
-            </div>
-            
-            <div class="view-toggle">
-                <button class="btn btn-icon active" id="gridView">
-                    <i class="fas fa-th"></i>
-                </button>
-                <button class="btn btn-icon" id="listView">
-                    <i class="fas fa-list"></i>
-                </button>
-            </div>
-            
-            <div class="property-list grid-view" id="propertyList">
-                <!-- Properties will be loaded here -->
-            </div>
-            
-            <div class="pagination">
-                <button class="btn btn-outline"><i class="fas fa-chevron-left"></i> Назад</button>
-                <span>Страница 1 из 3</span>
-                <button class="btn btn-outline">Вперед <i class="fas fa-chevron-right"></i></button>
-            </div>
-        </section>
 
-        <!-- Rent Out Form Section -->
-        <section id="formSection" class="form-section">
-            <div class="form-progress">
-                <div class="progress-step active" data-step="1">
-                    <div class="step-number">1</div>
-                    <span>Основная информация</span>
-                </div>
-                <div class="progress-step" data-step="2">
-                    <div class="step-number">2</div>
-                    <span>Детали объекта</span>
-                </div>
-                <div class="progress-step" data-step="3">
-                    <div class="step-number">3</div>
-                    <span>Удобства</span>
-                </div>
-                <div class="progress-step" data-step="4">
-                    <div class="step-number">4</div>
-                    <span>Контакты</span>
-                </div>
-            </div>
-            
-            <div class="form-container">
-                <h2 class="form-title"><i class="fas fa-key"></i> Разместить объявление об аренде</h2>
-                <p class="form-subtitle">Заполните информацию о вашей недвижимости</p>
-                
-                <form id="rentForm">
-                    <!-- Step 1: Basic Information -->
-                    <div class="form-step active" id="step1">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="title"><i class="fas fa-heading"></i> Название объявления *</label>
-                                <input type="text" id="title" required placeholder="Например: Современная 2-комнатная квартира">
+                        <div class="category-item" data-category="pumps">
+                            <div class="category-icon">
+                                <i class="fas fa-pump-soap"></i>
                             </div>
-                            <div class="form-group">
-                                <label for="category"><i class="fas fa-tag"></i> Категория недвижимости *</label>
-                                <select id="category" required>
-                                    <option value="">Выберите категорию</option>
-                                    <option value="apartment">Квартира</option>
-                                    <option value="house">Дом</option>
-                                    <option value="office">Офис</option>
-                                    <option value="store">Магазин</option>
-                                    <option value="warehouse">Склад</option>
-                                    <option value="cafe">Кафе/Бар</option>
-                                </select>
+                            <div class="category-info">
+                                <h3>Автобетононасосы</h3>
+                                <p>Насосы 30-50 метров</p>
                             </div>
-                            <div class="form-group full-width">
-                                <label for="photos"><i class="fas fa-images"></i> Фотографии *</label>
-                                <div class="file-upload">
-                                    <input type="file" id="photos" multiple accept="image/*" required>
-                                    <label for="photos" class="file-upload-label">
-                                        <i class="fas fa-cloud-upload-alt"></i>
-                                        <span>Перетащите фото или нажмите для загрузки</span>
-                                    </label>
-                                    <div class="file-preview" id="filePreview"></div>
-                                </div>
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="description"><i class="fas fa-align-left"></i> Описание *</label>
-                                <textarea id="description" required placeholder="Подробное описание вашей недвижимости" rows="4"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label for="price"><i class="fas fa-dollar-sign"></i> Цена ($) *</label>
-                                <input type="number" id="price" required placeholder="500" min="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="ownerType"><i class="fas fa-user-tag"></i> Тип арендодателя *</label>
-                                <select id="ownerType" required>
-                                    <option value="private">Частное лицо</option>
-                                    <option value="business">Бизнес</option>
-                                </select>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </div>
-                        <div class="form-navigation">
-                            <div></div>
-                            <button type="button" class="btn btn-primary btn-large" id="nextToStep2">
-                                Далее <i class="fas fa-arrow-right"></i>
-                            </button>
+
+                        <div class="category-item" data-category="dump-trucks">
+                            <div class="category-icon">
+                                <i class="fas fa-truck"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Самосвалы</h3>
+                                <p>Грузовики 10-20 тонн</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+
+                        <div class="category-item" data-category="tonars">
+                            <div class="category-icon">
+                                <i class="fas fa-truck-pickup"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Тонары</h3>
+                                <p>Малые грузовики 3-5 тонн</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+
+                        <div class="category-item" data-category="cranes">
+                            <div class="category-icon">
+                                <i class="fas fa-crane"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Краны</h3>
+                                <p>Подъемные 25-100 тонн</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+
+                        <div class="category-item" data-category="excavators">
+                            <div class="category-icon">
+                                <i class="fas fa-digging"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Экскаваторы</h3>
+                                <p>Землеройная техника</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- Step 2: Property Details (will be loaded based on category) -->
-                    <div class="form-step" id="step2">
-                        <div id="propertyDetailsForm">
-                            <!-- Property type specific forms will be loaded here -->
-                        </div>
-                        <div class="form-navigation">
-                            <button type="button" class="btn btn-outline btn-large" id="backToStep1">
-                                <i class="fas fa-arrow-left"></i> Назад
-                            </button>
-                            <button type="button" class="btn btn-primary btn-large" id="nextToStep3">
-                                Далее <i class="fas fa-arrow-right"></i>
-                            </button>
+                </div>
+            </section>
+
+            <!-- Category Page -->
+            <section id="category-page" class="page">
+                <div class="page-header">
+                    <button class="btn-back">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2 id="category-title">Автомиксеры</h2>
+                </div>
+
+                <div class="equipment-list" id="category-equipment">
+                    <!-- Equipment items will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Details Page -->
+            <section id="details-page" class="page">
+                <div class="page-header">
+                    <button class="btn-back">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2 id="equipment-title">Детали техники</h2>
+                </div>
+
+                <div class="equipment-details" id="equipment-details">
+                    <!-- Equipment details will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Profile Page -->
+            <section id="profile-page" class="page">
+                <div class="page-header">
+                    <h2>Мой профиль</h2>
+                </div>
+
+                <div class="profile-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-data">
+                        <h3>Алексей Иванов</h3>
+                        <p>Ташкент, Узбекистан</p>
+                        <div class="user-rating">
+                            <span class="rating-stars">★★★★☆</span>
+                            <span class="rating-value">4.5 (23 отзыва)</span>
                         </div>
                     </div>
-                    
-                    <!-- Step 3: Amenities -->
-                    <div class="form-step" id="step3">
-                        <div class="form-grid">
-                            <div class="form-group full-width">
-                                <label><i class="fas fa-couch"></i> Мебель и техника</label>
-                                <div class="checkbox-grid">
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="furnished" name="amenities" value="furnished">
-                                        <label for="furnished">Меблирована</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="internet" name="amenities" value="internet">
-                                        <label for="internet">Интернет</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="phone" name="amenities" value="phone">
-                                        <label for="phone">Телефон</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="refrigerator" name="amenities" value="refrigerator">
-                                        <label for="refrigerator">Холодильник</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="tv" name="amenities" value="tv">
-                                        <label for="tv">Телевизор</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ac" name="amenities" value="ac">
-                                        <label for="ac">Кондиционер</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="cableTv" name="amenities" value="cableTv">
-                                        <label for="cableTv">Кабельное ТВ</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="washingMachine" name="amenities" value="washingMachine">
-                                        <label for="washingMachine">Стиральная машина</label>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group full-width">
-                                <label><i class="fas fa-map-marker-alt"></i> Рядом есть</label>
-                                <div class="checkbox-grid">
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="hospital" name="nearby" value="hospital">
-                                        <label for="hospital">Больница/Поликлиника</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="playground" name="nearby" value="playground">
-                                        <label for="playground">Детская площадка</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="kindergarten" name="nearby" value="kindergarten">
-                                        <label for="kindergarten">Детский сад</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="busStop" name="nearby" value="busStop">
-                                        <label for="busStop">Остановки</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="park" name="nearby" value="park">
-                                        <label for="park">Парк/Зеленая зона</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="entertainment" name="nearby" value="entertainment">
-                                        <label for="entertainment">Развлекательные заведения</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="restaurants" name="nearby" value="restaurants">
-                                        <label for="restaurants">Рестораны/Кафе</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="parking" name="nearby" value="parking">
-                                        <label for="parking">Стоянка</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="supermarket" name="nearby" value="supermarket">
-                                        <label for="supermarket">Супермаркет/Магазины</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="school" name="nearby" value="school">
-                                        <label for="school">Школа</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-navigation">
-                            <button type="button" class="btn btn-outline btn-large" id="backToStep2">
-                                <i class="fas fa-arrow-left"></i> Назад
-                            </button>
-                            <button type="button" class="btn btn-primary btn-large" id="nextToStep4">
-                                Далее <i class="fas fa-arrow-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Step 4: Contact Information -->
-                    <div class="form-step" id="step4">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="locationInput"><i class="fas fa-map-pin"></i> Местоположение *</label>
-                                <input type="text" id="locationInput" required placeholder="Адрес или район">
-                            </div>
-                            <div class="form-group">
-                                <label for="contactName"><i class="fas fa-user"></i> Контактное лицо *</label>
-                                <input type="text" id="contactName" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="contactPhone"><i class="fas fa-phone"></i> Контактный телефон *</label>
-                                <input type="tel" id="contactPhone" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="contactEmail"><i class="fas fa-envelope"></i> Email</label>
-                                <input type="email" id="contactEmail">
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="locationSelection"><i class="fas fa-map-marked-alt"></i> Указать на карте</label>
-                                <div class="location-selection">
-                                    <button type="button" class="btn btn-outline" id="selectOnMapBtn">
-                                        <i class="fas fa-map-marker-alt"></i> Выбрать на карте
-                                    </button>
-                                    <span id="selectedLocationText">Местоположение не выбрано</span>
-                                </div>
-                                <div id="locationMap" class="location-map"></div>
-                            </div>
-                        </div>
-                        <div class="form-navigation">
-                            <button type="button" class="btn btn-outline btn-large" id="backToStep3">
-                                <i class="fas fa-arrow-left"></i> Назад
-                            </button>
-                            <button type="submit" class="btn btn-primary btn-large">
-                                <i class="fas fa-paper-plane"></i> Разместить объявление
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </section>
-        
-        <!-- About Section -->
-        <section id="aboutSection" class="about-section">
-            <div class="section-header">
-                <h2>О нас</h2>
-                <p>Узнайте больше о нашей компании</p>
-            </div>
-            <div class="about-content">
-                <p>RentUz - это современная платформа для аренды недвижимости в Ташкенте. Мы помогаем людям находить идеальное жилье и сдавать свою недвижимость в аренду.</p>
-                <p>Наша миссия - сделать процесс аренды простым, удобным и безопасным для всех участников.</p>
-            </div>
-        </section>
-        
-        <!-- Property Details Modal -->
-        <div class="modal" id="propertyModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Детали объекта</h3>
-                    <button class="modal-close" id="closeModal">
-                        <i class="fas fa-times"></i>
+                </div>
+
+                <div class="profile-actions">
+                    <button class="profile-action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span>Добавить технику</span>
+                    </button>
+                    <button class="profile-action-btn">
+                        <i class="fas fa-cog"></i>
+                        <span>Настройки</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <div id="propertyDetails">
-                        <!-- Property details will be loaded here -->
+
+                <div class="user-equipment">
+                    <h3>Моя техника</h3>
+                    <div class="equipment-list" id="user-equipment">
+                        <!-- User equipment will be loaded here -->
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- Map Selection Modal -->
-        <div class="modal" id="mapSelectionModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Выберите местоположение на карте</h3>
-                    <button class="modal-close" id="closeMapModal">
-                        <i class="fas fa-times"></i>
-                    </button>
+            <!-- Others Page -->
+            <section id="others-page" class="page">
+                <div class="page-header">
+                    <h2>Другие категории</h2>
                 </div>
-                <div class="modal-body">
-                    <div id="selectionMap" class="selection-map"></div>
-                    <div class="modal-actions">
-                        <button class="btn btn-outline" id="cancelMapSelection">Отмена</button>
-                        <button class="btn btn-primary" id="confirmLocation">Подтвердить местоположение</button>
+
+                <div class="categories">
+                    <div class="category-list">
+                        <div class="category-item" data-category="bulldozers">
+                            <div class="category-icon">
+                                <i class="fas fa-tractor"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Бульдозеры</h3>
+                                <p>Техника для планировки</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+
+                        <div class="category-item" data-category="loaders">
+                            <div class="category-icon">
+                                <i class="fas fa-shovel"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Погрузчики</h3>
+                                <p>Погрузочно-разгрузочные</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+
+                        <div class="category-item" data-category="rollers">
+                            <div class="category-icon">
+                                <i class="fas fa-road"></i>
+                            </div>
+                            <div class="category-info">
+                                <h3>Катки</h3>
+                                <p>Уплотнение грунта</p>
+                            </div>
+                            <div class="category-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </main>
+            </section>
+        </main>
 
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-column">
-                    <h3>RentUz</h3>
-                    <p>Лучшая платформа для аренды недвижимости в Ташкенте. Найдите свой идеальный дом или сдайте в аренду вашу недвижимость.</p>
-                    <div class="social-links">
-                        <a href="#"><i class="fab fa-telegram"></i></a>
-                        <a href="#"><i class="fab fa-instagram"></i></a>
-                        <a href="#"><i class="fab fa-facebook"></i></a>
-                    </div>
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" data-page="home-page">
+                <div class="nav-icon">
+                    <i class="fas fa-home"></i>
                 </div>
-                <div class="footer-column">
-                    <h3>Типы недвижимости</h3>
-                    <ul>
-                        <li><a href="#"><i class="fas fa-building"></i> Квартиры</a></li>
-                        <li><a href="#"><i class="fas fa-home"></i> Дома</a></li>
-                        <li><a href="#"><i class="fas fa-briefcase"></i> Офисы</a></li>
-                        <li><a href="#"><i class="fas fa-store"></i> Магазины</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h3>Помощь</h3>
-                    <ul>
-                        <li><a href="#"><i class="fas fa-question-circle"></i> Частые вопросы</a></li>
-                        <li><a href="#"><i class="fas fa-file-alt"></i> Условия использования</a></li>
-                        <li><a href="#"><i class="fas fa-shield-alt"></i> Политика конфиденциальности</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h3>Контакты</h3>
-                    <ul class="contact-info">
-                        <li><i class="fas fa-map-marker-alt"></i> Ташкент, Узбекистан</li>
-                        <li><i class="fas fa-phone"></i> +998 71 123 45 67</li>
-                        <li><i class="fas fa-envelope"></i> info@rentuz.com</li>
-                    </ul>
-                </div>
+                <span>Главная</span>
             </div>
-            <div class="copyright">
-                &copy; 2023 RentUz. Все права защищены.
+            <div class="nav-item" data-page="category-page" data-category="mixers">
+                <div class="nav-icon">
+                    <i class="fas fa-truck-mix"></i>
+                </div>
+                <span>Миксеры</span>
             </div>
-        </div>
-    </footer>
+            <div class="nav-item" data-page="category-page" data-category="pumps">
+                <div class="nav-icon">
+                    <i class="fas fa-pump-soap"></i>
+                </div>
+                <span>Насосы</span>
+            </div>
+            <div class="nav-item" data-page="category-page" data-category="dump-trucks">
+                <div class="nav-icon">
+                    <i class="fas fa-truck"></i>
+                </div>
+                <span>Самосвалы</span>
+            </div>
+            <div class="nav-item" data-page="others-page">
+                <div class="nav-icon">
+                    <i class="fas fa-ellipsis-h"></i>
+                </div>
+                <span>Другие</span>
+            </div>
+            <div class="nav-item" data-page="profile-page">
+                <div class="nav-icon">
+                    <i class="fas fa-user"></i>
+                </div>
+                <span>Профиль</span>
+            </div>
+        </nav>
+    </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
