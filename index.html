@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Строительная техника в Ташкенте</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -22,7 +22,7 @@
                     <i data-lucide="loader-2" class="spinner-icon"></i>
                 </div>
                 <h2>Строительная техника</h2>
-                <p>Загружаем приложение...</p>
+                <p>Подключаемся к Telegram...</p>
             </div>
         </div>
 
@@ -153,21 +153,19 @@
             <section id="profile-page" class="page">
                 <div class="page-header">
                     <h2>Мой профиль</h2>
-                    <button class="btn-logout" id="logout-btn">
-                        <i data-lucide="log-out"></i>
-                    </button>
                 </div>
 
                 <div class="profile-info">
                     <div class="user-avatar">
-                        <i data-lucide="user"></i>
+                        <img id="user-avatar-img" src="" alt="Аватар" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <i data-lucide="user" class="avatar-fallback"></i>
                     </div>
                     <div class="user-data">
-                        <h3 id="user-name">Гость</h3>
+                        <h3 id="user-name">Загрузка...</h3>
                         <p id="user-phone">Ташкент, Узбекистан</p>
                         <div class="user-rating">
                             <span class="rating-stars">★★★★☆</span>
-                            <span class="rating-value">4.5 (23 отзыва)</span>
+                            <span class="rating-value" id="user-rating-value">0 (0 отзывов)</span>
                         </div>
                     </div>
                 </div>
@@ -206,8 +204,8 @@
 
                 <div class="add-equipment-form">
                     <div class="form-group">
-                        <label for="equipment-type">Тип техники</label>
-                        <select id="equipment-type">
+                        <label for="equipment-type">Тип техники *</label>
+                        <select id="equipment-type" required>
                             <option value="">Выберите тип</option>
                             <option value="mixers">Автомиксер</option>
                             <option value="pumps">Автобетононасос</option>
@@ -219,53 +217,61 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="equipment-name">Название техники</label>
-                        <input type="text" id="equipment-name" placeholder="Например: Камаз 65115">
+                        <label for="equipment-name">Название техники *</label>
+                        <input type="text" id="equipment-name" placeholder="Например: Камаз 65115" required>
                     </div>
 
                     <div id="capacity-group" class="form-group">
-                        <label for="equipment-capacity">Вместимость (м³)</label>
-                        <input type="number" id="equipment-capacity" placeholder="Например: 10">
+                        <label for="equipment-capacity">Вместимость (м³) *</label>
+                        <input type="number" id="equipment-capacity" placeholder="Например: 10" required>
                     </div>
 
                     <div id="length-group" class="form-group hidden">
-                        <label for="equipment-length">Длина стрелы (м)</label>
-                        <input type="number" id="equipment-length" placeholder="Например: 36">
+                        <label for="equipment-length">Длина стрелы (м) *</label>
+                        <input type="number" id="equipment-length" placeholder="Например: 36" required>
                     </div>
 
                     <div id="performance-group" class="form-group hidden">
-                        <label for="equipment-performance">Производительность (м³/ч)</label>
-                        <input type="number" id="equipment-performance" placeholder="Например: 90">
+                        <label for="equipment-performance">Производительность (м³/ч) *</label>
+                        <input type="number" id="equipment-performance" placeholder="Например: 90" required>
                     </div>
 
                     <div id="weight-group" class="form-group hidden">
-                        <label for="equipment-weight">Грузоподъемность (т)</label>
-                        <input type="number" id="equipment-weight" placeholder="Например: 25">
+                        <label for="equipment-weight">Грузоподъемность (т) *</label>
+                        <input type="number" id="equipment-weight" placeholder="Например: 25" required>
                     </div>
 
                     <div id="bucket-group" class="form-group hidden">
-                        <label for="equipment-bucket">Объем ковша (м³)</label>
-                        <input type="number" id="equipment-bucket" placeholder="Например: 1.2">
+                        <label for="equipment-bucket">Объем ковша (м³) *</label>
+                        <input type="number" id="equipment-bucket" placeholder="Например: 1.2" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="equipment-price">Цена за маш/час (сум)</label>
-                        <input type="number" id="equipment-price" placeholder="Например: 80000">
+                        <label for="equipment-price">Цена за маш/час (сум) *</label>
+                        <input type="number" id="equipment-price" placeholder="Например: 80000" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="equipment-location">Местоположение</label>
-                        <input type="text" id="equipment-location" placeholder="Например: Ташкент, Юнусабадский район">
+                        <label for="equipment-location">Местоположение *</label>
+                        <input type="text" id="equipment-location" placeholder="Например: Ташкент, Юнусабадский район" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="equipment-description">Описание</label>
-                        <textarea id="equipment-description" placeholder="Опишите состояние и особенности техники"></textarea>
+                        <label for="user-phone-input">Ваш номер для связи *</label>
+                        <div class="phone-input-container">
+                            <span class="phone-prefix">+998</span>
+                            <input type="tel" id="user-phone-input" placeholder="90 123 45 67" maxlength="9" required>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="payment-method">Способ оплаты</label>
-                        <select id="payment-method">
+                        <label for="equipment-description">Описание *</label>
+                        <textarea id="equipment-description" placeholder="Опишите состояние и особенности техники" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="payment-method">Способ оплаты *</label>
+                        <select id="payment-method" required>
                             <option value="cash">Наличные</option>
                             <option value="transfer">Безналичный расчет</option>
                             <option value="both">Оба способа</option>
@@ -273,7 +279,7 @@
                     </div>
 
                     <div class="form-actions">
-                        <button class="btn-primary" id="save-equipment">Добавить технику</button>
+                        <button class="btn-primary" id="save-equipment">Отправить на модерацию</button>
                     </div>
                 </div>
             </section>
@@ -293,100 +299,48 @@
                     </div>
                 </div>
             </section>
-        </main>
 
-        <!-- Auth Modal -->
-        <div id="auth-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Вход в систему</h3>
-                    <button class="btn-close" id="close-auth-modal">
-                        <i data-lucide="x"></i>
+            <!-- Moderation Status Page -->
+            <section id="moderation-page" class="page">
+                <div class="page-header">
+                    <button class="btn-back">
+                        <i data-lucide="arrow-left"></i>
                     </button>
-                </div>
-                
-                <div class="auth-tabs">
-                    <button class="auth-tab active" data-tab="phone">По телефону</button>
-                    <button class="auth-tab" data-tab="test">Тестовый вход</button>
+                    <h2>Статус модерации</h2>
                 </div>
 
-                <div class="auth-form" id="phone-auth">
-                    <div class="form-group">
-                        <label for="user-phone">Номер телефона</label>
-                        <div class="phone-input-container">
-                            <span class="phone-prefix">+998</span>
-                            <input type="tel" id="user-phone" placeholder="90 123 45 67" maxlength="9">
-                        </div>
-                        <p class="input-hint">Введите номер без +998 (только 9 цифр)</p>
-                    </div>
-                    
-                    <div class="form-group hidden" id="code-group">
-                        <label for="verification-code">Код подтверждения</label>
-                        <input type="text" id="verification-code" placeholder="Введите 6-значный код" maxlength="6">
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button class="btn-primary" id="send-code-btn">Получить код</button>
-                        <button class="btn-primary hidden" id="verify-code-btn">Подтвердить</button>
-                    </div>
-                    
-                    <div class="auth-footer">
-                        <p>Нажимая «Получить код», вы соглашаетесь с условиями использования</p>
-                    </div>
-                </div>
-
-                <div class="auth-form hidden" id="test-auth">
-                    <div class="test-users">
-                        <h4>Тестовые пользователи (для демонстрации):</h4>
-                        <div class="test-user-list">
-                            <div class="test-user-item" data-phone="901234567">
-                                <div class="test-user-info">
-                                    <strong>Иван Петров</strong>
-                                    <span>+998 90 123 45 67</span>
-                                </div>
-                                <button class="btn-test-login">Войти</button>
-                            </div>
-                            <div class="test-user-item" data-phone="901234568">
-                                <div class="test-user-info">
-                                    <strong>Алексей Смирнов</strong>
-                                    <span>+998 90 123 45 68</span>
-                                </div>
-                                <button class="btn-test-login">Войти</button>
-                            </div>
+                <div class="moderation-status">
+                    <div class="status-item pending">
+                        <i data-lucide="clock"></i>
+                        <div class="status-info">
+                            <h3>На модерации</h3>
+                            <p>Ожидает проверки администратором</p>
+                            <span class="count" id="pending-count">0</span>
                         </div>
                     </div>
-                    <div class="auth-footer">
-                        <p>Тестовый вход работает без отправки SMS</p>
+                    <div class="status-item approved">
+                        <i data-lucide="check-circle"></i>
+                        <div class="status-info">
+                            <h3>Одобрено</h3>
+                            <p>Прошло модерацию</p>
+                            <span class="count" id="approved-count">0</span>
+                        </div>
+                    </div>
+                    <div class="status-item rejected">
+                        <i data-lucide="x-circle"></i>
+                        <div class="status-info">
+                            <h3>Отклонено</h3>
+                            <p>Требует исправлений</p>
+                            <span class="count" id="rejected-count">0</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Verification Modal -->
-        <div id="verification-modal" class="modal">
-            <div class="modal-content">
-                <div class="verification-header">
-                    <i data-lucide="shield-check" class="verification-icon"></i>
-                    <h3>Подтверждение номера</h3>
+                <div class="moderation-list" id="moderation-equipment">
+                    <!-- Equipment for moderation will be loaded here -->
                 </div>
-                <div class="verification-content">
-                    <p>Мы отправили SMS с кодом подтверждения на номер:</p>
-                    <p class="verification-phone" id="verification-phone-number"></p>
-                    <div class="form-group">
-                        <label for="verification-code-input">Код подтверждения</label>
-                        <input type="text" id="verification-code-input" placeholder="000000" maxlength="6">
-                        <p class="input-hint">Для демо-версии используйте код: <strong>123456</strong></p>
-                    </div>
-                    <div class="verification-timer">
-                        <p>Отправить код повторно через: <span id="countdown">60</span> сек.</p>
-                    </div>
-                </div>
-                <div class="verification-actions">
-                    <button class="btn-secondary" id="resend-code-btn" disabled>Отправить повторно</button>
-                    <button class="btn-primary" id="confirm-code-btn">Подтвердить</button>
-                </div>
-            </div>
-        </div>
+            </section>
+        </main>
 
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
@@ -407,12 +361,6 @@
                     <i data-lucide="sprout"></i>
                 </div>
                 <span>Насосы</span>
-            </div>
-            <div class="nav-item" data-page="category-page" data-category="dump-trucks">
-                <div class="nav-icon">
-                    <i data-lucide="truck"></i>
-                </div>
-                <span>Самосвалы</span>
             </div>
             <div class="nav-item" data-page="profile-page">
                 <div class="nav-icon">

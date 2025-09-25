@@ -14,7 +14,9 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
-const auth = firebase.auth();
+
+// Telegram Web App instance
+const tg = window.Telegram.WebApp;
 
 // Current state
 let currentCategory = '';
@@ -22,9 +24,6 @@ let currentUser = null;
 let userEquipment = [];
 let allEquipment = [];
 let pageHistory = [];
-let confirmationResult = null;
-let countdownTimer = null;
-let countdownSeconds = 60;
 
 // DOM elements
 const pages = document.querySelectorAll('.page');
@@ -37,32 +36,17 @@ const equipmentDetails = document.getElementById('equipment-details');
 const categoryTitle = document.getElementById('category-title');
 const equipmentTitle = document.getElementById('equipment-title');
 const backButtons = document.querySelectorAll('.btn-back');
-const authModal = document.getElementById('auth-modal');
-const verificationModal = document.getElementById('verification-modal');
 const loadingScreen = document.getElementById('loading-screen');
 const mainContent = document.getElementById('main-content');
 
-// Auth elements
-const authTabs = document.querySelectorAll('.auth-tab');
-const phoneAuth = document.getElementById('phone-auth');
-const testAuth = document.getElementById('test-auth');
-const sendCodeBtn = document.getElementById('send-code-btn');
-const userPhoneInput = document.getElementById('user-phone');
-const verificationCodeInput = document.getElementById('verification-code-input');
-const confirmCodeBtn = document.getElementById('confirm-code-btn');
-const resendCodeBtn = document.getElementById('resend-code-btn');
-const countdownElement = document.getElementById('countdown');
-const verificationPhoneNumber = document.getElementById('verification-phone-number');
-const closeAuthModal = document.getElementById('close-auth-modal');
-const logoutBtn = document.getElementById('logout-btn');
-const testLoginButtons = document.querySelectorAll('.btn-test-login');
-
 // Profile elements
+const userName = document.getElementById('user-name');
+const userPhoneElement = document.getElementById('user-phone');
+const userRatingValue = document.getElementById('user-rating-value');
+const userAvatarImg = document.getElementById('user-avatar-img');
 const addEquipmentBtn = document.getElementById('add-equipment-btn');
 const toggleAvailabilityBtn = document.getElementById('toggle-availability-btn');
 const saveEquipmentBtn = document.getElementById('save-equipment');
-const userName = document.getElementById('user-name');
-const userPhoneElement = document.getElementById('user-phone');
 const equipmentTypeSelect = document.getElementById('equipment-type');
 
 // Form field groups
@@ -72,132 +56,153 @@ const performanceGroup = document.getElementById('performance-group');
 const weightGroup = document.getElementById('weight-group');
 const bucketGroup = document.getElementById('bucket-group');
 
+// Moderation elements
+const pendingCount = document.getElementById('pending-count');
+const approvedCount = document.getElementById('approved-count');
+const rejectedCount = document.getElementById('rejected-count');
+const moderationEquipmentList = document.getElementById('moderation-equipment');
+
 // Initialize the application
 async function init() {
     try {
+        console.log('Initializing Telegram Web App...');
+        
+        // Initialize Telegram Web App
+        tg.expand();
+        tg.enableClosingConfirmation();
+        
+        // Initialize icons
         lucide.createIcons();
+        
+        // Setup event listeners
         setupEventListeners();
         
-        // Check authentication state
-        const authState = await checkAuthState();
-        if (!authState) {
-            // No user logged in, show auth modal after delay
-            setTimeout(() => {
-                if (!currentUser) {
-                    showAuthModal();
-                }
-            }, 1000);
-        }
+        // Load user data from Telegram
+        await loadUserFromTelegram();
         
+        // Load equipment data
         await loadEquipmentData();
         
-        // Hide loading screen
+        // Hide loading screen and show main content
         setTimeout(() => {
             loadingScreen.classList.add('hidden');
             mainContent.classList.remove('hidden');
+            console.log('App initialized successfully');
         }, 1000);
         
     } catch (error) {
         console.error('Error initializing app:', error);
         loadingScreen.classList.add('hidden');
         mainContent.classList.remove('hidden');
+        showNotification('Ошибка загрузки приложения', 'error');
     }
 }
 
-// Check authentication state
-async function checkAuthState() {
-    return new Promise((resolve) => {
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                await handleUserSignedIn(user);
-                resolve(true);
-            } else {
-                handleUserSignedOut();
-                resolve(false);
-            }
-        });
-    });
+// Load user data from Telegram
+async function loadUserFromTelegram() {
+    try {
+        const initData = tg.initDataUnsafe;
+        console.log('Telegram init data:', initData);
+        
+        if (initData.user) {
+            const tgUser = initData.user;
+            currentUser = {
+                uid: tgUser.id.toString(),
+                firstName: tgUser.first_name,
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || '',
+                photoUrl: tgUser.photo_url || '',
+                languageCode: tgUser.language_code || 'ru',
+                isPremium: tgUser.is_premium || false
+            };
+            
+            // Save or load user from database
+            await syncUserWithDatabase();
+            
+            // Update UI
+            updateUIForAuthenticatedUser();
+            
+            console.log('User loaded from Telegram:', currentUser);
+        } else {
+            throw new Error('User data not available from Telegram');
+        }
+    } catch (error) {
+        console.error('Error loading user from Telegram:', error);
+        showNotification('Ошибка загрузки профиля', 'error');
+    }
 }
 
-// Handle user signed in
-async function handleUserSignedIn(user) {
+// Sync user data with database
+async function syncUserWithDatabase() {
     try {
-        currentUser = {
-            uid: user.uid,
-            phoneNumber: user.phoneNumber,
-            email: user.email,
-            displayName: user.displayName || 'Пользователь'
-        };
-        
-        // Get additional user data from database
-        const userRef = database.ref('users/' + user.uid);
+        const userRef = database.ref('users/' + currentUser.uid);
         const snapshot = await userRef.once('value');
         
         if (snapshot.exists()) {
             const userData = snapshot.val();
             currentUser = { ...currentUser, ...userData };
+            console.log('User data loaded from database');
         } else {
             // Create new user record
-            const userName = user.phoneNumber ? `Пользователь ${user.phoneNumber}` : 'Пользователь';
             await userRef.set({
-                name: userName,
-                phone: user.phoneNumber,
+                firstName: currentUser.firstName,
+                lastName: currentUser.lastName,
+                username: currentUser.username,
+                photoUrl: currentUser.photoUrl,
+                languageCode: currentUser.languageCode,
+                isPremium: currentUser.isPremium,
                 createdAt: firebase.database.ServerValue.TIMESTAMP,
                 rating: 5.0,
                 reviews: 0,
-                lastLogin: firebase.database.ServerValue.TIMESTAMP
+                lastLogin: firebase.database.ServerValue.TIMESTAMP,
+                phone: '' // Phone will be added when adding equipment
             });
-            
-            currentUser.name = userName;
+            console.log('New user created in database');
         }
-        
-        updateUIForAuthenticatedUser();
-        userEquipment = allEquipment.filter(item => item.ownerId === user.uid);
-        
     } catch (error) {
-        console.error('Error handling user sign in:', error);
+        console.error('Error syncing user with database:', error);
     }
-}
-
-// Handle user signed out
-function handleUserSignedOut() {
-    currentUser = null;
-    userEquipment = [];
-    updateUIForUnauthenticatedUser();
 }
 
 // Update UI for authenticated user
 function updateUIForAuthenticatedUser() {
-    userName.textContent = currentUser.name || currentUser.displayName || 'Пользователь';
-    userPhoneElement.textContent = currentUser.phone || currentUser.phoneNumber || 'Ташкент, Узбекистан';
-    userEquipment = allEquipment.filter(item => item.ownerId === currentUser.uid);
+    // Set user name
+    const displayName = currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : '');
+    userName.textContent = displayName;
     
-    // Update profile page if active
+    // Set user phone if available
+    userPhoneElement.textContent = currentUser.phone || 'Номер не указан';
+    
+    // Set rating
+    userRatingValue.textContent = `${currentUser.rating || 5.0} (${currentUser.reviews || 0} отзывов)`;
+    
+    // Set avatar
+    if (currentUser.photoUrl) {
+        userAvatarImg.src = currentUser.photoUrl;
+        userAvatarImg.style.display = 'block';
+        document.querySelector('.avatar-fallback').style.display = 'none';
+    }
+    
+    // Load user equipment
+    userEquipment = allEquipment.filter(item => 
+        item.ownerId === currentUser.uid && item.status === 'approved'
+    );
+    
     if (document.getElementById('profile-page').classList.contains('active')) {
         renderUserEquipment();
     }
 }
 
-// Update UI for unauthenticated user
-function updateUIForUnauthenticatedUser() {
-    userName.textContent = 'Гость';
-    userPhoneElement.textContent = 'Ташкент, Узбекистан';
-    userEquipmentList.innerHTML = '<div class="no-data">Войдите в систему чтобы увидеть вашу технику</div>';
-}
-
 // Setup event listeners
 function setupEventListeners() {
+    console.log('Setting up event listeners...');
+    
     // Navigation
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const pageId = item.getAttribute('data-page');
             const category = item.getAttribute('data-category');
-            
-            if (pageId === 'profile-page' && !currentUser) {
-                showAuthModal();
-                return;
-            }
             
             if (category) {
                 currentCategory = category;
@@ -230,45 +235,12 @@ function setupEventListeners() {
         });
     });
 
-    // Auth tabs
-    authTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabName = tab.getAttribute('data-tab');
-            switchAuthTab(tabName);
-        });
-    });
-
-    // Phone authentication
-    sendCodeBtn.addEventListener('click', sendVerificationCode);
-    confirmCodeBtn.addEventListener('click', confirmVerificationCode);
-    resendCodeBtn.addEventListener('click', resendVerificationCode);
-    
-    // Test login buttons
-    testLoginButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            const phone = e.target.closest('.test-user-item').getAttribute('data-phone');
-            handleTestLogin(phone);
-        });
-    });
-    
-    // Modal controls
-    closeAuthModal.addEventListener('click', hideAuthModal);
-    logoutBtn.addEventListener('click', handleLogout);
-
     // Profile actions
     addEquipmentBtn.addEventListener('click', () => {
-        if (!currentUser) {
-            showAuthModal();
-            return;
-        }
         navigateTo('add-equipment-page');
     });
     
     toggleAvailabilityBtn.addEventListener('click', () => {
-        if (!currentUser) {
-            showAuthModal();
-            return;
-        }
         loadAvailabilityEquipment();
         navigateTo('availability-page');
     });
@@ -276,39 +248,16 @@ function setupEventListeners() {
     // Equipment form
     saveEquipmentBtn.addEventListener('click', saveEquipment);
     equipmentTypeSelect.addEventListener('change', toggleFormFields);
-
-    // Close modals when clicking outside
-    authModal.addEventListener('click', (e) => {
-        if (e.target === authModal) {
-            hideAuthModal();
-        }
-    });
     
-    verificationModal.addEventListener('click', (e) => {
-        if (e.target === verificationModal) {
-            hideVerificationModal();
-        }
-    });
-
     // Phone input formatting
-    userPhoneInput.addEventListener('input', formatPhoneNumber);
-}
-
-// Auth functions
-function switchAuthTab(tabName) {
-    authTabs.forEach(tab => {
-        tab.classList.toggle('active', tab.getAttribute('data-tab') === tabName);
-    });
-    
-    phoneAuth.classList.toggle('hidden', tabName !== 'phone');
-    testAuth.classList.toggle('hidden', tabName !== 'test');
+    document.getElementById('user-phone-input').addEventListener('input', formatPhoneNumber);
 }
 
 function formatPhoneNumber() {
-    let value = userPhoneInput.value.replace(/\D/g, '');
+    const input = document.getElementById('user-phone-input');
+    let value = input.value.replace(/\D/g, '');
     if (value.length > 9) value = value.substring(0, 9);
     
-    // Format as XX XXX XX XX
     if (value.length > 2) {
         value = value.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, p1, p2, p3, p4) => {
             let result = p1;
@@ -319,285 +268,18 @@ function formatPhoneNumber() {
         });
     }
     
-    userPhoneInput.value = value;
-}
-
-async function sendVerificationCode() {
-    const phoneNumber = userPhoneInput.value.replace(/\D/g, '');
-    
-    if (!phoneNumber || phoneNumber.length !== 9) {
-        showNotification('Пожалуйста, введите корректный номер телефона (9 цифр)', 'error');
-        return;
-    }
-    
-    const fullPhoneNumber = '+998' + phoneNumber;
-    
-    try {
-        sendCodeBtn.disabled = true;
-        sendCodeBtn.textContent = 'Отправка...';
-        
-        // For demo purposes, we'll simulate phone auth
-        // In production, you would use Firebase Phone Auth
-        
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Show verification modal for demo
-        confirmationResult = {
-            confirm: async (code) => {
-                // Simulate verification
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                if (code === '123456') {
-                    // Create demo user object
-                    const demoUser = {
-                        uid: 'demo-user-' + phoneNumber + '-' + Date.now(),
-                        phoneNumber: fullPhoneNumber,
-                        displayName: 'Пользователь ' + fullPhoneNumber
-                    };
-                    return { user: demoUser };
-                } else {
-                    throw new Error('Неверный код подтверждения');
-                }
-            }
-        };
-        
-        verificationPhoneNumber.textContent = formatPhoneForDisplay(fullPhoneNumber);
-        showVerificationModal();
-        startCountdown();
-        
-        showNotification('Код подтверждения отправлен на ваш телефон', 'success');
-        
-    } catch (error) {
-        console.error('Error sending verification code:', error);
-        handleAuthError(error);
-    } finally {
-        sendCodeBtn.disabled = false;
-        sendCodeBtn.textContent = 'Получить код';
-    }
-}
-
-function formatPhoneForDisplay(phone) {
-    return phone.replace(/(\+\d{3})(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
-}
-
-async function confirmVerificationCode() {
-    const code = verificationCodeInput.value.trim();
-    
-    if (!code || code.length !== 6) {
-        showNotification('Пожалуйста, введите 6-значный код подтверждения', 'error');
-        return;
-    }
-    
-    try {
-        confirmCodeBtn.disabled = true;
-        confirmCodeBtn.textContent = 'Проверка...';
-        
-        const result = await confirmationResult.confirm(code);
-        
-        // Handle the demo user
-        await handleDemoUserLogin(result.user);
-        
-        hideVerificationModal();
-        hideAuthModal();
-        
-    } catch (error) {
-        console.error('Error verifying code:', error);
-        handleAuthError(error);
-    } finally {
-        confirmCodeBtn.disabled = false;
-        confirmCodeBtn.textContent = 'Подтвердить';
-    }
-}
-
-async function handleDemoUserLogin(userData) {
-    // Create a proper user object for demo
-    const demoUser = {
-        uid: userData.uid,
-        phoneNumber: userData.phoneNumber,
-        name: userData.displayName || `Пользователь ${userData.phoneNumber}`
-    };
-    
-    // Save to localStorage for persistence
-    localStorage.setItem('demoUser', JSON.stringify(demoUser));
-    
-    await handleUserSignedIn(demoUser);
-    showNotification(`Добро пожаловать, ${demoUser.name}!`, 'success');
-}
-
-function handleTestLogin(phone) {
-    const fullPhoneNumber = '+998' + phone;
-    const demoUser = {
-        uid: 'demo-user-' + phone + '-' + Date.now(),
-        phoneNumber: fullPhoneNumber,
-        name: phone === '901234567' ? 'Иван Петров' : 'Алексей Смирнов'
-    };
-    
-    localStorage.setItem('demoUser', JSON.stringify(demoUser));
-    handleUserSignedIn(demoUser);
-    hideAuthModal();
-    showNotification(`Добро пожаловать, ${demoUser.name}!`, 'success');
-}
-
-function handleAuthError(error) {
-    let message = 'Произошла ошибка при аутентификации';
-    
-    switch (error.message) {
-        case 'Неверный код подтверждения':
-            message = 'Неверный код подтверждения. Попробуйте снова.';
-            break;
-        default:
-            message = error.message || message;
-    }
-    
-    showNotification(message, 'error');
-}
-
-function resendVerificationCode() {
-    if (countdownTimer) {
-        clearInterval(countdownTimer);
-    }
-    
-    sendVerificationCode();
-}
-
-function startCountdown() {
-    countdownSeconds = 60;
-    resendCodeBtn.disabled = true;
-    countdownElement.textContent = countdownSeconds;
-    
-    countdownTimer = setInterval(() => {
-        countdownSeconds--;
-        countdownElement.textContent = countdownSeconds;
-        
-        if (countdownSeconds <= 0) {
-            clearInterval(countdownTimer);
-            resendCodeBtn.disabled = false;
-            countdownElement.textContent = '0';
-        }
-    }, 1000);
-}
-
-// Modal functions
-function showAuthModal() {
-    authModal.classList.add('active');
-    userPhoneInput.value = '';
-    verificationCodeInput.value = '';
-}
-
-function hideAuthModal() {
-    authModal.classList.remove('active');
-}
-
-function showVerificationModal() {
-    verificationModal.classList.add('active');
-}
-
-function hideVerificationModal() {
-    verificationModal.classList.remove('active');
-    verificationCodeInput.value = '';
-    
-    if (countdownTimer) {
-        clearInterval(countdownTimer);
-        countdownTimer = null;
-    }
-}
-
-// Logout function
-async function handleLogout() {
-    try {
-        // Clear user data
-        currentUser = null;
-        userEquipment = [];
-        localStorage.removeItem('demoUser');
-        
-        updateUIForUnauthenticatedUser();
-        navigateTo('home-page');
-        
-        showNotification('Вы успешно вышли из системы', 'info');
-    } catch (error) {
-        console.error('Error signing out:', error);
-        showNotification('Ошибка при выходе из системы', 'error');
-    }
-}
-
-// Notification function
-function showNotification(message, type = 'info') {
-    // Remove existing notifications
-    document.querySelectorAll('.notification').forEach(notification => {
-        notification.remove();
-    });
-    
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i>
-            <span>${message}</span>
-        </div>
-    `;
-    
-    // Add styles if not exists
-    if (!document.querySelector('#notification-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'notification-styles';
-        styles.textContent = `
-            .notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                z-index: 10000;
-                transform: translateX(400px);
-                transition: transform 0.3s ease;
-                border-left: 4px solid #7c3aed;
-                max-width: 300px;
-            }
-            .notification-success { border-left-color: #10b981; }
-            .notification-error { border-left-color: #ef4444; }
-            .notification-info { border-left-color: #3b82f6; }
-            .notification.show { transform: translateX(0); }
-            .notification-content {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            .notification-content i { width: 20px; height: 20px; }
-        `;
-        document.head.appendChild(styles);
-    }
-    
-    document.body.appendChild(notification);
-    
-    // Show notification
-    setTimeout(() => notification.classList.add('show'), 100);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-    
-    // Create icons
-    setTimeout(() => lucide.createIcons(), 100);
+    input.value = value;
 }
 
 // Navigation functions
 function navigateTo(pageId) {
-    // Add current page to history only if it's different
+    console.log('Navigating to:', pageId);
+    
     const currentActivePage = document.querySelector('.page.active');
     if (currentActivePage && currentActivePage.id !== pageId) {
         pageHistory.push(currentActivePage.id);
     }
 
-    // Show new page
     pages.forEach(page => {
         page.classList.remove('active');
         if (page.id === pageId) {
@@ -605,11 +287,20 @@ function navigateTo(pageId) {
         }
     });
 
-    // Update icons after navigation
+    // Special handling for different pages
+    if (pageId === 'profile-page') {
+        renderUserEquipment();
+        loadModerationStatus();
+    } else if (pageId === 'category-page') {
+        loadCategoryEquipment(currentCategory);
+    }
+
     setTimeout(() => lucide.createIcons(), 100);
 }
 
 function goBack() {
+    console.log('Going back, history:', pageHistory);
+    
     if (pageHistory.length > 0) {
         const previousPageId = pageHistory.pop();
         navigateTo(previousPageId);
@@ -639,6 +330,7 @@ function updateNavigationForCategory(category) {
 // Equipment functions
 async function loadEquipmentData() {
     try {
+        console.log('Loading equipment data...');
         const equipmentRef = database.ref('equipment');
         
         equipmentRef.on('value', (snapshot) => {
@@ -649,128 +341,31 @@ async function loadEquipmentData() {
                     ...value
                 }));
                 console.log('Equipment loaded:', allEquipment.length, 'items');
+                
+                // Update user equipment
+                if (currentUser) {
+                    userEquipment = allEquipment.filter(item => 
+                        item.ownerId === currentUser.uid && item.status === 'approved'
+                    );
+                }
             } else {
-                // Initialize with sample data if no data exists
-                allEquipment = getSampleEquipmentData();
-                saveEquipmentData();
-            }
-            
-            // Update user equipment if user is logged in
-            if (currentUser) {
-                userEquipment = allEquipment.filter(item => item.ownerId === currentUser.uid);
+                allEquipment = [];
+                console.log('No equipment data found');
             }
             
             setTimeout(() => lucide.createIcons(), 100);
         });
     } catch (error) {
         console.error('Error loading equipment data:', error);
-        allEquipment = getSampleEquipmentData();
+        allEquipment = [];
     }
 }
 
-function getSampleEquipmentData() {
-    const sampleUsers = [
-        {
-            uid: 'demo-user-901234567',
-            name: 'Иван Петров',
-            phone: '+998901234567',
-            rating: 4.8,
-            reviews: 24
-        },
-        {
-            uid: 'demo-user-901234568', 
-            name: 'Алексей Смирнов',
-            phone: '+998901234568',
-            rating: 4.9,
-            reviews: 32
-        }
-    ];
-    
-    return [
-        {
-            id: '1',
-            category: "mixers",
-            name: "Камаз 65115",
-            capacity: 10,
-            location: "Ташкент, Юнусабадский район",
-            price: 80,
-            available: true,
-            ownerId: sampleUsers[0].uid,
-            owner: sampleUsers[0],
-            paymentMethods: ["cash", "transfer"],
-            description: "Отличное состояние, регулярное обслуживание. Готов к работе на любых объектах."
-        },
-        {
-            id: '2',
-            category: "mixers",
-            name: "Howo 12 м³",
-            capacity: 12,
-            location: "Ташкент, Мирзо-Улугбекский район",
-            price: 95,
-            available: true,
-            ownerId: sampleUsers[1].uid,
-            owner: sampleUsers[1],
-            paymentMethods: ["cash"],
-            description: "Немецкое качество, экономичный двигатель. Вместительный бак."
-        },
-        {
-            id: '3',
-            category: "pumps",
-            name: "Putzmeister 36Z",
-            length: 36,
-            performance: 90,
-            location: "Ташкент, Чиланзарский район",
-            price: 120,
-            available: false,
-            ownerId: sampleUsers[0].uid,
-            owner: sampleUsers[0],
-            paymentMethods: ["transfer"],
-            description: "Профессиональное оборудование для крупных строительных объектов."
-        },
-        {
-            id: '4',
-            category: "dump-trucks",
-            name: "Shacman X3000",
-            weight: 20,
-            location: "Ташкент, Сергелийский район",
-            price: 70,
-            available: true,
-            ownerId: sampleUsers[1].uid,
-            owner: sampleUsers[1],
-            paymentMethods: ["cash", "transfer"],
-            description: "Надежный самосвал для перевозки сыпучих материалов."
-        },
-        {
-            id: '5',
-            category: "cranes",
-            name: "XCMG QY25K",
-            weight: 25,
-            location: "Ташкент, Яшнабадский район",
-            price: 150,
-            available: true,
-            ownerId: sampleUsers[0].uid,
-            owner: sampleUsers[0],
-            paymentMethods: ["transfer"],
-            description: "Автомобильный кран с отличной маневренностью и грузоподъемностью."
-        }
-    ];
-}
-
-function saveEquipmentData() {
-    const equipmentRef = database.ref('equipment');
-    const equipmentData = {};
-    
-    allEquipment.forEach(item => {
-        equipmentData[item.id] = item;
-    });
-    
-    equipmentRef.set(equipmentData)
-        .then(() => console.log('Equipment data saved successfully'))
-        .catch((error) => console.error('Error saving equipment data:', error));
-}
-
 function loadCategoryEquipment(category) {
-    const filteredEquipment = allEquipment.filter(item => item.category === category && item.available);
+    console.log('Loading category equipment:', category);
+    const filteredEquipment = allEquipment.filter(item => 
+        item.category === category && item.status === 'approved' && item.available
+    );
     categoryEquipmentList.innerHTML = '';
 
     if (filteredEquipment.length === 0) {
@@ -792,11 +387,10 @@ function loadCategoryEquipment(category) {
 
 function createEquipmentCard(equipment) {
     const div = document.createElement('div');
-    div.className = `equipment-item ${equipment.available ? 'available' : 'busy'}`;
+    div.className = `equipment-item ${equipment.available ? 'available' : 'busy'} ${equipment.status || 'approved'}`;
     
     const icon = getEquipmentIcon(equipment.category);
-    const statusText = equipment.available ? 'Доступен' : 'Занят';
-    const statusClass = equipment.available ? 'available' : 'busy';
+    const statusText = getStatusText(equipment);
     
     div.innerHTML = `
         <div class="equipment-image">
@@ -817,26 +411,33 @@ function createEquipmentCard(equipment) {
                 <div class="equipment-price">${equipment.price} тыс. сум/час</div>
                 <div class="equipment-rating">
                     <i data-lucide="star"></i>
-                    <span>${equipment.owner.rating}</span>
+                    <span>${equipment.owner?.rating || 5.0}</span>
                 </div>
-                <div class="equipment-status ${statusClass}">${statusText}</div>
+                <div class="equipment-status ${equipment.status || 'approved'} ${equipment.available ? 'available' : 'busy'}">${statusText}</div>
             </div>
         </div>
     `;
     
-    div.addEventListener('click', () => {
-        showEquipmentDetails(equipment);
-    });
+    if (equipment.status === 'approved') {
+        div.addEventListener('click', () => {
+            showEquipmentDetails(equipment);
+        });
+    }
     
     return div;
 }
 
+function getStatusText(equipment) {
+    if (equipment.status === 'pending') return 'На модерации';
+    if (equipment.status === 'rejected') return 'Отклонено';
+    return equipment.available ? 'Доступен' : 'Занят';
+}
+
 function showEquipmentDetails(equipment) {
+    console.log('Showing equipment details:', equipment.name);
     equipmentTitle.textContent = equipment.name;
     
-    const icon = getEquipmentIcon(equipment.category);
-    const statusText = equipment.available ? 'Доступен' : 'Занят';
-    const statusClass = equipment.available ? 'available' : 'busy';
+    const statusText = getStatusText(equipment);
     
     equipmentDetails.innerHTML = `
         <div class="detail-section">
@@ -845,10 +446,10 @@ function showEquipmentDetails(equipment) {
                     <i data-lucide="user"></i>
                 </div>
                 <div class="owner-details">
-                    <h4>${equipment.owner.name}</h4>
+                    <h4>${equipment.owner?.name || 'Владелец'}</h4>
                     <div class="equipment-rating">
                         <i data-lucide="star"></i>
-                        <span>${equipment.owner.rating} (${equipment.owner.reviews} отзывов)</span>
+                        <span>${equipment.owner?.rating || 5.0} (${equipment.owner?.reviews || 0} отзывов)</span>
                     </div>
                 </div>
             </div>
@@ -859,7 +460,7 @@ function showEquipmentDetails(equipment) {
             <div class="detail-grid">
                 <div class="detail-item">
                     <span class="detail-label">Статус</span>
-                    <span class="detail-value ${statusClass}">${statusText}</span>
+                    <span class="detail-value ${equipment.status || 'approved'}">${statusText}</span>
                 </div>
                 ${equipment.capacity ? `
                 <div class="detail-item">
@@ -893,6 +494,10 @@ function showEquipmentDetails(equipment) {
                     <span class="detail-label">Местоположение</span>
                     <span class="detail-value">${equipment.location}</span>
                 </div>
+                <div class="detail-item">
+                    <span class="detail-label">Телефон владельца</span>
+                    <span class="detail-value">${equipment.ownerPhone || 'Не указан'}</span>
+                </div>
             </div>
         </div>
         
@@ -916,11 +521,11 @@ function showEquipmentDetails(equipment) {
         </div>
         
         <div class="contact-buttons">
-            <button class="contact-btn phone" onclick="callOwner('${equipment.owner.phone}')">
+            <button class="contact-btn phone" onclick="callOwner('${equipment.ownerPhone}')">
                 <i data-lucide="phone"></i>
                 Позвонить
             </button>
-            <button class="contact-btn telegram" onclick="messageOwner('${equipment.owner.phone}', '${equipment.name}')">
+            <button class="contact-btn telegram" onclick="messageOwner('${equipment.ownerPhone}', '${equipment.name}')">
                 <i data-lucide="message-circle"></i>
                 Написать
             </button>
@@ -932,6 +537,7 @@ function showEquipmentDetails(equipment) {
 }
 
 function renderUserEquipment() {
+    console.log('Rendering user equipment');
     userEquipmentList.innerHTML = '';
     
     if (!userEquipment.length) {
@@ -951,6 +557,7 @@ function renderUserEquipment() {
 }
 
 function loadAvailabilityEquipment() {
+    console.log('Loading availability equipment');
     availabilityEquipmentList.innerHTML = '';
     
     if (!userEquipment.length) {
@@ -996,8 +603,67 @@ function loadAvailabilityEquipment() {
     setTimeout(() => lucide.createIcons(), 100);
 }
 
+function loadModerationStatus() {
+    if (!currentUser) return;
+    
+    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid);
+    const pending = userEquipmentAll.filter(item => item.status === 'pending').length;
+    const approved = userEquipmentAll.filter(item => item.status === 'approved').length;
+    const rejected = userEquipmentAll.filter(item => item.status === 'rejected').length;
+    
+    pendingCount.textContent = pending;
+    approvedCount.textContent = approved;
+    rejectedCount.textContent = rejected;
+    
+    // Load moderation list
+    moderationEquipmentList.innerHTML = '';
+    
+    if (userEquipmentAll.length === 0) {
+        moderationEquipmentList.innerHTML = `
+            <div class="no-data">
+                <i data-lucide="construction"></i>
+                <p>У вас пока нет добавленной техники</p>
+            </div>
+        `;
+        return;
+    }
+    
+    userEquipmentAll.forEach(equipment => {
+        const div = document.createElement('div');
+        div.className = `equipment-item ${equipment.status || 'pending'}`;
+        
+        const icon = getEquipmentIcon(equipment.category);
+        const statusText = getStatusText(equipment);
+        
+        div.innerHTML = `
+            <div class="equipment-image">
+                <i data-lucide="${icon}"></i>
+            </div>
+            <div class="equipment-info">
+                <h3>${equipment.name}</h3>
+                <div class="equipment-location">
+                    <i data-lucide="map-pin"></i>
+                    <span>${equipment.location}</span>
+                </div>
+                <div class="equipment-footer">
+                    <div class="equipment-price">${equipment.price} тыс. сум/час</div>
+                    <div class="equipment-status ${equipment.status || 'pending'}">${statusText}</div>
+                    ${equipment.status === 'rejected' ? `
+                    <div class="rejection-reason">
+                        <small>Причина: ${equipment.rejectionReason || 'Не указана'}</small>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        moderationEquipmentList.appendChild(div);
+    });
+}
+
 function toggleFormFields() {
     const type = equipmentTypeSelect.value;
+    console.log('Toggling form fields for type:', type);
     
     // Hide all groups first
     [capacityGroup, lengthGroup, performanceGroup, weightGroup, bucketGroup].forEach(group => {
@@ -1026,7 +692,7 @@ function toggleFormFields() {
 
 async function saveEquipment() {
     if (!currentUser) {
-        showAuthModal();
+        showNotification('Ошибка: пользователь не авторизован', 'error');
         return;
     }
     
@@ -1036,9 +702,15 @@ async function saveEquipment() {
     const location = document.getElementById('equipment-location').value.trim();
     const description = document.getElementById('equipment-description').value.trim();
     const paymentMethod = document.getElementById('payment-method').value;
+    const userPhone = document.getElementById('user-phone-input').value.replace(/\D/g, '');
     
-    if (!type || !name || !price || !location) {
+    if (!type || !name || !price || !location || !userPhone || !description) {
         showNotification('Пожалуйста, заполните все обязательные поля', 'error');
+        return;
+    }
+    
+    if (userPhone.length !== 9) {
+        showNotification('Пожалуйста, введите корректный номер телефона', 'error');
         return;
     }
     
@@ -1052,14 +724,19 @@ async function saveEquipment() {
             available: true,
             ownerId: currentUser.uid,
             owner: {
-                name: currentUser.name || currentUser.displayName,
-                phone: currentUser.phone || currentUser.phoneNumber,
+                name: currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : ''),
+                username: currentUser.username,
                 rating: currentUser.rating || 5.0,
                 reviews: currentUser.reviews || 0
             },
+            ownerPhone: '+998' + userPhone,
             paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
-            description: description || 'Описание не указано',
-            createdAt: firebase.database.ServerValue.TIMESTAMP
+            description: description,
+            status: 'pending', // На модерации
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            moderationDate: null,
+            moderatorId: null,
+            rejectionReason: null
         };
         
         // Add specific fields based on equipment type
@@ -1081,11 +758,22 @@ async function saveEquipment() {
                 break;
         }
         
-        allEquipment.push(newEquipment);
-        userEquipment.push(newEquipment);
-        await saveEquipmentData();
+        // Save to database
+        const equipmentRef = database.ref('equipment/' + newEquipment.id);
+        await equipmentRef.set(newEquipment);
         
-        showNotification('Техника успешно добавлена!', 'success');
+        // Update user phone if not set
+        if (!currentUser.phone) {
+            const userRef = database.ref('users/' + currentUser.uid + '/phone');
+            await userRef.set('+998' + userPhone);
+            currentUser.phone = '+998' + userPhone;
+            userPhoneElement.textContent = currentUser.phone;
+        }
+        
+        // Send notification to moderator bot
+        await sendModerationNotification(newEquipment);
+        
+        showNotification('Техника отправлена на модерацию! Мы уведомим вас о результате.', 'success');
         navigateTo('profile-page');
         resetEquipmentForm();
         
@@ -1095,11 +783,38 @@ async function saveEquipment() {
     }
 }
 
+async function sendModerationNotification(equipment) {
+    // This would be replaced with actual bot API call
+    console.log('Sending moderation notification for equipment:', equipment);
+    
+    // In a real implementation, you would send a request to your bot backend
+    // Example: fetch('/api/notify-moderator', { method: 'POST', body: JSON.stringify(equipment) });
+    
+    // For now, we'll just log it
+    const message = `
+НОВАЯ ЗАЯВКА НА МОДЕРАЦИЮ
+
+Тип: ${getCategoryTitle(equipment.category)}
+Название: ${equipment.name}
+Владелец: ${equipment.owner.name}
+Телефон: ${equipment.ownerPhone}
+Цена: ${equipment.price} тыс. сум/час
+Местоположение: ${equipment.location}
+
+Описание: ${equipment.description}
+
+ID: ${equipment.id}
+    `.trim();
+    
+    console.log('Moderation message:', message);
+}
+
 function resetEquipmentForm() {
     document.getElementById('equipment-name').value = '';
     document.getElementById('equipment-price').value = '';
     document.getElementById('equipment-location').value = '';
     document.getElementById('equipment-description').value = '';
+    document.getElementById('user-phone-input').value = '';
     equipmentTypeSelect.value = '';
     toggleFormFields();
 }
@@ -1107,12 +822,16 @@ function resetEquipmentForm() {
 async function toggleEquipmentAvailability(equipmentId) {
     try {
         const equipmentIndex = allEquipment.findIndex(item => item.id === equipmentId);
-        if (equipmentIndex !== -1) {
+        if (equipmentIndex !== -1 && allEquipment[equipmentIndex].status === 'approved') {
             allEquipment[equipmentIndex].available = !allEquipment[equipmentIndex].available;
-            await saveEquipmentData();
+            
+            const equipmentRef = database.ref('equipment/' + equipmentId + '/available');
+            await equipmentRef.set(allEquipment[equipmentIndex].available);
             
             // Update user equipment
-            userEquipment = allEquipment.filter(item => item.ownerId === currentUser.uid);
+            userEquipment = allEquipment.filter(item => 
+                item.ownerId === currentUser.uid && item.status === 'approved'
+            );
             
             // Reload availability page
             loadAvailabilityEquipment();
@@ -1151,26 +870,94 @@ function getEquipmentIcon(category) {
 }
 
 function callOwner(phone) {
+    if (!phone || phone === 'Не указан') {
+        showNotification('Номер телефона не указан', 'error');
+        return;
+    }
+    console.log('Calling owner:', phone);
     window.open(`tel:${phone}`);
 }
 
 function messageOwner(phone, equipmentName) {
+    if (!phone || phone === 'Не указан') {
+        showNotification('Номер телефона не указан', 'error');
+        return;
+    }
+    console.log('Messaging owner:', phone, equipmentName);
     const message = `Здравствуйте! Интересует ваша техника: ${equipmentName}`;
     window.open(`https://t.me/${phone.replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank');
+}
+
+// Notification function
+function showNotification(message, type = 'info') {
+    console.log('Showing notification:', message, type);
+    
+    // Remove existing notifications
+    document.querySelectorAll('.notification').forEach(notification => {
+        notification.remove();
+    });
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    if (!document.querySelector('#notification-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'notification-styles';
+        styles.textContent = `
+            .notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                z-index: 10000;
+                transform: translateX(400px);
+                transition: transform 0.3s ease;
+                border-left: 4px solid #7c3aed;
+                max-width: 300px;
+            }
+            .notification-success { border-left-color: #10b981; }
+            .notification-error { border-left-color: #ef4444; }
+            .notification-info { border-left-color: #3b82f6; }
+            .notification.show { transform: translateX(0); }
+            .notification-content {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .notification-content i { width: 20px; height: 20px; }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.classList.add('show'), 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+    
+    setTimeout(() => lucide.createIcons(), 100);
 }
 
 // Global functions for onclick handlers
 window.callOwner = callOwner;
 window.messageOwner = messageOwner;
 window.toggleEquipmentAvailability = toggleEquipmentAvailability;
-
-// Check for demo user on page load
-window.addEventListener('load', () => {
-    const demoUser = localStorage.getItem('demoUser');
-    if (demoUser && !currentUser) {
-        handleUserSignedIn(JSON.parse(demoUser));
-    }
-});
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
