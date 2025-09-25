@@ -62,6 +62,9 @@ const approvedCount = document.getElementById('approved-count');
 const rejectedCount = document.getElementById('rejected-count');
 const moderationEquipmentList = document.getElementById('moderation-equipment');
 
+// Bot API configuration
+const BOT_API_URL = 'https://alimove1.pythonanywhere.com/api/submit-equipment';
+
 // Initialize the application
 async function init() {
     try {
@@ -82,6 +85,9 @@ async function init() {
         
         // Load equipment data
         await loadEquipmentData();
+        
+        // Setup notification listener
+        setupNotificationListener();
         
         // Hide loading screen and show main content
         setTimeout(() => {
@@ -155,7 +161,7 @@ async function syncUserWithDatabase() {
                 rating: 5.0,
                 reviews: 0,
                 lastLogin: firebase.database.ServerValue.TIMESTAMP,
-                phone: '' // Phone will be added when adding equipment
+                phone: ''
             });
             console.log('New user created in database');
         }
@@ -166,30 +172,58 @@ async function syncUserWithDatabase() {
 
 // Update UI for authenticated user
 function updateUIForAuthenticatedUser() {
-    // Set user name
     const displayName = currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : '');
     userName.textContent = displayName;
-    
-    // Set user phone if available
     userPhoneElement.textContent = currentUser.phone || 'Номер не указан';
-    
-    // Set rating
     userRatingValue.textContent = `${currentUser.rating || 5.0} (${currentUser.reviews || 0} отзывов)`;
     
-    // Set avatar
     if (currentUser.photoUrl) {
         userAvatarImg.src = currentUser.photoUrl;
         userAvatarImg.style.display = 'block';
         document.querySelector('.avatar-fallback').style.display = 'none';
     }
     
-    // Load user equipment
     userEquipment = allEquipment.filter(item => 
         item.ownerId === currentUser.uid && item.status === 'approved'
     );
     
     if (document.getElementById('profile-page').classList.contains('active')) {
         renderUserEquipment();
+    }
+}
+
+// Setup notification listener for moderation results
+function setupNotificationListener() {
+    if (!currentUser) return;
+    
+    const notificationsRef = database.ref('notifications/' + currentUser.uid);
+    
+    notificationsRef.on('child_added', (snapshot) => {
+        const notification = snapshot.val();
+        handleModerationNotification(notification);
+        
+        // Remove notification after processing
+        snapshot.ref.remove();
+    });
+}
+
+// Handle moderation notifications
+function handleModerationNotification(notification) {
+    const equipmentId = notification.equipmentId;
+    const status = notification.status;
+    const reason = notification.reason;
+    
+    const equipment = allEquipment.find(item => item.id === equipmentId);
+    if (!equipment) return;
+    
+    if (status === 'approved') {
+        showNotification(`✅ Ваша техника "${equipment.name}" одобрена и теперь видна другим пользователям!`, 'success');
+        
+        // Reload equipment data to reflect changes
+        loadEquipmentData();
+        
+    } else if (status === 'rejected') {
+        showNotification(`❌ Техника "${equipment.name}" отклонена. Причина: ${reason || 'не указана'}`, 'error');
     }
 }
 
@@ -287,7 +321,6 @@ function navigateTo(pageId) {
         }
     });
 
-    // Special handling for different pages
     if (pageId === 'profile-page') {
         renderUserEquipment();
         loadModerationStatus();
@@ -342,7 +375,6 @@ async function loadEquipmentData() {
                 }));
                 console.log('Equipment loaded:', allEquipment.length, 'items');
                 
-                // Update user equipment
                 if (currentUser) {
                     userEquipment = allEquipment.filter(item => 
                         item.ownerId === currentUser.uid && item.status === 'approved'
@@ -615,7 +647,6 @@ function loadModerationStatus() {
     approvedCount.textContent = approved;
     rejectedCount.textContent = rejected;
     
-    // Load moderation list
     moderationEquipmentList.innerHTML = '';
     
     if (userEquipmentAll.length === 0) {
@@ -665,12 +696,10 @@ function toggleFormFields() {
     const type = equipmentTypeSelect.value;
     console.log('Toggling form fields for type:', type);
     
-    // Hide all groups first
     [capacityGroup, lengthGroup, performanceGroup, weightGroup, bucketGroup].forEach(group => {
         group.classList.add('hidden');
     });
     
-    // Show relevant groups based on equipment type
     switch (type) {
         case 'mixers':
             capacityGroup.classList.remove('hidden');
@@ -690,6 +719,7 @@ function toggleFormFields() {
     }
 }
 
+// ОСНОВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ТЕХНИКИ
 async function saveEquipment() {
     if (!currentUser) {
         showNotification('Ошибка: пользователь не авторизован', 'error');
@@ -732,14 +762,11 @@ async function saveEquipment() {
             ownerPhone: '+998' + userPhone,
             paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
             description: description,
-            status: 'pending', // На модерации
-            createdAt: firebase.database.ServerValue.TIMESTAMP,
-            moderationDate: null,
-            moderatorId: null,
-            rejectionReason: null
+            status: 'pending',
+            createdAt: Date.now()
         };
         
-        // Add specific fields based on equipment type
+        // Добавляем специфичные поля
         switch (type) {
             case 'mixers':
                 newEquipment.capacity = parseInt(document.getElementById('equipment-capacity').value) || 0;
@@ -758,20 +785,24 @@ async function saveEquipment() {
                 break;
         }
         
-        // Save to database
+        // 1. Сохраняем в Firebase
         const equipmentRef = database.ref('equipment/' + newEquipment.id);
         await equipmentRef.set(newEquipment);
         
-        // Update user phone if not set
+        // 2. Отправляем на модерацию боту
+        const botSuccess = await sendToModerationBot(newEquipment);
+        
+        if (!botSuccess) {
+            console.warn('Failed to send to moderation bot, but equipment saved to Firebase');
+        }
+        
+        // 3. Обновляем телефон пользователя
         if (!currentUser.phone) {
             const userRef = database.ref('users/' + currentUser.uid + '/phone');
             await userRef.set('+998' + userPhone);
             currentUser.phone = '+998' + userPhone;
             userPhoneElement.textContent = currentUser.phone;
         }
-        
-        // Send notification to moderator bot
-        await sendModerationNotification(newEquipment);
         
         showNotification('Техника отправлена на модерацию! Мы уведомим вас о результате.', 'success');
         navigateTo('profile-page');
@@ -783,30 +814,30 @@ async function saveEquipment() {
     }
 }
 
-async function sendModerationNotification(equipment) {
-    // This would be replaced with actual bot API call
-    console.log('Sending moderation notification for equipment:', equipment);
-    
-    // In a real implementation, you would send a request to your bot backend
-    // Example: fetch('/api/notify-moderator', { method: 'POST', body: JSON.stringify(equipment) });
-    
-    // For now, we'll just log it
-    const message = `
-НОВАЯ ЗАЯВКА НА МОДЕРАЦИЮ
-
-Тип: ${getCategoryTitle(equipment.category)}
-Название: ${equipment.name}
-Владелец: ${equipment.owner.name}
-Телефон: ${equipment.ownerPhone}
-Цена: ${equipment.price} тыс. сум/час
-Местоположение: ${equipment.location}
-
-Описание: ${equipment.description}
-
-ID: ${equipment.id}
-    `.trim();
-    
-    console.log('Moderation message:', message);
+// Функция отправки данных боту для модерации
+async function sendToModerationBot(equipmentData) {
+    try {
+        console.log('Sending equipment to moderation bot:', equipmentData);
+        
+        const response = await fetch(BOT_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(equipmentData)
+        });
+        
+        if (response.ok) {
+            console.log('Equipment successfully sent to moderation bot');
+            return true;
+        } else {
+            console.error('Bot API returned error:', response.status);
+            return false;
+        }
+    } catch (error) {
+        console.error('Error sending to moderation bot:', error);
+        return false;
+    }
 }
 
 function resetEquipmentForm() {
@@ -828,12 +859,10 @@ async function toggleEquipmentAvailability(equipmentId) {
             const equipmentRef = database.ref('equipment/' + equipmentId + '/available');
             await equipmentRef.set(allEquipment[equipmentIndex].available);
             
-            // Update user equipment
             userEquipment = allEquipment.filter(item => 
                 item.ownerId === currentUser.uid && item.status === 'approved'
             );
             
-            // Reload availability page
             loadAvailabilityEquipment();
             
             showNotification(`Статус техники изменен на ${allEquipment[equipmentIndex].available ? 'доступен' : 'занят'}`, 'success');
@@ -892,7 +921,6 @@ function messageOwner(phone, equipmentName) {
 function showNotification(message, type = 'info') {
     console.log('Showing notification:', message, type);
     
-    // Remove existing notifications
     document.querySelectorAll('.notification').forEach(notification => {
         notification.remove();
     });
