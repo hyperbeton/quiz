@@ -290,20 +290,20 @@ function setupEventListeners() {
 function formatPhoneNumber() {
     const input = document.getElementById('user-phone-input');
     let value = input.value.replace(/\D/g, '');
+
+    // оставляем только 9 цифр
     if (value.length > 9) value = value.substring(0, 9);
-    
+
+    // формат отображения: 90-123-45-67
     if (value.length > 2) {
-        value = value.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, p1, p2, p3, p4) => {
-            let result = p1;
-            if (p2) result += ' ' + p2;
-            if (p3) result += ' ' + p3;
-            if (p4) result += ' ' + p4;
-            return result;
+        value = value.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, (_, p1, p2, p3, p4) => {
+            return `${p1}-${p2}-${p3}-${p4}`;
         });
     }
-    
+
     input.value = value;
 }
+
 
 // Navigation functions
 function navigateTo(pageId) {
@@ -732,12 +732,17 @@ async function saveEquipment() {
     const location = document.getElementById('equipment-location').value.trim();
     const description = document.getElementById('equipment-description').value.trim();
     const paymentMethod = document.getElementById('payment-method').value;
-    const userPhone = document.getElementById('user-phone-input').value.replace(/\D/g, '');
-    
-    if (!type || !name || !price || !location || !userPhone || !description) {
-        showNotification('Пожалуйста, заполните все обязательные поля', 'error');
-        return;
-    }
+   const userPhone = document.getElementById('user-phone-input').value.replace(/\D/g, '');
+
+if (!type || !name || !price || !location || !userPhone || !description) {
+    showNotification('Пожалуйста, заполните все обязательные поля', 'error');
+    return;
+}
+
+if (userPhone.length !== 9) {
+    showNotification('Введите номер из 9 цифр (без +998)', 'error');
+    return;
+}
     
     if (userPhone.length !== 9) {
         showNotification('Пожалуйста, введите корректный номер телефона', 'error');
