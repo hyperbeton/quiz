@@ -62,9 +62,6 @@ const approvedCount = document.getElementById('approved-count');
 const rejectedCount = document.getElementById('rejected-count');
 const moderationEquipmentList = document.getElementById('moderation-equipment');
 
-// Bot API configuration
-const BOT_API_URL = 'https://alimove1.pythonanywhere.com/api/submit-equipment';
-
 // Initialize the application
 async function init() {
     try {
@@ -303,7 +300,6 @@ function formatPhoneNumber() {
 
     input.value = value;
 }
-
 
 // Navigation functions
 function navigateTo(pageId) {
@@ -732,20 +728,15 @@ async function saveEquipment() {
     const location = document.getElementById('equipment-location').value.trim();
     const description = document.getElementById('equipment-description').value.trim();
     const paymentMethod = document.getElementById('payment-method').value;
-   const userPhone = document.getElementById('user-phone-input').value.replace(/\D/g, '');
+    const userPhone = document.getElementById('user-phone-input').value.replace(/\D/g, '');
 
-if (!type || !name || !price || !location || !userPhone || !description) {
-    showNotification('Пожалуйста, заполните все обязательные поля', 'error');
-    return;
-}
+    if (!type || !name || !price || !location || !userPhone || !description) {
+        showNotification('Пожалуйста, заполните все обязательные поля', 'error');
+        return;
+    }
 
-if (userPhone.length !== 9) {
-    showNotification('Введите номер из 9 цифр (без +998)', 'error');
-    return;
-}
-    
     if (userPhone.length !== 9) {
-        showNotification('Пожалуйста, введите корректный номер телефона', 'error');
+        showNotification('Введите номер из 9 цифр (без +998)', 'error');
         return;
     }
     
@@ -767,7 +758,7 @@ if (userPhone.length !== 9) {
             ownerPhone: '+998' + userPhone,
             paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
             description: description,
-            status: 'pending',
+            status: 'pending', // Важно: ставим статус pending для модерации
             createdAt: Date.now()
         };
         
@@ -790,18 +781,11 @@ if (userPhone.length !== 9) {
                 break;
         }
         
-        // 1. Сохраняем в Firebase
+        // Сохраняем в Firebase - бот сам найдет новую технику
         const equipmentRef = database.ref('equipment/' + newEquipment.id);
         await equipmentRef.set(newEquipment);
         
-        // 2. Отправляем на модерацию боту
-        const botSuccess = await sendToModerationBot(newEquipment);
-        
-        if (!botSuccess) {
-            console.warn('Failed to send to moderation bot, but equipment saved to Firebase');
-        }
-        
-        // 3. Обновляем телефон пользователя
+        // Обновляем телефон пользователя
         if (!currentUser.phone) {
             const userRef = database.ref('users/' + currentUser.uid + '/phone');
             await userRef.set('+998' + userPhone);
@@ -816,32 +800,6 @@ if (userPhone.length !== 9) {
     } catch (error) {
         console.error('Error saving equipment:', error);
         showNotification('Ошибка при добавлении техники', 'error');
-    }
-}
-
-// Функция отправки данных боту для модерации
-async function sendToModerationBot(equipmentData) {
-    try {
-        console.log('Sending equipment to moderation bot:', equipmentData);
-        
-        const response = await fetch(BOT_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(equipmentData)
-        });
-        
-        if (response.ok) {
-            console.log('Equipment successfully sent to moderation bot');
-            return true;
-        } else {
-            console.error('Bot API returned error:', response.status);
-            return false;
-        }
-    } catch (error) {
-        console.error('Error sending to moderation bot:', error);
-        return false;
     }
 }
 
