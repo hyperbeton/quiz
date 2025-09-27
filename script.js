@@ -281,16 +281,24 @@ function setupEventListeners() {
     equipmentTypeSelect.addEventListener('change', toggleFormFields);
     
     // Phone input formatting
-    document.getElementById('user-phone-input').addEventListener('input', formatPhoneNumber);
+    const phoneInput = document.getElementById('user-phone-input');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', formatPhoneNumber);
+    }
     
     // Moderation page navigation
-    document.getElementById('my-equipment-btn').addEventListener('click', () => {
-        navigateTo('moderation-page');
-    });
+    const myEquipmentBtn = document.getElementById('my-equipment-btn');
+    if (myEquipmentBtn) {
+        myEquipmentBtn.addEventListener('click', () => {
+            navigateTo('moderation-page');
+        });
+    }
 }
 
 function formatPhoneNumber() {
     const input = document.getElementById('user-phone-input');
+    if (!input) return;
+    
     let value = input.value.replace(/\D/g, '');
 
     // оставляем только 9 цифр
@@ -401,6 +409,9 @@ function loadCategoryEquipment(category) {
     const filteredEquipment = allEquipment.filter(item => 
         item.category === category && item.status === 'approved' && item.available
     );
+    
+    if (!categoryEquipmentList) return;
+    
     categoryEquipmentList.innerHTML = '';
 
     if (filteredEquipment.length === 0) {
@@ -470,9 +481,11 @@ function getStatusText(equipment) {
 
 function showEquipmentDetails(equipment) {
     console.log('Showing equipment details:', equipment.name);
-    equipmentTitle.textContent = equipment.name;
+    if (equipmentTitle) equipmentTitle.textContent = equipment.name;
     
     const statusText = getStatusText(equipment);
+    
+    if (!equipmentDetails) return;
     
     equipmentDetails.innerHTML = `
         <div class="detail-section">
@@ -538,7 +551,7 @@ function showEquipmentDetails(equipment) {
         
         <div class="detail-section">
             <h3>Описание</h3>
-            <p>${equipment.description}</p>
+            <p>${equipment.description || 'Нет описания'}</p>
         </div>
         
         <div class="detail-section">
@@ -546,11 +559,11 @@ function showEquipmentDetails(equipment) {
             <div class="detail-grid">
                 <div class="detail-item">
                     <span class="detail-label">Наличные</span>
-                    <span class="detail-value">${equipment.paymentMethods.includes('cash') ? '✅' : '❌'}</span>
+                    <span class="detail-value">${equipment.paymentMethods && equipment.paymentMethods.includes('cash') ? '✅' : '❌'}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Безналичный расчет</span>
-                    <span class="detail-value">${equipment.paymentMethods.includes('transfer') ? '✅' : '❌'}</span>
+                    <span class="detail-value">${equipment.paymentMethods && equipment.paymentMethods.includes('transfer') ? '✅' : '❌'}</span>
                 </div>
             </div>
         </div>
@@ -573,6 +586,8 @@ function showEquipmentDetails(equipment) {
 
 function renderUserEquipment() {
     console.log('Rendering user equipment');
+    if (!userEquipmentList) return;
+    
     userEquipmentList.innerHTML = '';
     
     if (!userEquipment.length) {
@@ -593,6 +608,8 @@ function renderUserEquipment() {
 
 function loadAvailabilityEquipment() {
     console.log('Loading availability equipment');
+    if (!availabilityEquipmentList) return;
+    
     availabilityEquipmentList.innerHTML = '';
     
     if (!userEquipment.length) {
@@ -646,9 +663,11 @@ function loadModerationStatus() {
     const approved = userEquipmentAll.filter(item => item.status === 'approved').length;
     const rejected = userEquipmentAll.filter(item => item.status === 'rejected').length;
     
-    pendingCount.textContent = pending;
-    approvedCount.textContent = approved;
-    rejectedCount.textContent = rejected;
+    if (pendingCount) pendingCount.textContent = pending;
+    if (approvedCount) approvedCount.textContent = approved;
+    if (rejectedCount) rejectedCount.textContent = rejected;
+    
+    if (!moderationEquipmentList) return;
     
     moderationEquipmentList.innerHTML = '';
     
@@ -699,44 +718,51 @@ function toggleFormFields() {
     const type = equipmentTypeSelect.value;
     console.log('Toggling form fields for type:', type);
     
-    [capacityGroup, lengthGroup, performanceGroup, weightGroup, bucketGroup].forEach(group => {
-        group.classList.add('hidden');
+    const groups = [capacityGroup, lengthGroup, performanceGroup, weightGroup, bucketGroup];
+    groups.forEach(group => {
+        if (group) group.classList.add('hidden');
     });
     
     switch (type) {
         case 'mixers':
-            capacityGroup.classList.remove('hidden');
+            if (capacityGroup) capacityGroup.classList.remove('hidden');
             break;
         case 'pumps':
-            lengthGroup.classList.remove('hidden');
-            performanceGroup.classList.remove('hidden');
+            if (lengthGroup) lengthGroup.classList.remove('hidden');
+            if (performanceGroup) performanceGroup.classList.remove('hidden');
             break;
         case 'dump-trucks':
         case 'tonars':
         case 'cranes':
-            weightGroup.classList.remove('hidden');
+            if (weightGroup) weightGroup.classList.remove('hidden');
             break;
         case 'excavators':
-            bucketGroup.classList.remove('hidden');
+            if (bucketGroup) bucketGroup.classList.remove('hidden');
             break;
     }
 }
 
 // ОСНОВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ТЕХНИКИ
 async function saveEquipment() {
+    console.log('Save equipment function called');
+    
     if (!currentUser) {
         showNotification('Ошибка: пользователь не авторизован', 'error');
         return;
     }
     
+    // Получаем значения из формы
     const type = equipmentTypeSelect.value;
-    const name = document.getElementById('equipment-name').value.trim();
-    const price = document.getElementById('equipment-price').value;
-    const location = document.getElementById('equipment-location').value.trim();
-    const description = document.getElementById('equipment-description').value.trim();
-    const paymentMethod = document.getElementById('payment-method').value;
-    const userPhone = document.getElementById('user-phone-input').value.replace(/\D/g, '');
+    const name = document.getElementById('equipment-name')?.value.trim();
+    const price = document.getElementById('equipment-price')?.value;
+    const location = document.getElementById('equipment-location')?.value.trim();
+    const description = document.getElementById('equipment-description')?.value.trim();
+    const paymentMethod = document.getElementById('payment-method')?.value;
+    const userPhone = document.getElementById('user-phone-input')?.value.replace(/\D/g, '');
 
+    console.log('Form values:', { type, name, price, location, description, paymentMethod, userPhone });
+
+    // Валидация
     if (!type || !name || !price || !location || !userPhone || !description) {
         showNotification('Пожалуйста, заполните все обязательные поля', 'error');
         return;
@@ -748,8 +774,8 @@ async function saveEquipment() {
     }
     
     try {
+        // Создаем объект техники
         const newEquipment = {
-            id: Date.now().toString(),
             category: type,
             name: name,
             location: location,
@@ -765,31 +791,41 @@ async function saveEquipment() {
             ownerPhone: '+998' + userPhone,
             paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
             description: description,
-            status: 'pending', // Важно: ставим статус pending для модерации
+            status: 'pending',
             createdAt: Date.now()
         };
         
         // Добавляем специфичные поля
         switch (type) {
             case 'mixers':
-                newEquipment.capacity = parseInt(document.getElementById('equipment-capacity').value) || 0;
+                const capacity = document.getElementById('equipment-capacity')?.value;
+                if (capacity) newEquipment.capacity = parseInt(capacity);
                 break;
             case 'pumps':
-                newEquipment.length = parseInt(document.getElementById('equipment-length').value) || 0;
-                newEquipment.performance = parseInt(document.getElementById('equipment-performance').value) || 0;
+                const length = document.getElementById('equipment-length')?.value;
+                const performance = document.getElementById('equipment-performance')?.value;
+                if (length) newEquipment.length = parseInt(length);
+                if (performance) newEquipment.performance = parseInt(performance);
                 break;
             case 'dump-trucks':
             case 'tonars':
             case 'cranes':
-                newEquipment.weight = parseInt(document.getElementById('equipment-weight').value) || 0;
+                const weight = document.getElementById('equipment-weight')?.value;
+                if (weight) newEquipment.weight = parseInt(weight);
                 break;
             case 'excavators':
-                newEquipment.bucket = parseFloat(document.getElementById('equipment-bucket').value) || 0;
+                const bucket = document.getElementById('equipment-bucket')?.value;
+                if (bucket) newEquipment.bucket = parseFloat(bucket);
                 break;
         }
         
-        // Сохраняем в Firebase - бот сам найдет новую технику
-        const equipmentRef = database.ref('equipment/' + newEquipment.id);
+        console.log('Saving equipment:', newEquipment);
+        
+        // Сохраняем в Firebase с автоматическим ID
+        const equipmentRef = database.ref('equipment').push();
+        const equipmentId = equipmentRef.key;
+        newEquipment.id = equipmentId;
+        
         await equipmentRef.set(newEquipment);
         
         // Обновляем телефон пользователя
@@ -797,45 +833,49 @@ async function saveEquipment() {
             const userRef = database.ref('users/' + currentUser.uid + '/phone');
             await userRef.set('+998' + userPhone);
             currentUser.phone = '+998' + userPhone;
-            userPhoneElement.textContent = currentUser.phone;
+            if (userPhoneElement) userPhoneElement.textContent = currentUser.phone;
         }
         
         showNotification('✅ Техника отправлена на модерацию! Мы уведомим вас о результате.', 'success');
-        navigateTo('profile-page');
-        resetEquipmentForm();
+        
+        // Возвращаемся на страницу профиля
+        setTimeout(() => {
+            navigateTo('profile-page');
+            resetEquipmentForm();
+        }, 1500);
         
     } catch (error) {
         console.error('Error saving equipment:', error);
-        showNotification('❌ Ошибка при добавлении техники', 'error');
+        showNotification('❌ Ошибка при добавлении техники: ' + error.message, 'error');
     }
 }
 
 function resetEquipmentForm() {
-    document.getElementById('equipment-name').value = '';
-    document.getElementById('equipment-price').value = '';
-    document.getElementById('equipment-location').value = '';
-    document.getElementById('equipment-description').value = '';
-    document.getElementById('user-phone-input').value = '';
-    equipmentTypeSelect.value = '';
+    const form = document.querySelector('.add-equipment-form');
+    if (form) {
+        form.reset();
+    }
     toggleFormFields();
 }
 
 async function toggleEquipmentAvailability(equipmentId) {
     try {
-        const equipmentIndex = allEquipment.findIndex(item => item.id === equipmentId);
-        if (equipmentIndex !== -1 && allEquipment[equipmentIndex].status === 'approved') {
-            allEquipment[equipmentIndex].available = !allEquipment[equipmentIndex].available;
+        const equipment = allEquipment.find(item => item.id === equipmentId);
+        if (equipment && equipment.status === 'approved') {
+            const newAvailability = !equipment.available;
             
             const equipmentRef = database.ref('equipment/' + equipmentId + '/available');
-            await equipmentRef.set(allEquipment[equipmentIndex].available);
+            await equipmentRef.set(newAvailability);
             
+            // Обновляем локальные данные
+            equipment.available = newAvailability;
             userEquipment = allEquipment.filter(item => 
                 item.ownerId === currentUser.uid && item.status === 'approved'
             );
             
             loadAvailabilityEquipment();
             
-            showNotification(`✅ Статус техники изменен на ${allEquipment[equipmentIndex].available ? 'доступен' : 'занят'}`, 'success');
+            showNotification(`✅ Статус техники изменен на ${newAvailability ? 'доступен' : 'занят'}`, 'success');
         }
     } catch (error) {
         console.error('Error toggling availability:', error);
@@ -891,6 +931,7 @@ function messageOwner(phone, equipmentName) {
 function showNotification(message, type = 'info') {
     console.log('Showing notification:', message, type);
     
+    // Удаляем старые уведомления
     document.querySelectorAll('.notification').forEach(notification => {
         notification.remove();
     });
@@ -904,6 +945,7 @@ function showNotification(message, type = 'info') {
         </div>
     `;
     
+    // Добавляем стили если их нет
     if (!document.querySelector('#notification-styles')) {
         const styles = document.createElement('style');
         styles.id = 'notification-styles';
@@ -938,8 +980,10 @@ function showNotification(message, type = 'info') {
     
     document.body.appendChild(notification);
     
+    // Анимация появления
     setTimeout(() => notification.classList.add('show'), 100);
     
+    // Автоматическое скрытие
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -949,6 +993,7 @@ function showNotification(message, type = 'info') {
         }, 300);
     }, 3000);
     
+    // Обновляем иконки
     setTimeout(() => lucide.createIcons(), 100);
 }
 
@@ -956,6 +1001,7 @@ function showNotification(message, type = 'info') {
 window.callOwner = callOwner;
 window.messageOwner = messageOwner;
 window.toggleEquipmentAvailability = toggleEquipmentAvailability;
+window.saveEquipment = saveEquipment;
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
