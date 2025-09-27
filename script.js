@@ -282,6 +282,11 @@ function setupEventListeners() {
     
     // Phone input formatting
     document.getElementById('user-phone-input').addEventListener('input', formatPhoneNumber);
+    
+    // Moderation page navigation
+    document.getElementById('my-equipment-btn').addEventListener('click', () => {
+        navigateTo('moderation-page');
+    });
 }
 
 function formatPhoneNumber() {
@@ -322,6 +327,8 @@ function navigateTo(pageId) {
         loadModerationStatus();
     } else if (pageId === 'category-page') {
         loadCategoryEquipment(currentCategory);
+    } else if (pageId === 'moderation-page') {
+        loadModerationStatus();
     }
 
     setTimeout(() => lucide.createIcons(), 100);
@@ -456,9 +463,9 @@ function createEquipmentCard(equipment) {
 }
 
 function getStatusText(equipment) {
-    if (equipment.status === 'pending') return 'На модерации';
-    if (equipment.status === 'rejected') return 'Отклонено';
-    return equipment.available ? 'Доступен' : 'Занят';
+    if (equipment.status === 'pending') return '⏳ На модерации';
+    if (equipment.status === 'rejected') return '❌ Отклонено';
+    return equipment.available ? '✅ Доступен' : '⏳ Занят';
 }
 
 function showEquipmentDetails(equipment) {
@@ -539,11 +546,11 @@ function showEquipmentDetails(equipment) {
             <div class="detail-grid">
                 <div class="detail-item">
                     <span class="detail-label">Наличные</span>
-                    <span class="detail-value">${equipment.paymentMethods.includes('cash') ? '✓' : '✗'}</span>
+                    <span class="detail-value">${equipment.paymentMethods.includes('cash') ? '✅' : '❌'}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Безналичный расчет</span>
-                    <span class="detail-value">${equipment.paymentMethods.includes('transfer') ? '✓' : '✗'}</span>
+                    <span class="detail-value">${equipment.paymentMethods.includes('transfer') ? '✅' : '❌'}</span>
                 </div>
             </div>
         </div>
@@ -603,7 +610,7 @@ function loadAvailabilityEquipment() {
         div.className = `equipment-item ${equipment.available ? 'available' : 'busy'}`;
         
         const icon = getEquipmentIcon(equipment.category);
-        const statusText = equipment.available ? 'Доступен' : 'Занят';
+        const statusText = equipment.available ? '✅ Доступен' : '⏳ Занят';
         
         div.innerHTML = `
             <div class="equipment-image">
@@ -793,13 +800,13 @@ async function saveEquipment() {
             userPhoneElement.textContent = currentUser.phone;
         }
         
-        showNotification('Техника отправлена на модерацию! Мы уведомим вас о результате.', 'success');
+        showNotification('✅ Техника отправлена на модерацию! Мы уведомим вас о результате.', 'success');
         navigateTo('profile-page');
         resetEquipmentForm();
         
     } catch (error) {
         console.error('Error saving equipment:', error);
-        showNotification('Ошибка при добавлении техники', 'error');
+        showNotification('❌ Ошибка при добавлении техники', 'error');
     }
 }
 
@@ -828,11 +835,11 @@ async function toggleEquipmentAvailability(equipmentId) {
             
             loadAvailabilityEquipment();
             
-            showNotification(`Статус техники изменен на ${allEquipment[equipmentIndex].available ? 'доступен' : 'занят'}`, 'success');
+            showNotification(`✅ Статус техники изменен на ${allEquipment[equipmentIndex].available ? 'доступен' : 'занят'}`, 'success');
         }
     } catch (error) {
         console.error('Error toggling availability:', error);
-        showNotification('Ошибка при изменении статуса', 'error');
+        showNotification('❌ Ошибка при изменении статуса', 'error');
     }
 }
 
@@ -851,19 +858,19 @@ function getCategoryTitle(category) {
 
 function getEquipmentIcon(category) {
     const icons = {
-        'mixers': 'mixer',
-        'pumps': 'sprout',
+        'mixers': 'truck',
+        'pumps': 'construction',
         'dump-trucks': 'truck',
         'tonars': 'truck',
         'cranes': 'crane',
-        'excavators': 'digging'
+        'excavators': 'hammer'
     };
     return icons[category] || 'construction';
 }
 
 function callOwner(phone) {
     if (!phone || phone === 'Не указан') {
-        showNotification('Номер телефона не указан', 'error');
+        showNotification('❌ Номер телефона не указан', 'error');
         return;
     }
     console.log('Calling owner:', phone);
@@ -872,7 +879,7 @@ function callOwner(phone) {
 
 function messageOwner(phone, equipmentName) {
     if (!phone || phone === 'Не указан') {
-        showNotification('Номер телефона не указан', 'error');
+        showNotification('❌ Номер телефона не указан', 'error');
         return;
     }
     console.log('Messaging owner:', phone, equipmentName);

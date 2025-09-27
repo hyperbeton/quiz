@@ -340,6 +340,37 @@ body {
     margin-bottom: 5px;
 }
 
+.equipment-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.equipment-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.equipment-type {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: var(--surface-dark);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.owner-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
 .equipment-footer {
     display: flex;
     align-items: center;
@@ -347,12 +378,6 @@ body {
     margin-top: 10px;
     flex-wrap: wrap;
     gap: 10px;
-}
-
-.equipment-price {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--primary-color);
 }
 
 .equipment-rating {
@@ -387,6 +412,15 @@ body {
 
 .equipment-status.rejected {
     background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+}
+
+.rejection-reason {
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(239, 68, 68, 0.05);
+    border-radius: 6px;
+    font-size: 0.8rem;
     color: var(--danger-color);
 }
 
@@ -678,6 +712,106 @@ body {
     transform: translateY(-1px);
 }
 
+/* Contact Buttons */
+.contact-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.contact-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.contact-btn.phone {
+    background: var(--success-color);
+    color: white;
+}
+
+.contact-btn.telegram {
+    background: #0088cc;
+    color: white;
+}
+
+.contact-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+/* Detail Sections */
+.detail-section {
+    margin-bottom: 25px;
+}
+
+.detail-section h3 {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+}
+
+.detail-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.owner-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: var(--surface-dark);
+    border-radius: var(--border-radius);
+}
+
+.owner-avatar {
+    width: 50px;
+    height: 50px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.owner-details h4 {
+    margin-bottom: 5px;
+    color: var(--text-primary);
+}
+
 /* Navigation */
 .bottom-nav {
     position: fixed;
@@ -746,6 +880,13 @@ body {
     font-style: italic;
 }
 
+.no-data i {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .page {
@@ -772,6 +913,10 @@ body {
     
     .status-item {
         padding: 15px;
+    }
+    
+    .contact-buttons {
+        flex-direction: column;
     }
 }
 
