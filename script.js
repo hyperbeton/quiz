@@ -24,6 +24,7 @@ let currentUser = null;
 let userEquipment = [];
 let allEquipment = [];
 let pageHistory = [];
+let currentAdminFilter = 'pending';
 
 // Admin IDs
 const ADMIN_IDS = [543221724];
@@ -809,6 +810,599 @@ function resetEquipmentForm() {
     toggleFormFields();
 }
 
+// Admin Panel Functions
+function loadAdminPanel() {
+    console.log('Loading admin panel...');
+    
+    const adminPanel = document.getElementById('admin-panel');
+    if (!adminPanel) {
+        createAdminPanel();
+    } else {
+        renderAdminPanel();
+    }
+}
+
+function createAdminPanel() {
+    const adminPanel = document.createElement('section');
+    adminPanel.id = 'admin-panel';
+    adminPanel.className = 'page';
+    adminPanel.innerHTML = `
+        <div class="page-header">
+            <button class="btn-back">
+                <i data-lucide="arrow-left"></i>
+            </button>
+            <h2>👑 Панель модерации</h2>
+        </div>
+        
+        <div class="admin-content">
+            <div class="admin-stats">
+                <div class="stat-card pending">
+                    <div class="stat-number stat-pending" id="stat-pending">0</div>
+                    <div>На модерации</div>
+                </div>
+                <div class="stat-card approved">
+                    <div class="stat-number stat-approved" id="stat-approved">0</div>
+                    <div>Одобрено</div>
+                </div>
+                <div class="stat-card rejected">
+                    <div class="stat-number stat-rejected" id="stat-rejected">0</div>
+                    <div>Отклонено</div>
+                </div>
+            </div>
+
+            <div class="filter-tabs">
+                <button class="tab-btn active" data-filter="pending">⏳ На модерации</button>
+                <button class="tab-btn" data-filter="approved">✅ Одобренные</button>
+                <button class="tab-btn" data-filter="rejected">❌ Отклоненные</button>
+            </div>
+
+            <div class="equipment-list" id="admin-equipment-list">
+                <!-- Заявки будут загружаться здесь -->
+            </div>
+        </div>
+
+        <!-- Equipment Details Modal -->
+        <div id="equipment-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="modal-title">Детали заявки</h3>
+                    <button class="close-modal" onclick="closeAdminModal()">×</button>
+                </div>
+                
+                <div id="modal-content">
+                    <!-- Детали заявки -->
+                </div>
+                
+                <div class="moderation-controls" id="modal-controls">
+                    <!-- Кнопки модерации -->
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.querySelector('main').appendChild(adminPanel);
+    
+    // Add admin panel styles
+    if (!document.querySelector('#admin-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'admin-styles';
+        styles.textContent = `
+            .admin-content { padding: 20px; }
+            .admin-stats { 
+                display: grid; 
+                grid-template-columns: repeat(3, 1fr); 
+                gap: 15px; 
+                margin-bottom: 25px; 
+            }
+            .stat-card { 
+                background: white; 
+                padding: 20px 15px; 
+                border-radius: 12px; 
+                text-align: center; 
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+                border-left: 4px solid #e2e8f0; 
+            }
+            .stat-card.pending { border-left-color: #f59e0b; }
+            .stat-card.approved { border-left-color: #10b981; }
+            .stat-card.rejected { border-left-color: #ef4444; }
+            .stat-number { 
+                font-size: 2rem; 
+                font-weight: bold; 
+                margin-bottom: 5px; 
+            }
+            .stat-pending { color: #f59e0b; }
+            .stat-approved { color: #10b981; }
+            .stat-rejected { color: #ef4444; }
+            .filter-tabs { 
+                display: flex; 
+                background: white; 
+                border-radius: 12px; 
+                padding: 5px; 
+                margin-bottom: 20px; 
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+            }
+            .tab-btn { 
+                flex: 1; 
+                padding: 12px; 
+                border: none; 
+                background: none; 
+                cursor: pointer; 
+                border-radius: 8px; 
+                transition: all 0.3s ease; 
+                font-weight: 500; 
+            }
+            .tab-btn.active { 
+                background: #7c3aed; 
+                color: white; 
+            }
+            .modal { 
+                position: fixed; 
+                top: 0; 
+                left: 0; 
+                width: 100%; 
+                height: 100%; 
+                background: rgba(0,0,0,0.5); 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                z-index: 1000; 
+                padding: 20px; 
+            }
+            .modal.hidden { display: none; }
+            .modal-content { 
+                background: white; 
+                padding: 25px; 
+                border-radius: 12px; 
+                max-width: 500px; 
+                width: 100%; 
+                max-height: 80vh; 
+                overflow-y: auto; 
+                box-shadow: 0 8px 30px rgba(0,0,0,0.12); 
+            }
+            .modal-header { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                margin-bottom: 20px; 
+                padding-bottom: 15px; 
+                border-bottom: 1px solid #e2e8f0; 
+            }
+            .modal-title { 
+                font-size: 1.3rem; 
+                font-weight: 600; 
+                color: #1e293b; 
+            }
+            .close-modal { 
+                background: none; 
+                border: none; 
+                font-size: 1.5rem; 
+                cursor: pointer; 
+                color: #64748b; 
+                padding: 5px; 
+            }
+            .moderation-controls { 
+                display: flex; 
+                gap: 10px; 
+                margin: 20px 0; 
+                flex-wrap: wrap; 
+            }
+            .btn { 
+                padding: 12px 20px; 
+                border: none; 
+                border-radius: 12px; 
+                font-size: 0.9rem; 
+                cursor: pointer; 
+                transition: all 0.3s ease; 
+                font-weight: 500; 
+            }
+            .btn-approve { 
+                background: #10b981; 
+                color: white; 
+            }
+            .btn-reject { 
+                background: #ef4444; 
+                color: white; 
+            }
+            .rejection-reason { 
+                margin-top: 15px; 
+                width: 100%; 
+            }
+            .rejection-reason textarea { 
+                width: 100%; 
+                padding: 12px; 
+                border: 1px solid #e2e8f0; 
+                border-radius: 12px; 
+                resize: vertical; 
+                min-height: 80px; 
+                font-family: inherit; 
+            }
+            .detail-row { 
+                margin-bottom: 12px; 
+                padding-bottom: 12px; 
+                border-bottom: 1px solid #e2e8f0; 
+            }
+            .detail-row:last-child { 
+                border-bottom: none; 
+                margin-bottom: 0; 
+            }
+            .detail-row strong { 
+                color: #1e293b; 
+                display: block; 
+                margin-bottom: 5px; 
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    setupAdminEventListeners();
+    renderAdminPanel();
+}
+
+function setupAdminEventListeners() {
+    // Tab event listeners
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentAdminFilter = this.dataset.filter;
+            renderAdminPanel();
+        });
+    });
+    
+    // Back button
+    const backBtn = document.querySelector('#admin-panel .btn-back');
+    if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            goBack();
+        });
+    }
+    
+    // Close modal on background click
+    const modal = document.getElementById('equipment-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) closeAdminModal();
+        });
+    }
+}
+
+function renderAdminPanel() {
+    console.log('Rendering admin panel with filter:', currentAdminFilter);
+    console.log('All equipment:', allEquipment);
+    
+    // Update statistics
+    const pending = allEquipment.filter(item => item.status === 'pending').length;
+    const approved = allEquipment.filter(item => item.status === 'approved').length;
+    const rejected = allEquipment.filter(item => item.status === 'rejected').length;
+    
+    const statPending = document.getElementById('stat-pending');
+    const statApproved = document.getElementById('stat-approved');
+    const statRejected = document.getElementById('stat-rejected');
+    
+    if (statPending) statPending.textContent = pending;
+    if (statApproved) statApproved.textContent = approved;
+    if (statRejected) statRejected.textContent = rejected;
+    
+    // Filter equipment
+    const filteredEquipment = allEquipment.filter(item => {
+        const itemStatus = item.status || 'pending';
+        return itemStatus === currentAdminFilter;
+    });
+    
+    console.log(`Filtered equipment (${currentAdminFilter}):`, filteredEquipment);
+    
+    const listElement = document.getElementById('admin-equipment-list');
+    if (!listElement) return;
+    
+    if (filteredEquipment.length === 0) {
+        listElement.innerHTML = `
+            <div class="no-data">
+                <i data-lucide="inbox"></i>
+                <p>Нет заявок со статусом "${getAdminStatusText(currentAdminFilter)}"</p>
+            </div>
+        `;
+    } else {
+        listElement.innerHTML = filteredEquipment.map(equipment => {
+            const status = equipment.status || 'pending';
+            const ownerName = equipment.owner?.name || 'Неизвестно';
+            const ownerPhone = equipment.ownerPhone || 'Не указан';
+            
+            return `
+                <div class="equipment-item ${status}" onclick="showAdminEquipmentDetails('${equipment.id}')" 
+                     style="background: white; border-radius: 12px; padding: 15px; display: flex; gap: 15px; cursor: pointer; margin-bottom: 10px; border: 1px solid #e2e8f0; border-left: 4px solid ${getStatusColor(status)};">
+                    <div class="equipment-image" style="width: 60px; height: 60px; background: linear-gradient(135deg, #7c3aed, #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                        <i data-lucide="${getEquipmentIcon(equipment.category)}"></i>
+                    </div>
+                    <div class="equipment-info" style="flex: 1; min-width: 0;">
+                        <h3 style="font-size: 1.1rem; margin-bottom: 8px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${equipment.name}</h3>
+                        <div class="equipment-location" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #64748b; margin-bottom: 5px;">
+                            <i data-lucide="map-pin"></i>
+                            <span>${equipment.location}</span>
+                        </div>
+                        <div class="equipment-meta" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                            <span class="equipment-price" style="font-size: 1.1rem; font-weight: 700; color: #7c3aed;">${equipment.price} тыс. сум/час</span>
+                            <span class="equipment-type" style="font-size: 0.8rem; color: #94a3b8; background: #f1f5f9; padding: 2px 8px; border-radius: 10px;">${getCategoryName(equipment.category)}</span>
+                        </div>
+                        <div class="owner-info" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #64748b;">
+                            <i data-lucide="user"></i>
+                            <span>${ownerName}</span>
+                            <span style="color: #94a3b8;">•</span>
+                            <span>${ownerPhone}</span>
+                        </div>
+                    </div>
+                    <div class="equipment-status ${status}" style="align-self: flex-start; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background: ${getStatusBackgroundColor(status)}; color: ${getStatusColor(status)};">
+                        ${getAdminStatusBadge(status)}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    setTimeout(() => lucide.createIcons(), 100);
+}
+
+function showAdminEquipmentDetails(equipmentId) {
+    console.log('Showing equipment details for:', equipmentId);
+    const equipment = allEquipment.find(item => item.id === equipmentId);
+    if (!equipment) {
+        console.error('Equipment not found:', equipmentId);
+        return;
+    }
+    
+    const modalTitle = document.getElementById('modal-title');
+    if (modalTitle) {
+        modalTitle.textContent = equipment.name;
+    }
+    
+    const modalContent = document.getElementById('modal-content');
+    if (!modalContent) return;
+    
+    const status = equipment.status || 'pending';
+    const ownerName = equipment.owner?.name || 'Неизвестно';
+    const ownerPhone = equipment.ownerPhone || 'Не указан';
+    
+    modalContent.innerHTML = `
+        <div class="equipment-details">
+            <div class="detail-row">
+                <strong>ID заявки:</strong> 
+                <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${equipment.id}</span>
+            </div>
+            <div class="detail-row">
+                <strong>Категория:</strong> ${getCategoryName(equipment.category)}
+            </div>
+            <div class="detail-row">
+                <strong>Местоположение:</strong> ${equipment.location}
+            </div>
+            <div class="detail-row">
+                <strong>Цена:</strong> ${equipment.price} тыс. сум/час
+            </div>
+            <div class="detail-row">
+                <strong>Владелец:</strong> ${ownerName}
+            </div>
+            <div class="detail-row">
+                <strong>Телефон:</strong> ${ownerPhone}
+            </div>
+            <div class="detail-row">
+                <strong>Статус:</strong> 
+                <span class="equipment-status ${status}" style="padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background: ${getStatusBackgroundColor(status)}; color: ${getStatusColor(status)};">
+                    ${getAdminStatusBadge(status)}
+                </span>
+            </div>
+            <div class="detail-row">
+                <strong>Описание:</strong> 
+                <div style="margin-top: 5px; padding: 10px; background: #f1f5f9; border-radius: 6px;">
+                    ${equipment.description || 'Нет описания'}
+                </div>
+            </div>
+            ${equipment.rejectionReason ? `
+            <div class="detail-row">
+                <strong>Причина отклонения:</strong> 
+                <div style="margin-top: 5px; padding: 10px; background: #fee2e2; border-radius: 6px; color: #dc2626;">
+                    ${equipment.rejectionReason}
+                </div>
+            </div>
+            ` : ''}
+            ${equipment.capacity ? `
+            <div class="detail-row">
+                <strong>Вместимость:</strong> ${equipment.capacity} м³
+            </div>
+            ` : ''}
+            ${equipment.length ? `
+            <div class="detail-row">
+                <strong>Длина стрелы:</strong> ${equipment.length} м
+            </div>
+            ` : ''}
+            ${equipment.performance ? `
+            <div class="detail-row">
+                <strong>Производительность:</strong> ${equipment.performance} м³/ч
+            </div>
+            ` : ''}
+            ${equipment.weight ? `
+            <div class="detail-row">
+                <strong>Грузоподъемность:</strong> ${equipment.weight} т
+            </div>
+            ` : ''}
+            ${equipment.bucket ? `
+            <div class="detail-row">
+                <strong>Объем ковша:</strong> ${equipment.bucket} м³
+            </div>
+            ` : ''}
+            <div class="detail-row">
+                <strong>Дата создания:</strong> 
+                ${equipment.createdAt ? new Date(equipment.createdAt).toLocaleString('ru-RU') : 'Неизвестно'}
+            </div>
+        </div>
+    `;
+    
+    const modalControls = document.getElementById('modal-controls');
+    if (modalControls) {
+        if (equipment.status === 'pending') {
+            modalControls.innerHTML = `
+                <button class="btn btn-approve" onclick="approveEquipment('${equipment.id}')">
+                    ✅ Одобрить заявку
+                </button>
+                <button class="btn btn-reject" onclick="showAdminRejectionForm()">
+                    ❌ Отклонить заявку
+                </button>
+                <div class="rejection-reason" id="admin-rejection-form" style="display: none;">
+                    <textarea id="admin-rejection-reason" placeholder="Укажите причину отклонения заявки..."></textarea>
+                    <button class="btn btn-reject" onclick="rejectEquipment('${equipment.id}')" style="margin-top: 10px; width: 100%;">
+                        📨 Отправить отклонение
+                    </button>
+                </div>
+            `;
+        } else {
+            modalControls.innerHTML = `
+                <div style="text-align: center; color: #64748b; padding: 20px;">
+                    Заявка уже обработана
+                </div>
+            `;
+        }
+    }
+    
+    const modal = document.getElementById('equipment-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeAdminModal() {
+    const modal = document.getElementById('equipment-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    const rejectionForm = document.getElementById('admin-rejection-form');
+    if (rejectionForm) {
+        rejectionForm.style.display = 'none';
+    }
+}
+
+function showAdminRejectionForm() {
+    const rejectionForm = document.getElementById('admin-rejection-form');
+    if (rejectionForm) {
+        rejectionForm.style.display = 'block';
+    }
+}
+
+async function approveEquipment(equipmentId) {
+    if (!confirm('Вы уверены, что хотите одобрить эту заявку?')) return;
+    
+    try {
+        const equipmentRef = database.ref(`equipment/${equipmentId}`);
+        await equipmentRef.update({
+            status: 'approved',
+            moderatedBy: currentUser.uid,
+            moderatedAt: new Date().toISOString(),
+            rejectionReason: null
+        });
+        
+        showNotification('✅ Заявка одобрена!', 'success');
+        closeAdminModal();
+        renderAdminPanel();
+    } catch (error) {
+        console.error('Error approving equipment:', error);
+        showNotification('❌ Ошибка при одобрении заявки: ' + error.message, 'error');
+    }
+}
+
+async function rejectEquipment(equipmentId) {
+    const reasonInput = document.getElementById('admin-rejection-reason');
+    if (!reasonInput) return;
+    
+    const reason = reasonInput.value.trim();
+    if (!reason) {
+        showNotification('📝 Пожалуйста, укажите причину отклонения', 'error');
+        return;
+    }
+    
+    if (!confirm('Вы уверены, что хотите отклонить эту заявку?')) return;
+    
+    try {
+        const equipmentRef = database.ref(`equipment/${equipmentId}`);
+        await equipmentRef.update({
+            status: 'rejected',
+            rejectionReason: reason,
+            moderatedBy: currentUser.uid,
+            moderatedAt: new Date().toISOString()
+        });
+        
+        showNotification('❌ Заявка отклонена!', 'success');
+        closeAdminModal();
+        renderAdminPanel();
+    } catch (error) {
+        console.error('Error rejecting equipment:', error);
+        showNotification('❌ Ошибка при отклонении заявки: ' + error.message, 'error');
+    }
+}
+
+// Availability Management
+function loadAvailabilityEquipment() {
+    if (!currentUser) return;
+    
+    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid && item.status === 'approved');
+    const availabilityList = document.getElementById('availability-equipment');
+    if (!availabilityList) return;
+    
+    availabilityList.innerHTML = '';
+    
+    if (userEquipmentAll.length === 0) {
+        availabilityList.innerHTML = `
+            <div class="no-data">
+                <i data-lucide="construction"></i>
+                <p>У вас нет одобренной техники</p>
+            </div>
+        `;
+        return;
+    }
+    
+    userEquipmentAll.forEach(equipment => {
+        const div = document.createElement('div');
+        div.className = `equipment-item ${equipment.available ? 'available' : 'busy'}`;
+        
+        const icon = getEquipmentIcon(equipment.category);
+        
+        div.innerHTML = `
+            <div class="equipment-image">
+                <i data-lucide="${icon}"></i>
+            </div>
+            <div class="equipment-info">
+                <h3>${equipment.name}</h3>
+                <div class="equipment-location">
+                    <i data-lucide="map-pin"></i>
+                    <span>${equipment.location}</span>
+                </div>
+                <div class="equipment-footer">
+                    <div class="equipment-price">${equipment.price} тыс. сум/час</div>
+                    <div class="equipment-status ${equipment.available ? 'available' : 'busy'}">
+                        ${equipment.available ? '✅ Доступен' : '⏳ Занят'}
+                    </div>
+                </div>
+            </div>
+            <button class="toggle-availability-btn" onclick="toggleAvailability('${equipment.id}', ${!equipment.available})">
+                ${equipment.available ? 'Сделать занятым' : 'Сделать доступным'}
+            </button>
+        `;
+        
+        availabilityList.appendChild(div);
+    });
+}
+
+async function toggleAvailability(equipmentId, newAvailability) {
+    try {
+        const equipmentRef = database.ref(`equipment/${equipmentId}`);
+        await equipmentRef.update({
+            available: newAvailability
+        });
+        
+        showNotification(newAvailability ? '✅ Техника теперь доступна' : '⏳ Техника отмечена как занятая', 'success');
+        loadAvailabilityEquipment();
+    } catch (error) {
+        console.error('Error toggling availability:', error);
+        showNotification('❌ Ошибка при изменении статуса', 'error');
+    }
+}
+
 // Utility functions
 function getCategoryTitle(category) {
     const titles = {
@@ -849,6 +1443,55 @@ function messageOwner(phone, equipmentName) {
     }
     const message = `Здравствуйте! Интересует ваша техника: ${equipmentName}`;
     window.open(`https://t.me/${phone.replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank');
+}
+
+// Admin helper functions
+function getAdminStatusText(status) {
+    const statuses = {
+        'pending': 'На модерации',
+        'approved': 'Одобренные',
+        'rejected': 'Отклоненные'
+    };
+    return statuses[status] || status;
+}
+
+function getAdminStatusBadge(status) {
+    const badges = {
+        'pending': '⏳ На модерации',
+        'approved': '✅ Одобрено',
+        'rejected': '❌ Отклонено'
+    };
+    return badges[status] || status;
+}
+
+function getCategoryName(category) {
+    const categories = {
+        'mixers': '🚛 Автомиксер',
+        'pumps': '🏗️ Автобетононасос',
+        'dump-trucks': '🚚 Самосвал',
+        'tonars': '🛻 Тонар',
+        'cranes': '🏗️ Кран',
+        'excavators': '🔧 Экскаватор'
+    };
+    return categories[category] || '🚜 Другая техника';
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': '#f59e0b',
+        'approved': '#10b981', 
+        'rejected': '#ef4444'
+    };
+    return colors[status] || '#f59e0b';
+}
+
+function getStatusBackgroundColor(status) {
+    const colors = {
+        'pending': 'rgba(245, 158, 11, 0.1)',
+        'approved': 'rgba(16, 185, 129, 0.1)',
+        'rejected': 'rgba(239, 68, 68, 0.1)'
+    };
+    return colors[status] || 'rgba(245, 158, 11, 0.1)';
 }
 
 // Notification function
@@ -923,6 +1566,12 @@ function showNotification(message, type = 'info') {
 window.callOwner = callOwner;
 window.messageOwner = messageOwner;
 window.saveEquipment = saveEquipment;
+window.toggleAvailability = toggleAvailability;
+window.showAdminEquipmentDetails = showAdminEquipmentDetails;
+window.closeAdminModal = closeAdminModal;
+window.showAdminRejectionForm = showAdminRejectionForm;
+window.approveEquipment = approveEquipment;
+window.rejectEquipment = rejectEquipment;
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
