@@ -35,7 +35,9 @@ const mainContent = document.getElementById('main-content');
 
 // Check if current user is admin
 function isAdmin() {
-    return currentUser && ADMIN_IDS.includes(parseInt(currentUser.uid));
+    if (!currentUser) return false;
+    const userId = parseInt(currentUser.uid);
+    return ADMIN_IDS.includes(userId);
 }
 
 // Initialize the application
@@ -53,6 +55,11 @@ async function init() {
         // Load user data from Telegram first
         await loadUserFromTelegram();
         
+        // Debug info
+        console.log('User loaded:', currentUser);
+        console.log('Is admin:', isAdmin());
+        console.log('Admin IDs:', ADMIN_IDS);
+        
         // Setup event listeners
         setupEventListeners();
         
@@ -61,6 +68,7 @@ async function init() {
         
         // Add admin button if user is admin
         if (isAdmin()) {
+            console.log('User is admin, adding admin button');
             addAdminButton();
         }
         
@@ -86,7 +94,15 @@ async function init() {
 // Add admin button to navigation
 function addAdminButton() {
     const bottomNav = document.querySelector('.bottom-nav');
-    if (!bottomNav) return;
+    if (!bottomNav) {
+        console.error('Bottom nav not found');
+        return;
+    }
+    
+    // Проверяем, не добавлена ли уже кнопка
+    if (document.querySelector('.nav-item[data-page="admin-panel"]')) {
+        return;
+    }
     
     const adminNavItem = document.createElement('div');
     adminNavItem.className = 'nav-item';
@@ -104,6 +120,8 @@ function addAdminButton() {
     });
     
     bottomNav.appendChild(adminNavItem);
+    lucide.createIcons();
+    console.log('Admin button added to navigation');
 }
 
 // Load user data from Telegram
@@ -122,8 +140,7 @@ async function loadUserFromTelegram() {
                     username: tgUser.username || '',
                     photoUrl: tgUser.photo_url || '',
                     languageCode: tgUser.language_code || 'ru',
-                    isPremium: tgUser.is_premium || false,
-                    isAdmin: ADMIN_IDS.includes(tgUser.id)
+                    isPremium: tgUser.is_premium || false
                 };
                 
                 console.log('User loaded from Telegram:', currentUser);
@@ -136,8 +153,7 @@ async function loadUserFromTelegram() {
                     username: '',
                     photoUrl: '',
                     languageCode: 'ru',
-                    isPremium: false,
-                    isAdmin: false
+                    isPremium: false
                 };
                 console.log('Created guest user:', currentUser);
                 updateUIForAuthenticatedUser();
@@ -151,8 +167,7 @@ async function loadUserFromTelegram() {
                 username: '',
                 photoUrl: '',
                 languageCode: 'ru',
-                isPremium: false,
-                isAdmin: false
+                isPremium: false
             };
             updateUIForAuthenticatedUser();
         }
@@ -376,11 +391,17 @@ function loadEquipmentData() {
                     ...value
                 })).filter(item => item !== null);
                 console.log('Equipment loaded:', allEquipment.length, 'items');
+                console.log('Equipment data:', allEquipment);
                 
                 if (currentUser) {
                     userEquipment = allEquipment.filter(item => 
                         item.ownerId === currentUser.uid && item.status === 'approved'
                     );
+                }
+                
+                // Обновляем админ-панель если она активна
+                if (document.getElementById('admin-panel')?.classList.contains('active')) {
+                    renderAdminPanel();
                 }
             } else {
                 allEquipment = [];
@@ -388,6 +409,9 @@ function loadEquipmentData() {
             }
             
             setTimeout(() => lucide.createIcons(), 100);
+        }, (error) => {
+            console.error('Error loading equipment data:', error);
+            allEquipment = [];
         });
     } catch (error) {
         console.error('Error loading equipment data:', error);
@@ -809,12 +833,28 @@ function resetEquipmentForm() {
 // Admin Panel Functions
 function loadAdminPanel() {
     console.log('Loading admin panel...');
+    console.log('Current user:', currentUser);
+    console.log('Is admin:', isAdmin());
     
-    const adminPanel = document.getElementById('admin-panel');
-    if (!adminPanel) {
-        createAdminPanel();
+    if (!isAdmin()) {
+        showNotification('❌ У вас нет прав доступа к админ-панели', 'error');
+        navigateTo('home-page');
+        return;
     }
-    renderAdminPanel();
+    
+    let adminPanel = document.getElementById('admin-panel');
+    if (!adminPanel) {
+        console.log('Admin panel not found, creating...');
+        createAdminPanel();
+        adminPanel = document.getElementById('admin-panel');
+    }
+    
+    if (adminPanel) {
+        renderAdminPanel();
+    } else {
+        console.error('Admin panel element not found after creation');
+        showNotification('❌ Ошибка загрузки админ-панели', 'error');
+    }
 }
 
 function createAdminPanel() {
@@ -886,158 +926,6 @@ function createAdminPanel() {
         return;
     }
     
-    // Add admin panel styles
-    if (!document.querySelector('#admin-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'admin-styles';
-        styles.textContent = `
-            .admin-content { padding: 20px; }
-            .admin-stats { 
-                display: grid; 
-                grid-template-columns: repeat(3, 1fr); 
-                gap: 15px; 
-                margin-bottom: 25px; 
-            }
-            .stat-card { 
-                background: white; 
-                padding: 20px 15px; 
-                border-radius: 12px; 
-                text-align: center; 
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-                border-left: 4px solid #e2e8f0; 
-            }
-            .stat-card.pending { border-left-color: #f59e0b; }
-            .stat-card.approved { border-left-color: #10b981; }
-            .stat-card.rejected { border-left-color: #ef4444; }
-            .stat-number { 
-                font-size: 2rem; 
-                font-weight: bold; 
-                margin-bottom: 5px; 
-            }
-            .stat-pending { color: #f59e0b; }
-            .stat-approved { color: #10b981; }
-            .stat-rejected { color: #ef4444; }
-            .filter-tabs { 
-                display: flex; 
-                background: white; 
-                border-radius: 12px; 
-                padding: 5px; 
-                margin-bottom: 20px; 
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-            }
-            .tab-btn { 
-                flex: 1; 
-                padding: 12px; 
-                border: none; 
-                background: none; 
-                cursor: pointer; 
-                border-radius: 8px; 
-                transition: all 0.3s ease; 
-                font-weight: 500; 
-            }
-            .tab-btn.active { 
-                background: #7c3aed; 
-                color: white; 
-            }
-            .modal { 
-                position: fixed; 
-                top: 0; 
-                left: 0; 
-                width: 100%; 
-                height: 100%; 
-                background: rgba(0,0,0,0.5); 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                z-index: 1000; 
-                padding: 20px; 
-            }
-            .modal.hidden { display: none; }
-            .modal-content { 
-                background: white; 
-                padding: 25px; 
-                border-radius: 12px; 
-                max-width: 500px; 
-                width: 100%; 
-                max-height: 80vh; 
-                overflow-y: auto; 
-                box-shadow: 0 8px 30px rgba(0,0,0,0.12); 
-            }
-            .modal-header { 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                margin-bottom: 20px; 
-                padding-bottom: 15px; 
-                border-bottom: 1px solid #e2e8f0; 
-            }
-            .modal-title { 
-                font-size: 1.3rem; 
-                font-weight: 600; 
-                color: #1e293b; 
-            }
-            .close-modal { 
-                background: none; 
-                border: none; 
-                font-size: 1.5rem; 
-                cursor: pointer; 
-                color: #64748b; 
-                padding: 5px; 
-            }
-            .moderation-controls { 
-                display: flex; 
-                gap: 10px; 
-                margin: 20px 0; 
-                flex-wrap: wrap; 
-            }
-            .btn { 
-                padding: 12px 20px; 
-                border: none; 
-                border-radius: 12px; 
-                font-size: 0.9rem; 
-                cursor: pointer; 
-                transition: all 0.3s ease; 
-                font-weight: 500; 
-            }
-            .btn-approve { 
-                background: #10b981; 
-                color: white; 
-            }
-            .btn-reject { 
-                background: #ef4444; 
-                color: white; 
-            }
-            .rejection-reason { 
-                margin-top: 15px; 
-                width: 100%; 
-            }
-            .rejection-reason textarea { 
-                width: 100%; 
-                padding: 12px; 
-                border: 1px solid #e2e8f0; 
-                border-radius: 12px; 
-                resize: vertical; 
-                min-height: 80px; 
-                font-family: inherit; 
-            }
-            .detail-row { 
-                margin-bottom: 12px; 
-                padding-bottom: 12px; 
-                border-bottom: 1px solid #e2e8f0; 
-            }
-            .detail-row:last-child { 
-                border-bottom: none; 
-                margin-bottom: 0; 
-            }
-            .detail-row strong { 
-                color: #1e293b; 
-                display: block; 
-                margin-bottom: 5px; 
-            }
-        `;
-        document.head.appendChild(styles);
-    }
-    
     setupAdminEventListeners();
     console.log('Admin panel created successfully');
 }
@@ -1073,7 +961,7 @@ function setupAdminEventListeners() {
 
 function renderAdminPanel() {
     console.log('Rendering admin panel with filter:', currentAdminFilter);
-    console.log('All equipment:', allEquipment);
+    console.log('All equipment count:', allEquipment.length);
     
     // Update statistics
     const pending = allEquipment.filter(item => item.status === 'pending').length;
@@ -1094,10 +982,13 @@ function renderAdminPanel() {
         return itemStatus === currentAdminFilter;
     });
     
-    console.log(`Filtered equipment (${currentAdminFilter}):`, filteredEquipment);
+    console.log(`Filtered equipment (${currentAdminFilter}):`, filteredEquipment.length, 'items');
     
     const listElement = document.getElementById('admin-equipment-list');
-    if (!listElement) return;
+    if (!listElement) {
+        console.error('Admin equipment list element not found');
+        return;
+    }
     
     if (filteredEquipment.length === 0) {
         listElement.innerHTML = `
@@ -1113,29 +1004,28 @@ function renderAdminPanel() {
             const ownerPhone = equipment.ownerPhone || 'Не указан';
             
             return `
-                <div class="equipment-item ${status}" onclick="showAdminEquipmentDetails('${equipment.id}')" 
-                     style="background: white; border-radius: 12px; padding: 15px; display: flex; gap: 15px; cursor: pointer; margin-bottom: 10px; border: 1px solid #e2e8f0; border-left: 4px solid ${getStatusColor(status)};">
-                    <div class="equipment-image" style="width: 60px; height: 60px; background: linear-gradient(135deg, #7c3aed, #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                <div class="equipment-item ${status}" onclick="showAdminEquipmentDetails('${equipment.id}')">
+                    <div class="equipment-image">
                         <i data-lucide="${getEquipmentIcon(equipment.category)}"></i>
                     </div>
-                    <div class="equipment-info" style="flex: 1; min-width: 0;">
-                        <h3 style="font-size: 1.1rem; margin-bottom: 8px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${equipment.name}</h3>
-                        <div class="equipment-location" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #64748b; margin-bottom: 5px;">
+                    <div class="equipment-info">
+                        <h3>${equipment.name}</h3>
+                        <div class="equipment-location">
                             <i data-lucide="map-pin"></i>
                             <span>${equipment.location}</span>
                         </div>
-                        <div class="equipment-meta" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
-                            <span class="equipment-price" style="font-size: 1.1rem; font-weight: 700; color: #7c3aed;">${equipment.price} тыс. сум/час</span>
-                            <span class="equipment-type" style="font-size: 0.8rem; color: #94a3b8; background: #f1f5f9; padding: 2px 8px; border-radius: 10px;">${getCategoryName(equipment.category)}</span>
+                        <div class="equipment-meta">
+                            <span class="equipment-price">${equipment.price} тыс. сум/час</span>
+                            <span class="equipment-type">${getCategoryName(equipment.category)}</span>
                         </div>
-                        <div class="owner-info" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #64748b;">
+                        <div class="owner-info">
                             <i data-lucide="user"></i>
                             <span>${ownerName}</span>
                             <span style="color: #94a3b8;">•</span>
                             <span>${ownerPhone}</span>
                         </div>
                     </div>
-                    <div class="equipment-status ${status}" style="align-self: flex-start; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background: ${getStatusBackgroundColor(status)}; color: ${getStatusColor(status)};">
+                    <div class="equipment-status ${status}">
                         ${getAdminStatusBadge(status)}
                     </div>
                 </div>
@@ -1151,6 +1041,7 @@ function showAdminEquipmentDetails(equipmentId) {
     const equipment = allEquipment.find(item => item.id === equipmentId);
     if (!equipment) {
         console.error('Equipment not found:', equipmentId);
+        showNotification('❌ Оборудование не найдено', 'error');
         return;
     }
     
@@ -1160,7 +1051,10 @@ function showAdminEquipmentDetails(equipmentId) {
     }
     
     const modalContent = document.getElementById('modal-content');
-    if (!modalContent) return;
+    if (!modalContent) {
+        console.error('Modal content element not found');
+        return;
+    }
     
     const status = equipment.status || 'pending';
     const ownerName = equipment.owner?.name || 'Неизвестно';
@@ -1189,7 +1083,7 @@ function showAdminEquipmentDetails(equipmentId) {
             </div>
             <div class="detail-row">
                 <strong>Статус:</strong> 
-                <span class="equipment-status ${status}" style="padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background: ${getStatusBackgroundColor(status)}; color: ${getStatusColor(status)};">
+                <span class="equipment-status ${status}">
                     ${getAdminStatusBadge(status)}
                 </span>
             </div>
@@ -1297,13 +1191,14 @@ async function approveEquipment(equipmentId) {
         await equipmentRef.update({
             status: 'approved',
             moderatedBy: currentUser.uid,
-            moderatedAt: new Date().toISOString(),
+            moderatedAt: Date.now(),
             rejectionReason: null
         });
         
         showNotification('✅ Заявка одобрена!', 'success');
         closeAdminModal();
-        renderAdminPanel();
+        // Обновляем данные
+        loadEquipmentData();
     } catch (error) {
         console.error('Error approving equipment:', error);
         showNotification('❌ Ошибка при одобрении заявки: ' + error.message, 'error');
@@ -1328,12 +1223,13 @@ async function rejectEquipment(equipmentId) {
             status: 'rejected',
             rejectionReason: reason,
             moderatedBy: currentUser.uid,
-            moderatedAt: new Date().toISOString()
+            moderatedAt: Date.now()
         });
         
         showNotification('❌ Заявка отклонена!', 'success');
         closeAdminModal();
-        renderAdminPanel();
+        // Обновляем данные
+        loadEquipmentData();
     } catch (error) {
         console.error('Error rejecting equipment:', error);
         showNotification('❌ Ошибка при отклонении заявки: ' + error.message, 'error');
@@ -1480,26 +1376,9 @@ function getCategoryName(category) {
     return categories[category] || '🚜 Другая техника';
 }
 
-function getStatusColor(status) {
-    const colors = {
-        'pending': '#f59e0b',
-        'approved': '#10b981', 
-        'rejected': '#ef4444'
-    };
-    return colors[status] || '#f59e0b';
-}
-
-function getStatusBackgroundColor(status) {
-    const colors = {
-        'pending': 'rgba(245, 158, 11, 0.1)',
-        'approved': 'rgba(16, 185, 129, 0.1)',
-        'rejected': 'rgba(239, 68, 68, 0.1)'
-    };
-    return colors[status] || 'rgba(245, 158, 11, 0.1)';
-}
-
 // Notification function
 function showNotification(message, type = 'info') {
+    // Удаляем старые уведомления
     document.querySelectorAll('.notification').forEach(notification => {
         notification.remove();
     });
@@ -1513,42 +1392,12 @@ function showNotification(message, type = 'info') {
         </div>
     `;
     
-    if (!document.querySelector('#notification-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'notification-styles';
-        styles.textContent = `
-            .notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                z-index: 10000;
-                transform: translateX(400px);
-                transition: transform 0.3s ease;
-                border-left: 4px solid #7c3aed;
-                max-width: 300px;
-            }
-            .notification-success { border-left-color: #10b981; }
-            .notification-error { border-left-color: #ef4444; }
-            .notification-info { border-left-color: #3b82f6; }
-            .notification.show { transform: translateX(0); }
-            .notification-content {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            .notification-content i { width: 20px; height: 20px; }
-        `;
-        document.head.appendChild(styles);
-    }
-    
     document.body.appendChild(notification);
     
+    // Показываем уведомление
     setTimeout(() => notification.classList.add('show'), 100);
     
+    // Автоматически скрываем через 3 секунды
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
