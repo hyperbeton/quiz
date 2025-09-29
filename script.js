@@ -36,9 +36,9 @@ const mainContent = document.getElementById('main-content');
 // Check if current user is admin
 function isAdmin() {
     if (!currentUser) return false;
-    const userId = parseInt(currentUser.uid);
-    return ADMIN_IDS.includes(userId);
+    return ADMIN_IDS.map(String).includes(String(currentUser.uid));
 }
+
 
 // Initialize the application
 async function init() {
