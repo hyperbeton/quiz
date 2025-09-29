@@ -77,7 +77,6 @@ async function init() {
         
     } catch (error) {
         console.error('Error initializing app:', error);
-        // Always show main content even if there's an error
         if (loadingScreen) loadingScreen.classList.add('hidden');
         if (mainContent) mainContent.classList.remove('hidden');
         showNotification('Ошибка загрузки приложения', 'error');
@@ -130,7 +129,6 @@ async function loadUserFromTelegram() {
                 console.log('User loaded from Telegram:', currentUser);
                 updateUIForAuthenticatedUser();
             } else {
-                // Если нет данных Telegram, создаем временного пользователя
                 currentUser = {
                     uid: 'guest_' + Date.now(),
                     firstName: 'Гость',
@@ -146,7 +144,6 @@ async function loadUserFromTelegram() {
             }
         } catch (error) {
             console.error('Error loading user from Telegram:', error);
-            // Создаем временного пользователя при ошибке
             currentUser = {
                 uid: 'error_guest_' + Date.now(),
                 firstName: 'Гость',
@@ -185,7 +182,6 @@ function updateUIForAuthenticatedUser() {
         avatarFallback.style.display = 'none';
     }
     
-    // Update user equipment
     userEquipment = allEquipment.filter(item => 
         item.ownerId === currentUser.uid && item.status === 'approved'
     );
@@ -817,12 +813,13 @@ function loadAdminPanel() {
     const adminPanel = document.getElementById('admin-panel');
     if (!adminPanel) {
         createAdminPanel();
-    } else {
-        renderAdminPanel();
     }
+    renderAdminPanel();
 }
 
 function createAdminPanel() {
+    console.log('Creating admin panel...');
+    
     const adminPanel = document.createElement('section');
     adminPanel.id = 'admin-panel';
     adminPanel.className = 'page';
@@ -880,7 +877,14 @@ function createAdminPanel() {
         </div>
     `;
     
-    document.querySelector('main').appendChild(adminPanel);
+    const main = document.querySelector('main');
+    if (main) {
+        main.appendChild(adminPanel);
+        console.log('Admin panel added to DOM');
+    } else {
+        console.error('Main element not found');
+        return;
+    }
     
     // Add admin panel styles
     if (!document.querySelector('#admin-styles')) {
@@ -1035,7 +1039,7 @@ function createAdminPanel() {
     }
     
     setupAdminEventListeners();
-    renderAdminPanel();
+    console.log('Admin panel created successfully');
 }
 
 function setupAdminEventListeners() {
@@ -1496,7 +1500,6 @@ function getStatusBackgroundColor(status) {
 
 // Notification function
 function showNotification(message, type = 'info') {
-    // Удаляем старые уведомления
     document.querySelectorAll('.notification').forEach(notification => {
         notification.remove();
     });
@@ -1510,7 +1513,6 @@ function showNotification(message, type = 'info') {
         </div>
     `;
     
-    // Добавляем стили если их нет
     if (!document.querySelector('#notification-styles')) {
         const styles = document.createElement('style');
         styles.id = 'notification-styles';
@@ -1545,10 +1547,8 @@ function showNotification(message, type = 'info') {
     
     document.body.appendChild(notification);
     
-    // Анимация появления
     setTimeout(() => notification.classList.add('show'), 100);
     
-    // Автоматическое скрытие
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -1558,7 +1558,6 @@ function showNotification(message, type = 'info') {
         }, 300);
     }, 3000);
     
-    // Обновляем иконки
     setTimeout(() => lucide.createIcons(), 100);
 }
 
