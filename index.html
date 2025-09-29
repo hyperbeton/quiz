@@ -345,33 +345,51 @@
            
         </main>
 
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <div class="nav-item active" data-page="home-page">
-                <div class="nav-icon">
-                    <i data-lucide="home"></i>
-                </div>
-                <span>Главная</span>
-            </div>
-            <div class="nav-item" data-page="category-page" data-category="mixers">
-                <div class="nav-icon">
-                    <i data-lucide="mixer"></i>
-                </div>
-                <span>Миксеры</span>
-            </div>
-            <div class="nav-item" data-page="category-page" data-category="pumps">
-                <div class="nav-icon">
-                    <i data-lucide="sprout"></i>
-                </div>
-                <span>Насосы</span>
-            </div>
-            <div class="nav-item" data-page="profile-page">
-                <div class="nav-icon">
-                    <i data-lucide="user"></i>
-                </div>
-                <span>Профиль</span>
-            </div>
-        </nav>
+<!-- Более простой вариант с существующими иконками Lucide -->
+<nav class="bottom-nav">
+    <div class="nav-item active" data-page="home-page">
+        <div class="nav-icon">
+            <i data-lucide="home"></i>
+        </div>
+        <span>Главная</span>
+    </div>
+    <div class="nav-item" data-page="category-page" data-category="mixers">
+        <div class="nav-icon">
+            <i data-lucide="truck"></i> <!-- Грузовик для миксеров -->
+        </div>
+        <span>Миксеры</span>
+    </div>
+    <div class="nav-item" data-page="category-page" data-category="pumps">
+        <div class="nav-icon">
+            <i data-lucide="gantt-chart"></i> <!-- Диаграмма для насосов -->
+        </div>
+        <span>Насосы</span>
+    </div>
+    <div class="nav-item" data-page="category-page" data-category="dump-trucks">
+        <div class="nav-icon">
+            <i data-lucide="minibus"></i> <!-- Миниавтобус для самосвалов -->
+        </div>
+        <span>Самосвалы</span>
+    </div>
+    <div class="nav-item" data-page="category-page" data-category="cranes">
+        <div class="nav-icon">
+            <i data-lucide="arrow-up-from-line"></i> <!-- Стрелка вверх для кранов -->
+        </div>
+        <span>Краны</span>
+    </div>
+    <div class="nav-item" data-page="category-page" data-category="excavators">
+        <div class="nav-icon">
+            <i data-lucide="shovel"></i> <!-- Лопата для экскаваторов -->
+        </div>
+        <span>Экскаваторы</span>
+    </div>
+    <div class="nav-item" data-page="profile-page">
+        <div class="nav-icon">
+            <i data-lucide="user"></i>
+        </div>
+        <span>Профиль</span>
+    </div>
+</nav>
     </div>
 
     <script src="script.js"></script>
