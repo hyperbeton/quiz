@@ -62,6 +62,14 @@ const approvedCount = document.getElementById('approved-count');
 const rejectedCount = document.getElementById('rejected-count');
 const moderationEquipmentList = document.getElementById('moderation-equipment');
 
+// Admin IDs
+const ADMIN_IDS = [543221724]; // Ваш ID Telegram
+
+// Check if current user is admin
+function isAdmin() {
+    return currentUser && ADMIN_IDS.includes(parseInt(currentUser.uid));
+}
+
 // Initialize the application
 async function init() {
     try {
@@ -83,8 +91,10 @@ async function init() {
         // Load equipment data
         await loadEquipmentData();
         
-        // Setup notification listener
-        setupNotificationListener();
+        // Add admin button if user is admin
+        if (isAdmin()) {
+            addAdminButton();
+        }
         
         // Hide loading screen and show main content
         setTimeout(() => {
@@ -99,6 +109,29 @@ async function init() {
         mainContent.classList.remove('hidden');
         showNotification('Ошибка загрузки приложения', 'error');
     }
+}
+
+// Add admin button to navigation
+function addAdminButton() {
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (!bottomNav) return;
+    
+    const adminNavItem = document.createElement('div');
+    adminNavItem.className = 'nav-item';
+    adminNavItem.setAttribute('data-page', 'admin-panel');
+    adminNavItem.innerHTML = `
+        <div class="nav-icon">
+            <i data-lucide="shield"></i>
+        </div>
+        <span>Админ</span>
+    `;
+    
+    adminNavItem.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigateTo('admin-panel');
+    });
+    
+    bottomNav.appendChild(adminNavItem);
 }
 
 // Load user data from Telegram
@@ -116,7 +149,8 @@ async function loadUserFromTelegram() {
                 username: tgUser.username || '',
                 photoUrl: tgUser.photo_url || '',
                 languageCode: tgUser.language_code || 'ru',
-                isPremium: tgUser.is_premium || false
+                isPremium: tgUser.is_premium || false,
+                isAdmin: ADMIN_IDS.includes(tgUser.id)
             };
             
             // Save or load user from database
@@ -154,6 +188,7 @@ async function syncUserWithDatabase() {
                 photoUrl: currentUser.photoUrl,
                 languageCode: currentUser.languageCode,
                 isPremium: currentUser.isPremium,
+                isAdmin: currentUser.isAdmin,
                 createdAt: firebase.database.ServerValue.TIMESTAMP,
                 rating: 5.0,
                 reviews: 0,
@@ -189,41 +224,6 @@ function updateUIForAuthenticatedUser() {
     }
 }
 
-// Setup notification listener for moderation results
-function setupNotificationListener() {
-    if (!currentUser) return;
-    
-    const notificationsRef = database.ref('notifications/' + currentUser.uid);
-    
-    notificationsRef.on('child_added', (snapshot) => {
-        const notification = snapshot.val();
-        handleModerationNotification(notification);
-        
-        // Remove notification after processing
-        snapshot.ref.remove();
-    });
-}
-
-// Handle moderation notifications
-function handleModerationNotification(notification) {
-    const equipmentId = notification.equipmentId;
-    const status = notification.status;
-    const reason = notification.reason;
-    
-    const equipment = allEquipment.find(item => item.id === equipmentId);
-    if (!equipment) return;
-    
-    if (status === 'approved') {
-        showNotification(`✅ Ваша техника "${equipment.name}" одобрена и теперь видна другим пользователям!`, 'success');
-        
-        // Reload equipment data to reflect changes
-        loadEquipmentData();
-        
-    } else if (status === 'rejected') {
-        showNotification(`❌ Техника "${equipment.name}" отклонена. Причина: ${reason || 'не указана'}`, 'error');
-    }
-}
-
 // Setup event listeners
 function setupEventListeners() {
     console.log('Setting up event listeners...');
@@ -238,7 +238,7 @@ function setupEventListeners() {
             if (category) {
                 currentCategory = category;
                 loadCategoryEquipment(category);
-                categoryTitle.textContent = getCategoryTitle(category);
+                if (categoryTitle) categoryTitle.textContent = getCategoryTitle(category);
             }
             
             navigateTo(pageId);
@@ -252,7 +252,7 @@ function setupEventListeners() {
             const category = item.getAttribute('data-category');
             currentCategory = category;
             loadCategoryEquipment(category);
-            categoryTitle.textContent = getCategoryTitle(category);
+            if (categoryTitle) categoryTitle.textContent = getCategoryTitle(category);
             navigateTo('category-page');
             updateNavigationForCategory(category);
         });
@@ -267,18 +267,27 @@ function setupEventListeners() {
     });
 
     // Profile actions
-    addEquipmentBtn.addEventListener('click', () => {
-        navigateTo('add-equipment-page');
-    });
+    if (addEquipmentBtn) {
+        addEquipmentBtn.addEventListener('click', () => {
+            navigateTo('add-equipment-page');
+        });
+    }
     
-    toggleAvailabilityBtn.addEventListener('click', () => {
-        loadAvailabilityEquipment();
-        navigateTo('availability-page');
-    });
+    if (toggleAvailabilityBtn) {
+        toggleAvailabilityBtn.addEventListener('click', () => {
+            loadAvailabilityEquipment();
+            navigateTo('availability-page');
+        });
+    }
 
     // Equipment form
-    saveEquipmentBtn.addEventListener('click', saveEquipment);
-    equipmentTypeSelect.addEventListener('change', toggleFormFields);
+    if (saveEquipmentBtn) {
+        saveEquipmentBtn.addEventListener('click', saveEquipment);
+    }
+    
+    if (equipmentTypeSelect) {
+        equipmentTypeSelect.addEventListener('change', toggleFormFields);
+    }
     
     // Phone input formatting
     const phoneInput = document.getElementById('user-phone-input');
@@ -337,6 +346,13 @@ function navigateTo(pageId) {
         loadCategoryEquipment(currentCategory);
     } else if (pageId === 'moderation-page') {
         loadModerationStatus();
+    } else if (pageId === 'admin-panel') {
+        if (!isAdmin()) {
+            showNotification('❌ У вас нет прав доступа к админ-панели', 'error');
+            navigateTo('home-page');
+            return;
+        }
+        loadAdminPanel();
     }
 
     setTimeout(() => lucide.createIcons(), 100);
@@ -383,7 +399,7 @@ async function loadEquipmentData() {
                 allEquipment = Object.entries(equipmentData).map(([key, value]) => ({
                     id: key,
                     ...value
-                }));
+                })).filter(item => item !== null);
                 console.log('Equipment loaded:', allEquipment.length, 'items');
                 
                 if (currentUser) {
@@ -714,6 +730,371 @@ function loadModerationStatus() {
     });
 }
 
+// Admin Panel Functions
+function loadAdminPanel() {
+    const adminPage = document.getElementById('admin-panel');
+    if (!adminPage) {
+        createAdminPanel();
+        return;
+    }
+    
+    renderAdminPanel();
+}
+
+function createAdminPanel() {
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) return;
+    
+    const adminPanel = document.createElement('section');
+    adminPanel.id = 'admin-panel';
+    adminPanel.className = 'page';
+    adminPanel.innerHTML = `
+        <div class="page-header">
+            <button class="btn-back">
+                <i data-lucide="arrow-left"></i>
+            </button>
+            <h2>👑 Панель модерации</h2>
+        </div>
+        
+        <div class="admin-stats">
+            <div class="stat-card pending">
+                <div class="stat-number stat-pending" id="admin-pending-count">0</div>
+                <div>На модерации</div>
+            </div>
+            <div class="stat-card approved">
+                <div class="stat-number stat-approved" id="admin-approved-count">0</div>
+                <div>Одобрено</div>
+            </div>
+            <div class="stat-card rejected">
+                <div class="stat-number stat-rejected" id="admin-rejected-count">0</div>
+                <div>Отклонено</div>
+            </div>
+        </div>
+        
+        <div class="filter-tabs">
+            <button class="tab-btn active" data-filter="pending">⏳ На модерации</button>
+            <button class="tab-btn" data-filter="approved">✅ Одобренные</button>
+            <button class="tab-btn" data-filter="rejected">❌ Отклоненные</button>
+        </div>
+        
+        <div class="equipment-list" id="admin-equipment-list">
+            <!-- Заявки будут загружаться здесь -->
+        </div>
+        
+        <!-- Modal for equipment details -->
+        <div id="admin-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="admin-modal-title">Детали заявки</h3>
+                    <button class="close-modal" onclick="closeAdminModal()">×</button>
+                </div>
+                <div id="admin-modal-body"></div>
+                <div class="modal-actions" id="admin-modal-actions"></div>
+            </div>
+        </div>
+    `;
+    
+    mainContent.appendChild(adminPanel);
+    
+    // Add styles for admin panel
+    if (!document.querySelector('#admin-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'admin-styles';
+        styles.textContent = `
+            .admin-stats {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .stat-card {
+                background: var(--surface-light);
+                padding: 20px;
+                border-radius: var(--border-radius);
+                text-align: center;
+                box-shadow: var(--shadow);
+                border-left: 4px solid var(--border-color);
+            }
+            
+            .stat-card.pending { border-left-color: var(--warning-color); }
+            .stat-card.approved { border-left-color: var(--success-color); }
+            .stat-card.rejected { border-left-color: var(--danger-color); }
+            
+            .stat-number {
+                font-size: 2rem;
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+            
+            .stat-pending { color: var(--warning-color); }
+            .stat-approved { color: var(--success-color); }
+            .stat-rejected { color: var(--danger-color); }
+            
+            .filter-tabs {
+                display: flex;
+                background: var(--surface-light);
+                border-radius: var(--border-radius);
+                padding: 5px;
+                margin-bottom: 20px;
+            }
+            
+            .tab-btn {
+                flex: 1;
+                padding: 10px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                border-radius: 6px;
+                transition: var(--transition);
+            }
+            
+            .tab-btn.active {
+                background: var(--primary-color);
+                color: white;
+            }
+            
+            .modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                padding: 20px;
+            }
+            
+            .modal-content {
+                background: white;
+                padding: 20px;
+                border-radius: var(--border-radius);
+                max-width: 500px;
+                width: 100%;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+            
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            }
+            
+            .close-modal {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+            }
+            
+            .modal-actions {
+                display: flex;
+                gap: 10px;
+                margin-top: 20px;
+            }
+            
+            .admin-btn {
+                padding: 10px 15px;
+                border: none;
+                border-radius: var(--border-radius);
+                cursor: pointer;
+                flex: 1;
+            }
+            
+            .btn-approve {
+                background: var(--success-color);
+                color: white;
+            }
+            
+            .btn-reject {
+                background: var(--danger-color);
+                color: white;
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    // Add event listeners
+    setTimeout(() => {
+        const backBtn = adminPanel.querySelector('.btn-back');
+        if (backBtn) {
+            backBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                goBack();
+            });
+        }
+        
+        const tabBtns = adminPanel.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                renderAdminEquipmentList(this.dataset.filter);
+            });
+        });
+    }, 100);
+    
+    renderAdminPanel();
+}
+
+function renderAdminPanel() {
+    const pending = allEquipment.filter(item => item.status === 'pending').length;
+    const approved = allEquipment.filter(item => item.status === 'approved').length;
+    const rejected = allEquipment.filter(item => item.status === 'rejected').length;
+    
+    const pendingCountElem = document.getElementById('admin-pending-count');
+    const approvedCountElem = document.getElementById('admin-approved-count');
+    const rejectedCountElem = document.getElementById('admin-rejected-count');
+    
+    if (pendingCountElem) pendingCountElem.textContent = pending;
+    if (approvedCountElem) approvedCountElem.textContent = approved;
+    if (rejectedCountElem) rejectedCountElem.textContent = rejected;
+    
+    renderAdminEquipmentList('pending');
+}
+
+function renderAdminEquipmentList(filter) {
+    const listElement = document.getElementById('admin-equipment-list');
+    if (!listElement) return;
+    
+    const filteredEquipment = allEquipment.filter(item => item.status === filter);
+    
+    if (filteredEquipment.length === 0) {
+        listElement.innerHTML = `
+            <div class="no-data">
+                <i data-lucide="inbox"></i>
+                <p>Нет заявок со статусом "${getStatusText({status: filter})}"</p>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
+    }
+    
+    listElement.innerHTML = filteredEquipment.map(equipment => `
+        <div class="equipment-item ${equipment.status}" onclick="showAdminEquipmentDetails('${equipment.id}')">
+            <div class="equipment-image">
+                <i data-lucide="${getEquipmentIcon(equipment.category)}"></i>
+            </div>
+            <div class="equipment-info">
+                <h3>${equipment.name}</h3>
+                <div class="equipment-location">
+                    <i data-lucide="map-pin"></i>
+                    <span>${equipment.location}</span>
+                </div>
+                <div class="equipment-meta">
+                    <span class="equipment-price">${equipment.price} тыс. сум/час</span>
+                    <span class="owner-name">👤 ${equipment.owner?.name || 'Неизвестно'}</span>
+                </div>
+            </div>
+            <div class="equipment-status ${equipment.status}">
+                ${getStatusText(equipment)}
+            </div>
+        </div>
+    `).join('');
+    
+    lucide.createIcons();
+}
+
+function showAdminEquipmentDetails(equipmentId) {
+    const equipment = allEquipment.find(item => item.id === equipmentId);
+    if (!equipment) return;
+    
+    const modal = document.getElementById('admin-modal');
+    const modalTitle = document.getElementById('admin-modal-title');
+    const modalBody = document.getElementById('admin-modal-body');
+    const modalActions = document.getElementById('admin-modal-actions');
+    
+    if (!modal || !modalTitle || !modalBody || !modalActions) return;
+    
+    modalTitle.textContent = equipment.name;
+    
+    modalBody.innerHTML = `
+        <div class="equipment-details">
+            <p><strong>Категория:</strong> ${getCategoryTitle(equipment.category)}</p>
+            <p><strong>Местоположение:</strong> ${equipment.location}</p>
+            <p><strong>Цена:</strong> ${equipment.price} тыс. сум/час</p>
+            <p><strong>Владелец:</strong> ${equipment.owner?.name || 'Неизвестно'}</p>
+            <p><strong>Телефон:</strong> ${equipment.ownerPhone || 'Не указан'}</p>
+            <p><strong>Описание:</strong> ${equipment.description || 'Нет описания'}</p>
+            ${equipment.capacity ? `<p><strong>Вместимость:</strong> ${equipment.capacity} м³</p>` : ''}
+            ${equipment.length ? `<p><strong>Длина стрелы:</strong> ${equipment.length} м</p>` : ''}
+            ${equipment.performance ? `<p><strong>Производительность:</strong> ${equipment.performance} м³/ч</p>` : ''}
+            ${equipment.weight ? `<p><strong>Грузоподъемность:</strong> ${equipment.weight} т</p>` : ''}
+            ${equipment.bucket ? `<p><strong>Объем ковша:</strong> ${equipment.bucket} м³</p>` : ''}
+            ${equipment.rejectionReason ? `<p><strong>Причина отклонения:</strong> ${equipment.rejectionReason}</p>` : ''}
+        </div>
+    `;
+    
+    if (equipment.status === 'pending') {
+        modalActions.innerHTML = `
+            <button class="admin-btn btn-approve" onclick="approveEquipment('${equipment.id}')">✅ Одобрить</button>
+            <button class="admin-btn btn-reject" onclick="showRejectionForm('${equipment.id}')">❌ Отклонить</button>
+        `;
+    } else {
+        modalActions.innerHTML = `
+            <button class="admin-btn" onclick="closeAdminModal()">Закрыть</button>
+        `;
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+function closeAdminModal() {
+    const modal = document.getElementById('admin-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function approveEquipment(equipmentId) {
+    if (!confirm('Одобрить эту заявку?')) return;
+    
+    const equipmentRef = database.ref('equipment/' + equipmentId);
+    equipmentRef.update({
+        status: 'approved',
+        moderatedBy: currentUser.uid,
+        moderatedAt: new Date().toISOString(),
+        rejectionReason: null
+    }).then(() => {
+        showNotification('✅ Заявка одобрена', 'success');
+        closeAdminModal();
+    }).catch(error => {
+        showNotification('❌ Ошибка: ' + error.message, 'error');
+    });
+}
+
+function showRejectionForm(equipmentId) {
+    const reason = prompt('Укажите причину отклонения:');
+    if (reason === null) return;
+    
+    if (!reason.trim()) {
+        showNotification('❌ Укажите причину отклонения', 'error');
+        return;
+    }
+    
+    rejectEquipment(equipmentId, reason.trim());
+}
+
+function rejectEquipment(equipmentId, reason) {
+    const equipmentRef = database.ref('equipment/' + equipmentId);
+    equipmentRef.update({
+        status: 'rejected',
+        rejectionReason: reason,
+        moderatedBy: currentUser.uid,
+        moderatedAt: new Date().toISOString()
+    }).then(() => {
+        showNotification('❌ Заявка отклонена', 'success');
+        closeAdminModal();
+    }).catch(error => {
+        showNotification('❌ Ошибка: ' + error.message, 'error');
+    });
+}
+
 function toggleFormFields() {
     const type = equipmentTypeSelect.value;
     console.log('Toggling form fields for type:', type);
@@ -836,7 +1217,7 @@ async function saveEquipment() {
             if (userPhoneElement) userPhoneElement.textContent = currentUser.phone;
         }
         
-        showNotification('✅ Техника отправлена на модерацию! Мы уведомим вас о результате.', 'success');
+        showNotification('✅ Техника отправлена на модерацию!', 'success');
         
         // Возвращаемся на страницу профиля
         setTimeout(() => {
@@ -1002,6 +1383,11 @@ window.callOwner = callOwner;
 window.messageOwner = messageOwner;
 window.toggleEquipmentAvailability = toggleEquipmentAvailability;
 window.saveEquipment = saveEquipment;
+window.closeAdminModal = closeAdminModal;
+window.showAdminEquipmentDetails = showAdminEquipmentDetails;
+window.approveEquipment = approveEquipment;
+window.showRejectionForm = showRejectionForm;
+window.rejectEquipment = rejectEquipment;
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
