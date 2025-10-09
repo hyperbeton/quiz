@@ -62,7 +62,7 @@
                             </div>
                             <div class="category-info">
                                 <h3>Автобетононасосы</h3>
-                                <p>Насосы 30-70 метров</p>
+                                <p>Насосы 30-50 метров</p>
                             </div>
                         </div>
 
@@ -88,7 +88,7 @@
                             </div>
                             <div class="category-info">
                                 <h3>Тонары</h3>
-                                <p>Большие грузовики 30-60 тонн</p>
+                                <p>Малые грузовики 3-5 тонн</p>
                             </div>
                         </div>
 
@@ -221,7 +221,7 @@
                         <input type="text" id="equipment-name" placeholder="Например: Камаз 65115" required>
                     </div>
 
-                    <div id="capacity-group" class="form-group hidden">
+                    <div id="capacity-group" class="form-group">
                         <label for="equipment-capacity">Вместимость (м³) *</label>
                         <input type="number" id="equipment-capacity" placeholder="Например: 10" required>
                     </div>
@@ -340,38 +340,35 @@
                     <!-- Equipment for moderation will be loaded here -->
                 </div>
             </section>
-
-            <!-- Admin Panel Page -->
-           
         </main>
 
         <!-- Bottom Navigation -->
-<nav class="bottom-nav">
-    <div class="nav-item active" data-page="home-page">
-        <div class="nav-icon">
-            <i data-lucide="warehouse"></i>
-        </div>
-        <span>Главная</span>
-    </div>
-    <div class="nav-item" data-page="category-page" data-category="mixers">
-        <div class="nav-icon">
-            <i data-lucide="truck"></i>
-        </div>
-        <span>Миксеры</span>
-    </div>
-    <div class="nav-item" data-page="category-page" data-category="pumps">
-        <div class="nav-icon">
-            <i data-lucide="gantt-chart"></i>
-        </div>
-        <span>Насосы</span>
-    </div>
-    <div class="nav-item" data-page="profile-page">
-        <div class="nav-icon">
-            <i data-lucide="user-cog"></i>
-        </div>
-        <span>Профиль</span>
-    </div>
-</nav>
+        <nav class="bottom-nav">
+            <div class="nav-item active" data-page="home-page">
+                <div class="nav-icon">
+                    <i data-lucide="home"></i>
+                </div>
+                <span>Главная</span>
+            </div>
+            <div class="nav-item" data-page="category-page" data-category="mixers">
+                <div class="nav-icon">
+                    <i data-lucide="mixer"></i>
+                </div>
+                <span>Миксеры</span>
+            </div>
+            <div class="nav-item" data-page="category-page" data-category="pumps">
+                <div class="nav-icon">
+                    <i data-lucide="sprout"></i>
+                </div>
+                <span>Насосы</span>
+            </div>
+            <div class="nav-item" data-page="profile-page">
+                <div class="nav-icon">
+                    <i data-lucide="user"></i>
+                </div>
+                <span>Профиль</span>
+            </div>
+        </nav>
     </div>
 
     <script src="script.js"></script>

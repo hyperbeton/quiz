@@ -36,9 +36,10 @@ const mainContent = document.getElementById('main-content');
 // Check if current user is admin
 function isAdmin() {
     if (!currentUser) return false;
-    return ADMIN_IDS.map(String).includes(String(currentUser.uid));
+    // Проверяем как число и как строку
+    const userId = currentUser.uid;
+    return ADMIN_IDS.includes(parseInt(userId)) || ADMIN_IDS.includes(userId);
 }
-
 
 // Initialize the application
 async function init() {
@@ -294,6 +295,18 @@ function setupEventListeners() {
     if (myEquipmentBtn) {
         myEquipmentBtn.addEventListener('click', () => {
             navigateTo('moderation-page');
+        });
+    }
+    
+    // Test admin button (временно для отладки)
+    const testAdminBtn = document.getElementById('test-admin-btn');
+    if (testAdminBtn) {
+        testAdminBtn.addEventListener('click', () => {
+            console.log('Test admin button clicked');
+            console.log('Current user:', currentUser);
+            console.log('Is admin:', isAdmin());
+            loadAdminPanel();
+            navigateTo('admin-panel');
         });
     }
 }
@@ -962,6 +975,7 @@ function setupAdminEventListeners() {
 function renderAdminPanel() {
     console.log('Rendering admin panel with filter:', currentAdminFilter);
     console.log('All equipment count:', allEquipment.length);
+    console.log('All equipment:', allEquipment);
     
     // Update statistics
     const pending = allEquipment.filter(item => item.status === 'pending').length;
@@ -1374,6 +1388,24 @@ function getCategoryName(category) {
         'excavators': '🔧 Экскаватор'
     };
     return categories[category] || '🚜 Другая техника';
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': '#f59e0b',
+        'approved': '#10b981', 
+        'rejected': '#ef4444'
+    };
+    return colors[status] || '#f59e0b';
+}
+
+function getStatusBackgroundColor(status) {
+    const colors = {
+        'pending': 'rgba(245, 158, 11, 0.1)',
+        'approved': 'rgba(16, 185, 129, 0.1)',
+        'rejected': 'rgba(239, 68, 68, 0.1)'
+    };
+    return colors[status] || 'rgba(245, 158, 11, 0.1)';
 }
 
 // Notification function
