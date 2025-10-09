@@ -1,3 +1,4 @@
+
 // script.js
 // Firebase configuration
 const firebaseConfig = {
@@ -36,10 +37,9 @@ const mainContent = document.getElementById('main-content');
 // Check if current user is admin
 function isAdmin() {
     if (!currentUser) return false;
-    // Проверяем как число и как строку
-    const userId = currentUser.uid;
-    return ADMIN_IDS.includes(parseInt(userId)) || ADMIN_IDS.includes(userId);
+    return ADMIN_IDS.map(String).includes(String(currentUser.uid));
 }
+
 
 // Initialize the application
 async function init() {
@@ -298,16 +298,10 @@ function setupEventListeners() {
         });
     }
     
-    // Test admin button (временно для отладки)
-    const testAdminBtn = document.getElementById('test-admin-btn');
-    if (testAdminBtn) {
-        testAdminBtn.addEventListener('click', () => {
-            console.log('Test admin button clicked');
-            console.log('Current user:', currentUser);
-            console.log('Is admin:', isAdmin());
-            loadAdminPanel();
-            navigateTo('admin-panel');
-        });
+    // Toggle all available button
+    const toggleAllAvailableBtn = document.getElementById('toggle-all-available');
+    if (toggleAllAvailableBtn) {
+        toggleAllAvailableBtn.addEventListener('click', toggleAllAvailable);
     }
 }
 
@@ -464,47 +458,36 @@ function createEquipmentCard(equipment) {
     const div = document.createElement('div');
     div.className = `equipment-item ${equipment.available ? 'available' : 'busy'} ${equipment.status || 'approved'}`;
     
-    const icon = getEquipmentIcon(equipment.category);
-    const statusText = getStatusText(equipment);
-    
-    // Получаем аватар владельца
-    const ownerAvatar = equipment.owner?.photoUrl || '';
-    const ownerName = equipment.owner?.name || 'Владелец';
+    const ownerPhotoUrl = equipment.owner?.photoUrl || '';
     
     div.innerHTML = `
-        <div class="equipment-image">
-            ${ownerAvatar ? 
-                `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+        <div class="equipment-owner-avatar">
+            ${ownerPhotoUrl ? 
+                `<img src="${ownerPhotoUrl}" alt="Владелец" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
                 ''
             }
-            <div class="owner-avatar-fallback" style="${ownerAvatar ? 'display: none;' : ''}">
-                <i data-lucide="${icon}"></i>
+            <div class="owner-avatar-fallback ${ownerPhotoUrl ? 'hidden' : ''}">
+                <i data-lucide="user"></i>
             </div>
         </div>
         <div class="equipment-info">
             <div class="equipment-header">
-                <div class="equipment-title">
-                    <h3>${equipment.name}</h3>
-                    <div class="owner-name">
-                        ${ownerAvatar ? `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.nextElementSibling.style.display='inline';">` : ''}
-                        <span>${ownerName}</span>
-                    </div>
-                </div>
-                <div class="equipment-status ${equipment.status || 'approved'} ${equipment.available ? 'available' : 'busy'}">${statusText}</div>
+                <h3>${equipment.name}</h3>
+                <div class="equipment-price">${equipment.price} тыс. сум/час</div>
             </div>
-            
             <div class="equipment-details">
-                ${equipment.capacity ? `<div class="equipment-detail"><i data-lucide="box"></i> ${equipment.capacity} м³</div>` : ''}
-                ${equipment.length ? `<div class="equipment-detail"><i data-lucide="ruler"></i> ${equipment.length} м</div>` : ''}
-                ${equipment.weight ? `<div class="equipment-detail"><i data-lucide="weight"></i> ${equipment.weight} т</div>` : ''}
+                ${equipment.capacity ? `<span class="equipment-detail"><i data-lucide="box"></i> ${equipment.capacity} м³</span>` : ''}
+                ${equipment.length ? `<span class="equipment-detail"><i data-lucide="ruler"></i> ${equipment.length} м</span>` : ''}
+                ${equipment.weight ? `<span class="equipment-detail"><i data-lucide="weight"></i> ${equipment.weight} т</span>` : ''}
             </div>
-            
             <div class="equipment-footer">
                 <div class="equipment-location">
                     <i data-lucide="map-pin"></i>
                     <span>${equipment.location}</span>
                 </div>
-                <div class="equipment-price">${equipment.price} тыс. сум/час</div>
+                <div class="equipment-status ${equipment.status || 'approved'} ${equipment.available ? 'available' : 'busy'}">
+                    ${getStatusText(equipment)}
+                </div>
             </div>
         </div>
     `;
@@ -541,9 +524,10 @@ function showEquipmentDetails(equipment) {
             <div class="owner-info">
                 <div class="owner-avatar">
                     ${equipment.owner?.photoUrl ? 
-                        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : 
-                        `<i data-lucide="user"></i>`
+                        `<img src="${equipment.owner.photoUrl}" alt="Владелец" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                        ''
                     }
+                    <i data-lucide="user" class="${equipment.owner?.photoUrl ? 'hidden' : ''}"></i>
                 </div>
                 <div class="owner-details">
                     <h4>${equipment.owner?.name || 'Владелец'}</h4>
@@ -694,38 +678,27 @@ function loadModerationStatus() {
         const div = document.createElement('div');
         div.className = `equipment-item ${equipment.status || 'pending'}`;
         
-        const icon = getEquipmentIcon(equipment.category);
-        const statusText = getStatusText(equipment);
-        const ownerAvatar = equipment.owner?.photoUrl || '';
-        const ownerName = equipment.owner?.name || 'Владелец';
+        const ownerPhotoUrl = equipment.owner?.photoUrl || '';
         
         div.innerHTML = `
-            <div class="equipment-image">
-                ${ownerAvatar ? 
-                    `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+            <div class="equipment-owner-avatar">
+                ${ownerPhotoUrl ? 
+                    `<img src="${ownerPhotoUrl}" alt="Владелец" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
                     ''
                 }
-                <div class="owner-avatar-fallback" style="${ownerAvatar ? 'display: none;' : ''}">
-                    <i data-lucide="${icon}"></i>
+                <div class="owner-avatar-fallback ${ownerPhotoUrl ? 'hidden' : ''}">
+                    <i data-lucide="user"></i>
                 </div>
             </div>
             <div class="equipment-info">
-                <div class="equipment-header">
-                    <div class="equipment-title">
-                        <h3>${equipment.name}</h3>
-                        <div class="owner-name">
-                            ${ownerAvatar ? `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.nextElementSibling.style.display='inline';">` : ''}
-                            <span>${ownerName}</span>
-                        </div>
-                    </div>
-                    <div class="equipment-status ${equipment.status || 'pending'}">${statusText}</div>
-                </div>
+                <h3>${equipment.name}</h3>
                 <div class="equipment-location">
                     <i data-lucide="map-pin"></i>
                     <span>${equipment.location}</span>
                 </div>
                 <div class="equipment-footer">
                     <div class="equipment-price">${equipment.price} тыс. сум/час</div>
+                    <div class="equipment-status ${equipment.status || 'pending'}">${getStatusText(equipment)}</div>
                     ${equipment.status === 'rejected' ? `
                     <div class="rejection-reason">
                         <small>Причина: ${equipment.rejectionReason || 'Не указана'}</small>
@@ -817,7 +790,7 @@ async function saveEquipment() {
             owner: {
                 name: currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : ''),
                 username: currentUser.username,
-                photoUrl: currentUser.photoUrl, // Добавляем фото владельца
+                photoUrl: currentUser.photoUrl,
                 rating: 5.0,
                 reviews: 0
             },
@@ -881,6 +854,162 @@ function resetEquipmentForm() {
         form.reset();
     }
     toggleFormFields();
+}
+
+// Availability Management
+function loadAvailabilityEquipment() {
+    if (!currentUser) return;
+    
+    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid && item.status === 'approved');
+    
+    // Update stats
+    const availableCount = userEquipmentAll.filter(item => item.available).length;
+    const busyCount = userEquipmentAll.filter(item => !item.available).length;
+    
+    const availableCountElement = document.getElementById('available-count');
+    const busyCountElement = document.getElementById('busy-count');
+    
+    if (availableCountElement) availableCountElement.textContent = availableCount;
+    if (busyCountElement) busyCountElement.textContent = busyCount;
+    
+    const availabilityList = document.getElementById('availability-equipment');
+    if (!availabilityList) return;
+    
+    availabilityList.innerHTML = '';
+    
+    if (userEquipmentAll.length === 0) {
+        availabilityList.innerHTML = `
+            <div class="no-data">
+                <i data-lucide="construction"></i>
+                <p>У вас нет одобренной техники</p>
+            </div>
+        `;
+        return;
+    }
+    
+    userEquipmentAll.forEach(equipment => {
+        const div = document.createElement('div');
+        div.className = `availability-item ${equipment.available ? 'available' : 'busy'}`;
+        
+        const ownerPhotoUrl = equipment.owner?.photoUrl || '';
+        
+        div.innerHTML = `
+            <div class="availability-content">
+                <div class="availability-avatar">
+                    ${ownerPhotoUrl ? 
+                        `<img src="${ownerPhotoUrl}" alt="Владелец" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                        ''
+                    }
+                    <div class="availability-avatar-fallback ${ownerPhotoUrl ? 'hidden' : ''}">
+                        <i data-lucide="user"></i>
+                    </div>
+                </div>
+                <div class="availability-info">
+                    <h4>${equipment.name}</h4>
+                    <p>${getCategoryTitle(equipment.category)} • ${equipment.price} тыс. сум/час</p>
+                    <div class="availability-location">
+                        <i data-lucide="map-pin"></i>
+                        <span>${equipment.location}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="availability-toggle-container">
+                <div class="availability-status ${equipment.available ? 'available' : 'busy'}">
+                    ${equipment.available ? '✅ Доступен' : '⏳ Занят'}
+                </div>
+                <label class="availability-toggle">
+                    <input type="checkbox" ${equipment.available ? 'checked' : ''} 
+                           onchange="toggleAvailability('${equipment.id}', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        `;
+        
+        availabilityList.appendChild(div);
+    });
+}
+
+async function toggleAvailability(equipmentId, newAvailability) {
+    try {
+        const equipmentRef = database.ref(`equipment/${equipmentId}`);
+        await equipmentRef.update({
+            available: newAvailability
+        });
+        
+        showNotification(newAvailability ? '✅ Техника теперь доступна' : '⏳ Техника отмечена как занятая', 'success');
+        loadAvailabilityEquipment();
+    } catch (error) {
+        console.error('Error toggling availability:', error);
+        showNotification('❌ Ошибка при изменении статуса', 'error');
+    }
+}
+
+async function toggleAllAvailable() {
+    if (!currentUser) return;
+    
+    const userEquipmentAll = allEquipment.filter(item => 
+        item.ownerId === currentUser.uid && item.status === 'approved'
+    );
+    
+    const updatePromises = userEquipmentAll.map(equipment => {
+        const equipmentRef = database.ref(`equipment/${equipment.id}`);
+        return equipmentRef.update({
+            available: true,
+            lastUpdated: Date.now()
+        });
+    });
+    
+    Promise.all(updatePromises)
+        .then(() => {
+            showNotification('✅ Вся техника сделана доступной', 'success');
+            loadAvailabilityEquipment();
+        })
+        .catch((error) => {
+            console.error('Error updating all availability:', error);
+            showNotification('❌ Ошибка при обновлении статусов', 'error');
+        });
+}
+
+// Utility functions
+function getCategoryTitle(category) {
+    const titles = {
+        'mixers': 'Автомиксеры',
+        'pumps': 'Автобетононасосы',
+        'dump-trucks': 'Самосвалы',
+        'tonars': 'Тонары',
+        'cranes': 'Краны',
+        'excavators': 'Экскаваторы'
+    };
+    return titles[category] || 'Категория';
+}
+
+function getEquipmentIcon(category) {
+    const icons = {
+        'mixers': 'truck',
+        'pumps': 'construction',
+        'dump-trucks': 'truck',
+        'tonars': 'truck',
+        'cranes': 'crane',
+        'excavators': 'hammer'
+    };
+    return icons[category] || 'construction';
+}
+
+function callOwner(phone) {
+    if (!phone || phone === 'Не указан') {
+        showNotification('❌ Номер телефона не указан', 'error');
+        return;
+    }
+    window.open(`tel:${phone}`);
+}
+
+function messageOwner(phone, equipmentName) {
+    if (!phone || phone === 'Не указан') {
+        showNotification('❌ Номер телефона не указан', 'error');
+        return;
+    }
+    const message = `Здравствуйте! Интересует ваша техника: ${equipmentName}`;
+    window.open(`https://t.me/${phone.replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank');
 }
 
 // Admin Panel Functions
@@ -1015,7 +1144,6 @@ function setupAdminEventListeners() {
 function renderAdminPanel() {
     console.log('Rendering admin panel with filter:', currentAdminFilter);
     console.log('All equipment count:', allEquipment.length);
-    console.log('All equipment:', allEquipment);
     
     // Update statistics
     const pending = allEquipment.filter(item => item.status === 'pending').length;
@@ -1056,40 +1184,38 @@ function renderAdminPanel() {
             const status = equipment.status || 'pending';
             const ownerName = equipment.owner?.name || 'Неизвестно';
             const ownerPhone = equipment.ownerPhone || 'Не указан';
-            const ownerAvatar = equipment.owner?.photoUrl || '';
+            const ownerPhotoUrl = equipment.owner?.photoUrl || '';
             
             return `
                 <div class="equipment-item ${status}" onclick="showAdminEquipmentDetails('${equipment.id}')">
-                    <div class="equipment-image">
-                        ${ownerAvatar ? 
-                            `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                    <div class="equipment-owner-avatar">
+                        ${ownerPhotoUrl ? 
+                            `<img src="${ownerPhotoUrl}" alt="Владелец" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
                             ''
                         }
-                        <div class="owner-avatar-fallback" style="${ownerAvatar ? 'display: none;' : ''}">
-                            <i data-lucide="${getEquipmentIcon(equipment.category)}"></i>
+                        <div class="owner-avatar-fallback ${ownerPhotoUrl ? 'hidden' : ''}">
+                            <i data-lucide="user"></i>
                         </div>
                     </div>
                     <div class="equipment-info">
-                        <div class="equipment-header">
-                            <div class="equipment-title">
-                                <h3>${equipment.name}</h3>
-                                <div class="owner-name">
-                                    ${ownerAvatar ? `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.nextElementSibling.style.display='inline';">` : ''}
-                                    <span>${ownerName}</span>
-                                </div>
-                            </div>
-                            <div class="equipment-status ${status}">
-                                ${getAdminStatusBadge(status)}
-                            </div>
+                        <h3>${equipment.name}</h3>
+                        <div class="equipment-location">
+                            <i data-lucide="map-pin"></i>
+                            <span>${equipment.location}</span>
                         </div>
                         <div class="equipment-meta">
                             <span class="equipment-price">${equipment.price} тыс. сум/час</span>
                             <span class="equipment-type">${getCategoryName(equipment.category)}</span>
                         </div>
                         <div class="owner-info">
-                            <i data-lucide="phone"></i>
+                            <i data-lucide="user"></i>
+                            <span>${ownerName}</span>
+                            <span style="color: #94a3b8;">•</span>
                             <span>${ownerPhone}</span>
                         </div>
+                    </div>
+                    <div class="equipment-status ${status}">
+                        ${getAdminStatusBadge(status)}
                     </div>
                 </div>
             `;
@@ -1122,10 +1248,25 @@ function showAdminEquipmentDetails(equipmentId) {
     const status = equipment.status || 'pending';
     const ownerName = equipment.owner?.name || 'Неизвестно';
     const ownerPhone = equipment.ownerPhone || 'Не указан';
-    const ownerAvatar = equipment.owner?.photoUrl || '';
+    const ownerPhotoUrl = equipment.owner?.photoUrl || '';
     
     modalContent.innerHTML = `
         <div class="equipment-details">
+            <div class="admin-owner-info">
+                <div class="admin-owner-avatar">
+                    ${ownerPhotoUrl ? 
+                        `<img src="${ownerPhotoUrl}" alt="Владелец" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                        ''
+                    }
+                    <div class="admin-owner-avatar-fallback ${ownerPhotoUrl ? 'hidden' : ''}">
+                        <i data-lucide="user"></i>
+                    </div>
+                </div>
+                <div class="admin-owner-details">
+                    <h4>${ownerName}</h4>
+                    <p>${ownerPhone}</p>
+                </div>
+            </div>
             <div class="detail-row">
                 <strong>ID заявки:</strong> 
                 <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${equipment.id}</span>
@@ -1138,16 +1279,6 @@ function showAdminEquipmentDetails(equipmentId) {
             </div>
             <div class="detail-row">
                 <strong>Цена:</strong> ${equipment.price} тыс. сум/час
-            </div>
-            <div class="detail-row">
-                <strong>Владелец:</strong> 
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                    ${ownerAvatar ? `<img src="${ownerAvatar}" alt="${ownerName}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">` : ''}
-                    <span>${ownerName}</span>
-                </div>
-            </div>
-            <div class="detail-row">
-                <strong>Телефон:</strong> ${ownerPhone}
             </div>
             <div class="detail-row">
                 <strong>Статус:</strong> 
@@ -1304,131 +1435,6 @@ async function rejectEquipment(equipmentId) {
     }
 }
 
-// Availability Management
-function loadAvailabilityEquipment() {
-    if (!currentUser) return;
-    
-    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid && item.status === 'approved');
-    const availabilityList = document.getElementById('availability-equipment');
-    if (!availabilityList) return;
-    
-    availabilityList.innerHTML = '';
-    
-    if (userEquipmentAll.length === 0) {
-        availabilityList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>У вас нет одобренной техники</p>
-            </div>
-        `;
-        return;
-    }
-    
-    userEquipmentAll.forEach(equipment => {
-        const div = document.createElement('div');
-        div.className = `equipment-item ${equipment.available ? 'available' : 'busy'}`;
-        
-        const icon = getEquipmentIcon(equipment.category);
-        const ownerAvatar = equipment.owner?.photoUrl || '';
-        const ownerName = equipment.owner?.name || 'Владелец';
-        
-        div.innerHTML = `
-            <div class="equipment-image">
-                ${ownerAvatar ? 
-                    `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
-                    ''
-                }
-                <div class="owner-avatar-fallback" style="${ownerAvatar ? 'display: none;' : ''}">
-                    <i data-lucide="${icon}"></i>
-                </div>
-            </div>
-            <div class="equipment-info">
-                <div class="equipment-header">
-                    <div class="equipment-title">
-                        <h3>${equipment.name}</h3>
-                        <div class="owner-name">
-                            ${ownerAvatar ? `<img src="${ownerAvatar}" alt="${ownerName}" class="owner-avatar-mini" onerror="this.nextElementSibling.style.display='inline';">` : ''}
-                            <span>${ownerName}</span>
-                        </div>
-                    </div>
-                    <div class="equipment-status ${equipment.available ? 'available' : 'busy'}">
-                        ${equipment.available ? '✅ Доступен' : '⏳ Занят'}
-                    </div>
-                </div>
-                <div class="equipment-footer">
-                    <div class="equipment-location">
-                        <i data-lucide="map-pin"></i>
-                        <span>${equipment.location}</span>
-                    </div>
-                    <div class="equipment-price">${equipment.price} тыс. сум/час</div>
-                </div>
-            </div>
-            <button class="toggle-availability-btn" onclick="toggleAvailability('${equipment.id}', ${!equipment.available})">
-                ${equipment.available ? 'Сделать занятым' : 'Сделать доступным'}
-            </button>
-        `;
-        
-        availabilityList.appendChild(div);
-    });
-}
-
-async function toggleAvailability(equipmentId, newAvailability) {
-    try {
-        const equipmentRef = database.ref(`equipment/${equipmentId}`);
-        await equipmentRef.update({
-            available: newAvailability
-        });
-        
-        showNotification(newAvailability ? '✅ Техника теперь доступна' : '⏳ Техника отмечена как занятая', 'success');
-        loadAvailabilityEquipment();
-    } catch (error) {
-        console.error('Error toggling availability:', error);
-        showNotification('❌ Ошибка при изменении статуса', 'error');
-    }
-}
-
-// Utility functions
-function getCategoryTitle(category) {
-    const titles = {
-        'mixers': 'Автомиксеры',
-        'pumps': 'Автобетононасосы',
-        'dump-trucks': 'Самосвалы',
-        'tonars': 'Тонары',
-        'cranes': 'Краны',
-        'excavators': 'Экскаваторы'
-    };
-    return titles[category] || 'Категория';
-}
-
-function getEquipmentIcon(category) {
-    const icons = {
-        'mixers': 'truck',
-        'pumps': 'construction',
-        'dump-trucks': 'truck',
-        'tonars': 'truck',
-        'cranes': 'crane',
-        'excavators': 'hammer'
-    };
-    return icons[category] || 'construction';
-}
-
-function callOwner(phone) {
-    if (!phone || phone === 'Не указан') {
-        showNotification('❌ Номер телефона не указан', 'error');
-        return;
-    }
-    window.open(`tel:${phone}`);
-}
-
-function messageOwner(phone, equipmentName) {
-    if (!phone || phone === 'Не указан') {
-        showNotification('❌ Номер телефона не указан', 'error');
-        return;
-    }
-    const message = `Здравствуйте! Интересует ваша техника: ${equipmentName}`;
-    window.open(`https://t.me/${phone.replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank');
-}
-
 // Admin helper functions
 function getAdminStatusText(status) {
     const statuses = {
@@ -1458,24 +1464,6 @@ function getCategoryName(category) {
         'excavators': '🔧 Экскаватор'
     };
     return categories[category] || '🚜 Другая техника';
-}
-
-function getStatusColor(status) {
-    const colors = {
-        'pending': '#f59e0b',
-        'approved': '#10b981', 
-        'rejected': '#ef4444'
-    };
-    return colors[status] || '#f59e0b';
-}
-
-function getStatusBackgroundColor(status) {
-    const colors = {
-        'pending': 'rgba(245, 158, 11, 0.1)',
-        'approved': 'rgba(16, 185, 129, 0.1)',
-        'rejected': 'rgba(239, 68, 68, 0.1)'
-    };
-    return colors[status] || 'rgba(245, 158, 11, 0.1)';
 }
 
 // Notification function
@@ -1517,6 +1505,7 @@ window.callOwner = callOwner;
 window.messageOwner = messageOwner;
 window.saveEquipment = saveEquipment;
 window.toggleAvailability = toggleAvailability;
+window.toggleAllAvailable = toggleAllAvailable;
 window.showAdminEquipmentDetails = showAdminEquipmentDetails;
 window.closeAdminModal = closeAdminModal;
 window.showAdminRejectionForm = showAdminRejectionForm;

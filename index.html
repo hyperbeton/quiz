@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -294,6 +295,22 @@
                 </div>
 
                 <div class="availability-management">
+                    <div class="availability-controls">
+                        <div class="availability-stats">
+                            <div class="availability-stat available">
+                                <span class="stat-count" id="available-count">0</span>
+                                <span class="stat-label">Доступно</span>
+                            </div>
+                            <div class="availability-stat busy">
+                                <span class="stat-count" id="busy-count">0</span>
+                                <span class="stat-label">Занято</span>
+                            </div>
+                        </div>
+                        <button class="btn-secondary" id="toggle-all-available">
+                            <i data-lucide="check-circle"></i>
+                            Сделать все доступными
+                        </button>
+                    </div>
                     <div class="equipment-list" id="availability-equipment">
                         <!-- Equipment for availability management will be loaded here -->
                     </div>
