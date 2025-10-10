@@ -1,1457 +1,1030 @@
 // script.js
 // Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyD_dZ3uPra32WQGDIZZ2vyFwCdNgWCBPEM",
-    authDomain: "apprent-e0f19.firebaseapp.com",
-    databaseURL: "https://apprent-e0f19-default-rtdb.firebaseio.com",
-    projectId: "apprent-e0f19",
-    storageBucket: "apprent-e0f19.firebasestorage.app",
-    messagingSenderId: "840126144107",
-    appId: "1:840126144107:web:3e55aa942a46fdeec8db2e",
-    measurementId: "G-7WG51CLWKQ"
+    apiKey: "your-api-key",
+    authDomain: "your-auth-domain",
+    databaseURL: "your-database-url",
+    projectId: "your-project-id",
+    storageBucket: "your-storage-bucket",
+    messagingSenderId: "your-sender-id",
+    appId: "your-app-id"
 };
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Telegram Web App instance
-const tg = window.Telegram.WebApp;
+// Telegram Web App initialization
+let tg = window.Telegram.WebApp;
+let user = null;
 
-// Current state
-let currentCategory = '';
+// App state
 let currentUser = null;
-let userEquipment = [];
-let allEquipment = [];
-let pageHistory = [];
-let currentAdminFilter = 'pending';
+let equipmentData = {
+    mixers: [],
+    pumps: [],
+    'dump-trucks': [],
+    tonars: [],
+    cranes: [],
+    excavators: []
+};
 
-// Admin IDs
-const ADMIN_IDS = [543221724];
-
-// DOM elements
+// DOM Elements
 const loadingScreen = document.getElementById('loading-screen');
 const mainContent = document.getElementById('main-content');
+const pages = document.querySelectorAll('.page');
+const navItems = document.querySelectorAll('.nav-item');
+const categoryItems = document.querySelectorAll('.category-item');
+const equipmentLists = document.querySelectorAll('.equipment-list');
+const userEquipmentList = document.getElementById('user-equipment');
+const adminEquipmentList = document.getElementById('admin-equipment-list');
 
-// Check if current user is admin
-function isAdmin() {
-    if (!currentUser) return false;
-    // Проверяем как число и как строку
-    const userId = currentUser.uid;
-    return ADMIN_IDS.includes(parseInt(userId)) || ADMIN_IDS.includes(userId);
-}
+// Equipment type configurations
+const equipmentConfig = {
+    mixers: {
+        icon: 'concrete-mixer',
+        title: 'Автомиксеры',
+        capacityLabel: 'Вместимость',
+        capacityUnit: 'м³'
+    },
+    pumps: {
+        icon: 'pump',
+        title: 'Автобетононасосы',
+        capacityLabel: 'Длина стрелы',
+        capacityUnit: 'м'
+    },
+    'dump-trucks': {
+        icon: 'dump-truck',
+        title: 'Самосвалы',
+        capacityLabel: 'Грузоподъемность',
+        capacityUnit: 'т'
+    },
+    tonars: {
+        icon: 'truck',
+        title: 'Тонары',
+        capacityLabel: 'Грузоподъемность',
+        capacityUnit: 'т'
+    },
+    cranes: {
+        icon: 'crane',
+        title: 'Краны',
+        capacityLabel: 'Грузоподъемность',
+        capacityUnit: 'т'
+    },
+    excavators: {
+        icon: 'excavator',
+        title: 'Экскаваторы',
+        capacityLabel: 'Объем ковша',
+        capacityUnit: 'м³'
+    }
+};
 
-// Initialize the application
-async function init() {
+// Initialize the app
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});
+
+async function initializeApp() {
     try {
-        console.log('Initializing Telegram Web App...');
-        
-        // Initialize Telegram Web App
-        tg.expand();
-        tg.enableClosingConfirmation();
-        
-        // Initialize icons
+        // Initialize Lucide icons
         lucide.createIcons();
         
-        // Load user data from Telegram first
-        await loadUserFromTelegram();
+        // Expand Telegram Web App
+        tg.expand();
         
-        // Debug info
-        console.log('User loaded:', currentUser);
-        console.log('Is admin:', isAdmin());
-        console.log('Admin IDs:', ADMIN_IDS);
+        // Wait for Telegram initialization
+        await waitForTelegramInit();
         
-        // Setup event listeners
-        setupEventListeners();
+        // Get user data from Telegram
+        user = tg.initDataUnsafe?.user;
         
-        // Load equipment data (async, won't block)
-        loadEquipmentData();
-        
-        // Add admin button if user is admin
-        if (isAdmin()) {
-            console.log('User is admin, adding admin button');
-            addAdminButton();
+        if (user) {
+            currentUser = {
+                id: user.id,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                username: user.username,
+                photoUrl: user.photo_url,
+                languageCode: user.language_code
+            };
+            
+            // Update profile information
+            updateProfileInfo();
+            
+            // Load equipment data
+            await loadEquipmentData();
         }
         
-        // Hide loading screen immediately after user is loaded
+        // Hide loading screen and show main content
         setTimeout(() => {
-            if (loadingScreen) {
-                loadingScreen.classList.add('hidden');
-            }
-            if (mainContent) {
-                mainContent.classList.remove('hidden');
-            }
-            console.log('App initialized successfully');
-        }, 500);
+            loadingScreen.classList.remove('active');
+            mainContent.classList.remove('hidden');
+        }, 1000);
+        
+        // Initialize event listeners
+        initializeEventListeners();
         
     } catch (error) {
         console.error('Error initializing app:', error);
-        if (loadingScreen) loadingScreen.classList.add('hidden');
-        if (mainContent) mainContent.classList.remove('hidden');
-        showNotification('Ошибка загрузки приложения', 'error');
+        // Fallback for testing outside Telegram
+        currentUser = {
+            id: 'test-user',
+            firstName: 'Test',
+            lastName: 'User',
+            username: 'testuser',
+            photoUrl: '',
+            languageCode: 'ru'
+        };
+        
+        setTimeout(() => {
+            loadingScreen.classList.remove('active');
+            mainContent.classList.remove('hidden');
+            updateProfileInfo();
+            initializeEventListeners();
+        }, 1000);
     }
 }
 
-// Add admin button to navigation
-function addAdminButton() {
-    const bottomNav = document.querySelector('.bottom-nav');
-    if (!bottomNav) {
-        console.error('Bottom nav not found');
-        return;
-    }
-    
-    // Проверяем, не добавлена ли уже кнопка
-    if (document.querySelector('.nav-item[data-page="admin-panel"]')) {
-        return;
-    }
-    
-    const adminNavItem = document.createElement('div');
-    adminNavItem.className = 'nav-item';
-    adminNavItem.setAttribute('data-page', 'admin-panel');
-    adminNavItem.innerHTML = `
-        <div class="nav-icon">
-            <i data-lucide="shield"></i>
-        </div>
-        <span>Админ</span>
-    `;
-    
-    adminNavItem.addEventListener('click', (e) => {
-        e.preventDefault();
-        navigateTo('admin-panel');
-    });
-    
-    bottomNav.appendChild(adminNavItem);
-    lucide.createIcons();
-    console.log('Admin button added to navigation');
-}
-
-// Load user data from Telegram
-async function loadUserFromTelegram() {
+function waitForTelegramInit() {
     return new Promise((resolve) => {
-        try {
-            const initData = tg.initDataUnsafe;
-            console.log('Telegram init data:', initData);
-            
-            if (initData && initData.user) {
-                const tgUser = initData.user;
-                currentUser = {
-                    uid: tgUser.id.toString(),
-                    firstName: tgUser.first_name,
-                    lastName: tgUser.last_name || '',
-                    username: tgUser.username || '',
-                    photoUrl: tgUser.photo_url || '',
-                    languageCode: tgUser.language_code || 'ru',
-                    isPremium: tgUser.is_premium || false
-                };
-                
-                console.log('User loaded from Telegram:', currentUser);
-                updateUIForAuthenticatedUser();
-            } else {
-                currentUser = {
-                    uid: 'guest_' + Date.now(),
-                    firstName: 'Гость',
-                    lastName: '',
-                    username: '',
-                    photoUrl: '',
-                    languageCode: 'ru',
-                    isPremium: false
-                };
-                console.log('Created guest user:', currentUser);
-                updateUIForAuthenticatedUser();
-            }
-        } catch (error) {
-            console.error('Error loading user from Telegram:', error);
-            currentUser = {
-                uid: 'error_guest_' + Date.now(),
-                firstName: 'Гость',
-                lastName: '',
-                username: '',
-                photoUrl: '',
-                languageCode: 'ru',
-                isPremium: false
-            };
-            updateUIForAuthenticatedUser();
+        if (tg.initData) {
+            resolve();
+        } else {
+            setTimeout(() => resolve(), 500);
         }
-        resolve();
     });
 }
 
-// Update UI for authenticated user
-function updateUIForAuthenticatedUser() {
-    const userNameElement = document.getElementById('user-name');
-    const userPhoneElement = document.getElementById('user-phone');
+function updateProfileInfo() {
+    if (!currentUser) return;
+    
+    const userName = document.getElementById('user-name');
+    const userPhone = document.getElementById('user-phone');
     const userAvatarImg = document.getElementById('user-avatar-img');
     const avatarFallback = document.querySelector('.avatar-fallback');
     
-    if (userNameElement) {
-        const displayName = currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : '');
-        userNameElement.textContent = displayName;
+    if (userName) {
+        userName.textContent = `${currentUser.firstName} ${currentUser.lastName || ''}`.trim();
     }
     
-    if (userPhoneElement) {
-        userPhoneElement.textContent = currentUser.phone || 'Номер не указан';
+    if (userPhone) {
+        userPhone.textContent = currentUser.username ? `@${currentUser.username}` : 'Ташкент, Узбекистан';
     }
     
-    if (currentUser.photoUrl && userAvatarImg && avatarFallback) {
+    if (userAvatarImg && currentUser.photoUrl) {
         userAvatarImg.src = currentUser.photoUrl;
-        userAvatarImg.style.display = 'block';
         avatarFallback.style.display = 'none';
-    }
-    
-    userEquipment = allEquipment.filter(item => 
-        item.ownerId === currentUser.uid && item.status === 'approved'
-    );
-    
-    if (document.getElementById('profile-page')?.classList.contains('active')) {
-        renderUserEquipment();
     }
 }
 
-// Setup event listeners
-function setupEventListeners() {
-    console.log('Setting up event listeners...');
+async function loadEquipmentData() {
+    try {
+        // In a real app, this would load from Firebase
+        // For demo purposes, we'll create mock data
+        equipmentData = {
+            mixers: generateMockEquipment('mixers', 8),
+            pumps: generateMockEquipment('pumps', 6),
+            'dump-trucks': generateMockEquipment('dump-trucks', 10),
+            tonars: generateMockEquipment('tonars', 12),
+            cranes: generateMockEquipment('cranes', 5),
+            excavators: generateMockEquipment('excavators', 7)
+        };
+        
+        // Update user equipment
+        updateUserEquipment();
+        
+    } catch (error) {
+        console.error('Error loading equipment data:', error);
+    }
+}
+
+function generateMockEquipment(type, count) {
+    const config = equipmentConfig[type];
+    const equipment = [];
     
+    for (let i = 1; i <= count; i++) {
+        const capacity = getRandomCapacity(type);
+        const price = getRandomPrice(type);
+        
+        equipment.push({
+            id: `${type}-${i}`,
+            name: `${getBrand(type)} ${getModel(type, i)}`,
+            type: type,
+            capacity: capacity,
+            price: price,
+            location: getRandomLocation(),
+            owner: {
+                name: getRandomName(),
+                phone: getRandomPhone(),
+                rating: (Math.random() * 0.8 + 3.2).toFixed(1),
+                reviewCount: Math.floor(Math.random() * 50)
+            },
+            status: Math.random() > 0.3 ? 'available' : 'busy',
+            description: getRandomDescription(type),
+            paymentMethod: ['cash', 'transfer', 'both'][Math.floor(Math.random() * 3)],
+            specs: getSpecs(type, capacity)
+        });
+    }
+    
+    return equipment;
+}
+
+function getRandomCapacity(type) {
+    const ranges = {
+        mixers: { min: 8, max: 12 },
+        pumps: { min: 30, max: 50 },
+        'dump-trucks': { min: 10, max: 20 },
+        tonars: { min: 3, max: 5 },
+        cranes: { min: 25, max: 100 },
+        excavators: { min: 0.8, max: 2.0 }
+    };
+    
+    const range = ranges[type];
+    return type === 'excavators' 
+        ? (Math.random() * (range.max - range.min) + range.min).toFixed(1)
+        : Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+}
+
+function getRandomPrice(type) {
+    const basePrices = {
+        mixers: 80000,
+        pumps: 120000,
+        'dump-trucks': 60000,
+        tonars: 40000,
+        cranes: 150000,
+        excavators: 90000
+    };
+    
+    const base = basePrices[type];
+    const variation = base * 0.3;
+    return Math.floor(base + (Math.random() * variation - variation / 2));
+}
+
+function getRandomLocation() {
+    const locations = [
+        'Ташкент, Юнусабадский район',
+        'Ташкент, Мирзо-Улугбекский район',
+        'Ташкент, Чиланзарский район',
+        'Ташкент, Шайхантахурский район',
+        'Ташкент, Яккасарайский район',
+        'Ташкент, Алмазарский район'
+    ];
+    return locations[Math.floor(Math.random() * locations.length)];
+}
+
+function getRandomName() {
+    const names = [
+        'Алишер У.',
+        'Сергей П.',
+        'Дмитрий К.',
+        'Александр М.',
+        'Максим В.',
+        'Олег С.',
+        'Руслан Н.',
+        'Артем Л.'
+    ];
+    return names[Math.floor(Math.random() * names.length)];
+}
+
+function getRandomPhone() {
+    return `+998 90 ${Math.floor(Math.random() * 900 + 100)} ${Math.floor(Math.random() * 90 + 10)} ${Math.floor(Math.random() * 90 + 10)}`;
+}
+
+function getBrand(type) {
+    const brands = {
+        mixers: ['Камаз', 'Howo', 'Shacman', 'FAW'],
+        pumps: ['Putzmeister', 'Schwing', 'Sany', 'Zoomlion'],
+        'dump-trucks': ['Камаз', 'Howo', 'Shacman', 'Dongfeng'],
+        tonars: ['Isuzu', 'JAC', 'Foton', 'Hyundai'],
+        cranes: ['Liebherr', 'XCMG', 'Sany', 'Tadano'],
+        excavators: ['CAT', 'Hitachi', 'Volvo', 'Komatsu']
+    };
+    const brandList = brands[type];
+    return brandList[Math.floor(Math.random() * brandList.length)];
+}
+
+function getModel(type, index) {
+    const models = {
+        mixers: ['65115', '65201', '65206', '65207'],
+        pumps: ['36Z', '42Z', '48Z', '52Z'],
+        'dump-trucks': ['65115', '65201', '65206', '65207'],
+        tonars: ['NPR', 'NQR', 'J5', 'Aumark'],
+        cranes: ['LTM 1050', 'QY25K', 'SAC3000', 'TG-500E'],
+        excavators: ['320D', 'ZX210', 'EC210', 'PC200']
+    };
+    const modelList = models[type];
+    return modelList[Math.floor(Math.random() * modelList.length)];
+}
+
+function getRandomDescription(type) {
+    const descriptions = {
+        mixers: 'Бетономешалка в отличном состоянии, регулярное техническое обслуживание, готов к работе.',
+        pumps: 'Автобетононасос с современной системой управления, высокая производительность.',
+        'dump-trucks': 'Самосвал с усиленным кузовом, подходит для перевозки сыпучих материалов.',
+        tonars: 'Малый грузовик для городских перевозок, экономичный расход топлива.',
+        cranes: 'Автомобильный кран с телескопической стрелой, точное позиционирование.',
+        excavators: 'Гусеничный экскаватор с гидравлической системой, высокая мощность.'
+    };
+    return descriptions[type];
+}
+
+function getSpecs(type, capacity) {
+    const baseSpecs = {
+        mixers: {
+            'Объем барабана': `${capacity} м³`,
+            'Мощность двигателя': '240 л.с.',
+            'Расход топлива': '25 л/100км',
+            'Год выпуска': '2020'
+        },
+        pumps: {
+            'Длина стрелы': `${capacity} м`,
+            'Производительность': '90 м³/ч',
+            'Мощность двигателя': '280 л.с.',
+            'Год выпуска': '2019'
+        },
+        'dump-trucks': {
+            'Грузоподъемность': `${capacity} т`,
+            'Объем кузова': '12 м³',
+            'Мощность двигателя': '260 л.с.',
+            'Год выпуска': '2021'
+        },
+        tonars: {
+            'Грузоподъемность': `${capacity} т`,
+            'Объем кузова': '8 м³',
+            'Мощность двигателя': '150 л.с.',
+            'Год выпуска': '2022'
+        },
+        cranes: {
+            'Грузоподъемность': `${capacity} т`,
+            'Вылет стрелы': '40 м',
+            'Мощность двигателя': '320 л.с.',
+            'Год выпуска': '2018'
+        },
+        excavators: {
+            'Объем ковша': `${capacity} м³`,
+            'Масса': '21 т',
+            'Мощность двигателя': '110 кВт',
+            'Год выпуска': '2020'
+        }
+    };
+    
+    return baseSpecs[type];
+}
+
+function initializeEventListeners() {
     // Navigation
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
             const pageId = item.getAttribute('data-page');
             const category = item.getAttribute('data-category');
             
-            if (category) {
-                currentCategory = category;
-                loadCategoryEquipment(category);
-                const categoryTitle = document.getElementById('category-title');
-                if (categoryTitle) {
-                    categoryTitle.textContent = getCategoryTitle(category);
-                }
+            if (pageId === 'category-page' && category) {
+                showCategoryPage(category);
+            } else {
+                showPage(pageId);
             }
             
-            navigateTo(pageId);
-            updateNavigation(item);
+            // Update active nav item
+            navItems.forEach(nav => nav.classList.remove('active'));
+            item.classList.add('active');
         });
     });
-
+    
     // Category items
-    document.querySelectorAll('.category-item').forEach(item => {
+    categoryItems.forEach(item => {
         item.addEventListener('click', () => {
             const category = item.getAttribute('data-category');
-            currentCategory = category;
-            loadCategoryEquipment(category);
-            const categoryTitle = document.getElementById('category-title');
-            if (categoryTitle) {
-                categoryTitle.textContent = getCategoryTitle(category);
-            }
-            navigateTo('category-page');
-            updateNavigationForCategory(category);
-        });
-    });
-
-    // Back buttons
-    document.querySelectorAll('.btn-back').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            goBack();
-        });
-    });
-
-    // Profile actions
-    const addEquipmentBtn = document.getElementById('add-equipment-btn');
-    const toggleAvailabilityBtn = document.getElementById('toggle-availability-btn');
-    const myEquipmentBtn = document.getElementById('my-equipment-btn');
-    
-    if (addEquipmentBtn) {
-        addEquipmentBtn.addEventListener('click', () => {
-            navigateTo('add-equipment-page');
-        });
-    }
-    
-    if (toggleAvailabilityBtn) {
-        toggleAvailabilityBtn.addEventListener('click', () => {
-            loadAvailabilityEquipment();
-            navigateTo('availability-page');
-        });
-    }
-
-    // Equipment form
-    const saveEquipmentBtn = document.getElementById('save-equipment');
-    const equipmentTypeSelect = document.getElementById('equipment-type');
-    
-    if (saveEquipmentBtn) {
-        saveEquipmentBtn.addEventListener('click', saveEquipment);
-    }
-    
-    if (equipmentTypeSelect) {
-        equipmentTypeSelect.addEventListener('change', toggleFormFields);
-    }
-    
-    // Phone input formatting
-    const phoneInput = document.getElementById('user-phone-input');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', formatPhoneNumber);
-    }
-    
-    // Moderation page navigation
-    if (myEquipmentBtn) {
-        myEquipmentBtn.addEventListener('click', () => {
-            navigateTo('moderation-page');
-        });
-    }
-    
-    // Test admin button (временно для отладки)
-    const testAdminBtn = document.getElementById('test-admin-btn');
-    if (testAdminBtn) {
-        testAdminBtn.addEventListener('click', () => {
-            console.log('Test admin button clicked');
-            console.log('Current user:', currentUser);
-            console.log('Is admin:', isAdmin());
-            loadAdminPanel();
-            navigateTo('admin-panel');
-        });
-    }
-}
-
-function formatPhoneNumber() {
-    const input = document.getElementById('user-phone-input');
-    if (!input) return;
-    
-    let value = input.value.replace(/\D/g, '');
-
-    if (value.length > 9) value = value.substring(0, 9);
-
-    if (value.length > 2) {
-        value = value.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, (_, p1, p2, p3, p4) => {
-            return `${p1}-${p2}-${p3}-${p4}`;
-        });
-    }
-
-    input.value = value;
-}
-
-// Navigation functions
-function navigateTo(pageId) {
-    console.log('Navigating to:', pageId);
-    
-    const currentActivePage = document.querySelector('.page.active');
-    if (currentActivePage && currentActivePage.id !== pageId) {
-        pageHistory.push(currentActivePage.id);
-    }
-
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-        if (page.id === pageId) {
-            page.classList.add('active');
-        }
-    });
-
-    if (pageId === 'profile-page') {
-        renderUserEquipment();
-        loadModerationStatus();
-    } else if (pageId === 'category-page') {
-        loadCategoryEquipment(currentCategory);
-    } else if (pageId === 'moderation-page') {
-        loadModerationStatus();
-    } else if (pageId === 'admin-panel') {
-        if (!isAdmin()) {
-            showNotification('❌ У вас нет прав доступа к админ-панели', 'error');
-            navigateTo('home-page');
-            return;
-        }
-        loadAdminPanel();
-    }
-
-    setTimeout(() => lucide.createIcons(), 100);
-}
-
-function goBack() {
-    if (pageHistory.length > 0) {
-        const previousPageId = pageHistory.pop();
-        navigateTo(previousPageId);
-    } else {
-        navigateTo('home-page');
-    }
-}
-
-function updateNavigation(activeItem) {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    if (activeItem) {
-        activeItem.classList.add('active');
-    }
-}
-
-function updateNavigationForCategory(category) {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.getAttribute('data-category') === category) {
-            item.classList.add('active');
-        }
-    });
-}
-
-// Equipment functions
-function loadEquipmentData() {
-    try {
-        console.log('Loading equipment data...');
-        const equipmentRef = database.ref('equipment');
-        
-        equipmentRef.on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                const equipmentData = snapshot.val();
-                allEquipment = Object.entries(equipmentData).map(([key, value]) => ({
-                    id: key,
-                    ...value
-                })).filter(item => item !== null);
-                console.log('Equipment loaded:', allEquipment.length, 'items');
-                console.log('Equipment data:', allEquipment);
-                
-                if (currentUser) {
-                    userEquipment = allEquipment.filter(item => 
-                        item.ownerId === currentUser.uid && item.status === 'approved'
-                    );
-                }
-                
-                // Обновляем админ-панель если она активна
-                if (document.getElementById('admin-panel')?.classList.contains('active')) {
-                    renderAdminPanel();
-                }
-            } else {
-                allEquipment = [];
-                console.log('No equipment data found');
-            }
+            showCategoryPage(category);
             
-            setTimeout(() => lucide.createIcons(), 100);
-        }, (error) => {
-            console.error('Error loading equipment data:', error);
-            allEquipment = [];
+            // Update active nav item
+            navItems.forEach(nav => nav.classList.remove('active'));
+            const correspondingNav = document.querySelector(`.nav-item[data-category="${category}"]`);
+            if (correspondingNav) {
+                correspondingNav.classList.add('active');
+            }
         });
-    } catch (error) {
-        console.error('Error loading equipment data:', error);
-        allEquipment = [];
+    });
+    
+    // Back buttons
+    document.querySelectorAll('.btn-back').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.history.length > 1 ? window.history.back() : showPage('home-page');
+        });
+    });
+    
+    // Profile actions
+    document.getElementById('add-equipment-btn')?.addEventListener('click', () => {
+        showPage('add-equipment-page');
+    });
+    
+    document.getElementById('my-equipment-btn')?.addEventListener('click', () => {
+        showPage('moderation-page');
+    });
+    
+    document.getElementById('toggle-availability-btn')?.addEventListener('click', () => {
+        showPage('availability-page');
+    });
+    
+    // Equipment type change
+    document.getElementById('equipment-type')?.addEventListener('change', function() {
+        updateEquipmentForm(this.value);
+    });
+    
+    // Save equipment
+    document.getElementById('save-equipment')?.addEventListener('click', saveEquipment);
+    
+    // Admin filter tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            filterAdminEquipment(filter);
+        });
+    });
+}
+
+function showPage(pageId) {
+    pages.forEach(page => page.classList.remove('active'));
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) {
+        targetPage.classList.add('active');
+        
+        // Update page-specific content
+        if (pageId === 'profile-page') {
+            updateUserEquipment();
+        } else if (pageId === 'moderation-page') {
+            updateModerationStatus();
+        } else if (pageId === 'admin-panel') {
+            loadAdminData();
+        }
     }
 }
 
-function loadCategoryEquipment(category) {
-    console.log('Loading category equipment:', category);
-    const filteredEquipment = allEquipment.filter(item => 
-        item.category === category && item.status === 'approved' && item.available
-    );
+function showCategoryPage(category) {
+    const config = equipmentConfig[category];
+    if (!config) return;
     
-    const categoryEquipmentList = document.getElementById('category-equipment');
-    if (!categoryEquipmentList) return;
+    // Update category title
+    document.getElementById('category-title').textContent = config.title;
     
-    categoryEquipmentList.innerHTML = '';
-
-    if (filteredEquipment.length === 0) {
-        categoryEquipmentList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>Техника в этой категории пока не добавлена</p>
-            </div>
-        `;
-    } else {
-        filteredEquipment.forEach(equipment => {
-            const equipmentItem = createEquipmentCard(equipment);
-            categoryEquipmentList.appendChild(equipmentItem);
-        });
-    }
-
-    setTimeout(() => lucide.createIcons(), 100);
+    // Load and display equipment
+    const equipmentList = document.getElementById('category-equipment');
+    equipmentList.innerHTML = '';
+    
+    const equipment = equipmentData[category] || [];
+    equipment.forEach(item => {
+        const equipmentElement = createEquipmentElement(item);
+        equipmentList.appendChild(equipmentElement);
+    });
+    
+    showPage('category-page');
 }
 
-function createEquipmentCard(equipment) {
-    const div = document.createElement('div');
-    div.className = `equipment-item ${equipment.available ? 'available' : 'busy'} ${equipment.status || 'approved'}`;
+function createEquipmentElement(equipment) {
+    const config = equipmentConfig[equipment.type];
+    const element = document.createElement('div');
+    element.className = `equipment-item ${equipment.status}`;
+    element.setAttribute('data-id', equipment.id);
     
-    const icon = getEquipmentIcon(equipment.category);
-    const statusText = getStatusText(equipment);
-    
-    div.innerHTML = `
+    element.innerHTML = `
         <div class="equipment-image">
-            <i data-lucide="${icon}"></i>
+            <i data-lucide="${config.icon}"></i>
         </div>
         <div class="equipment-info">
             <h3>${equipment.name}</h3>
             <div class="equipment-details">
-                ${equipment.capacity ? `<div class="equipment-detail"><i data-lucide="box"></i> ${equipment.capacity} м³</div>` : ''}
-                ${equipment.length ? `<div class="equipment-detail"><i data-lucide="ruler"></i> ${equipment.length} м</div>` : ''}
-                ${equipment.weight ? `<div class="equipment-detail"><i data-lucide="weight"></i> ${equipment.weight} т</div>` : ''}
-            </div>
-            <div class="equipment-location">
-                <i data-lucide="map-pin"></i>
-                <span>${equipment.location}</span>
+                <div class="equipment-detail">
+                    <i data-lucide="ruler"></i>
+                    <span>${equipment.capacity} ${config.capacityUnit}</span>
+                </div>
+                <div class="equipment-location">
+                    <i data-lucide="map-pin"></i>
+                    <span>${equipment.location}</span>
+                </div>
             </div>
             <div class="equipment-footer">
-                <div class="equipment-price">${equipment.price} тыс. сум/час</div>
-                <div class="equipment-status ${equipment.status || 'approved'} ${equipment.available ? 'available' : 'busy'}">${statusText}</div>
+                <div class="owner-info">
+                    <i data-lucide="user"></i>
+                    <span>${equipment.owner.name}</span>
+                </div>
+                <div class="equipment-rating">
+                    <span>★ ${equipment.owner.rating}</span>
+                    <span>(${equipment.owner.reviewCount})</span>
+                </div>
+            </div>
+        </div>
+        <div class="equipment-meta">
+            <div class="equipment-price">${equipment.price.toLocaleString()} сум/час</div>
+            <div class="equipment-status ${equipment.status}">
+                ${equipment.status === 'available' ? 'Доступен' : 'Занят'}
             </div>
         </div>
     `;
     
-    if (equipment.status === 'approved') {
-        div.addEventListener('click', () => {
-            showEquipmentDetails(equipment);
-        });
-    }
+    // Add click event
+    element.addEventListener('click', () => showEquipmentDetails(equipment));
     
-    return div;
-}
-
-function getStatusText(equipment) {
-    if (equipment.status === 'pending') return '⏳ На модерации';
-    if (equipment.status === 'rejected') return '❌ Отклонено';
-    return equipment.available ? '✅ Доступен' : '⏳ Занят';
+    // Initialize icons
+    lucide.createIcons();
+    
+    return element;
 }
 
 function showEquipmentDetails(equipment) {
-    console.log('Showing equipment details:', equipment.name);
-    const equipmentTitle = document.getElementById('equipment-title');
-    if (equipmentTitle) {
-        equipmentTitle.textContent = equipment.name;
-    }
+    const config = equipmentConfig[equipment.type];
+    const detailsContainer = document.getElementById('equipment-details');
     
-    const statusText = getStatusText(equipment);
-    
-    const equipmentDetails = document.getElementById('equipment-details');
-    if (!equipmentDetails) return;
-    
-    equipmentDetails.innerHTML = `
+    detailsContainer.innerHTML = `
         <div class="detail-section">
-            <div class="owner-info">
-                <div class="owner-avatar">
-                    <i data-lucide="user"></i>
+            <div class="equipment-header">
+                <div class="equipment-image large">
+                    <i data-lucide="${config.icon}"></i>
                 </div>
-                <div class="owner-details">
-                    <h4>${equipment.owner?.name || 'Владелец'}</h4>
-                    <div class="equipment-rating">
-                        <i data-lucide="star"></i>
-                        <span>${equipment.owner?.rating || 5.0} (${equipment.owner?.reviews || 0} отзывов)</span>
+                <div class="equipment-title">
+                    <h3>${equipment.name}</h3>
+                    <div class="equipment-price large">${equipment.price.toLocaleString()} сум/час</div>
+                    <div class="equipment-status large ${equipment.status}">
+                        ${equipment.status === 'available' ? 'Доступен' : 'Занят'}
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="detail-section">
-            <h3>Информация о технике</h3>
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Статус</span>
-                    <span class="detail-value ${equipment.status || 'approved'}">${statusText}</span>
-                </div>
-                ${equipment.capacity ? `
-                <div class="detail-item">
-                    <span class="detail-label">Вместимость</span>
-                    <span class="detail-value">${equipment.capacity} м³</span>
-                </div>
-                ` : ''}
-                ${equipment.length ? `
-                <div class="detail-item">
-                    <span class="detail-label">Длина стрелы</span>
-                    <span class="detail-value">${equipment.length} м</span>
-                </div>
-                ` : ''}
-                ${equipment.performance ? `
-                <div class="detail-item">
-                    <span class="detail-label">Производительность</span>
-                    <span class="detail-value">${equipment.performance} м³/ч</span>
-                </div>
-                ` : ''}
-                ${equipment.weight ? `
-                <div class="detail-item">
-                    <span class="detail-label">Грузоподъемность</span>
-                    <span class="detail-value">${equipment.weight} т</span>
-                </div>
-                ` : ''}
-                <div class="detail-item">
-                    <span class="detail-label">Цена</span>
-                    <span class="detail-value">${equipment.price} тыс. сум/час</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Местоположение</span>
-                    <span class="detail-value">${equipment.location}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Телефон владельца</span>
-                    <span class="detail-value">${equipment.ownerPhone || 'Не указан'}</span>
-                </div>
+            <h3>Характеристики</h3>
+            <div class="specs-grid">
+                ${Object.entries(equipment.specs || {}).map(([key, value]) => `
+                    <div class="spec-item">
+                        <div class="spec-value">${value}</div>
+                        <div class="spec-label">${key}</div>
+                    </div>
+                `).join('')}
             </div>
         </div>
         
         <div class="detail-section">
             <h3>Описание</h3>
-            <p>${equipment.description || 'Нет описания'}</p>
+            <p>${equipment.description}</p>
         </div>
         
         <div class="detail-section">
-            <h3>Способы оплаты</h3>
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Наличные</span>
-                    <span class="detail-value">${equipment.paymentMethods && equipment.paymentMethods.includes('cash') ? '✅' : '❌'}</span>
+            <h3>Владелец</h3>
+            <div class="owner-card">
+                <div class="owner-avatar">
+                    <i data-lucide="user"></i>
                 </div>
-                <div class="detail-item">
-                    <span class="detail-label">Безналичный расчет</span>
-                    <span class="detail-value">${equipment.paymentMethods && equipment.paymentMethods.includes('transfer') ? '✅' : '❌'}</span>
+                <div class="owner-info">
+                    <h4>${equipment.owner.name}</h4>
+                    <div class="owner-rating">
+                        <span class="rating-stars">${'★'.repeat(Math.floor(equipment.owner.rating))}${'☆'.repeat(5 - Math.floor(equipment.owner.rating))}</span>
+                        <span class="rating-value">${equipment.owner.rating} (${equipment.owner.reviewCount} отзывов)</span>
+                    </div>
+                    <div class="owner-phone">
+                        <i data-lucide="phone"></i>
+                        <span>${equipment.owner.phone}</span>
+                    </div>
                 </div>
             </div>
         </div>
         
+        <div class="detail-section">
+            <h3>Способ оплаты</h3>
+            <p>${getPaymentMethodText(equipment.paymentMethod)}</p>
+        </div>
+        
         <div class="contact-buttons">
-            <button class="contact-btn phone" onclick="callOwner('${equipment.ownerPhone}')">
+            <button class="contact-btn phone" onclick="contactOwner('${equipment.owner.phone}', 'phone')">
                 <i data-lucide="phone"></i>
                 Позвонить
             </button>
-            <button class="contact-btn telegram" onclick="messageOwner('${equipment.ownerPhone}', '${equipment.name}')">
-                <i data-lucide="message-circle"></i>
-                Написать
+            <button class="contact-btn telegram" onclick="contactOwner('${equipment.owner.phone}', 'telegram')">
+                <i data-lucide="send"></i>
+                Telegram
             </button>
         </div>
     `;
     
-    navigateTo('details-page');
-    setTimeout(() => lucide.createIcons(), 100);
+    // Initialize icons
+    lucide.createIcons();
+    
+    // Update page title
+    document.getElementById('equipment-title').textContent = equipment.name;
+    showPage('details-page');
 }
 
-function renderUserEquipment() {
-    console.log('Rendering user equipment');
-    const userEquipmentList = document.getElementById('user-equipment');
+function getPaymentMethodText(method) {
+    const methods = {
+        'cash': 'Наличные',
+        'transfer': 'Безналичный расчет',
+        'both': 'Наличные и безналичный расчет'
+    };
+    return methods[method] || method;
+}
+
+function contactOwner(phone, method) {
+    if (method === 'phone') {
+        window.open(`tel:${phone}`);
+    } else if (method === 'telegram') {
+        // In Telegram Web App, we can use tg.openTelegramLink
+        const username = phone.replace(/[^0-9]/g, '');
+        if (tg && tg.openTelegramLink) {
+            tg.openTelegramLink(`https://t.me/${username}`);
+        } else {
+            window.open(`https://t.me/${username}`, '_blank');
+        }
+    }
+}
+
+function updateUserEquipment() {
     if (!userEquipmentList) return;
     
     userEquipmentList.innerHTML = '';
     
-    if (!userEquipment.length) {
+    // Get user's equipment (in real app, filter by user ID)
+    const userEquipments = Object.values(equipmentData).flat().filter(eq => 
+        eq.owner.name.includes(currentUser?.firstName || '')
+    );
+    
+    if (userEquipments.length === 0) {
         userEquipmentList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
+            <div class="text-center" style="padding: 40px 20px; color: var(--text-secondary);">
+                <i data-lucide="package" style="width: 48px; height: 48px; margin-bottom: 15px;"></i>
                 <p>У вас пока нет добавленной техники</p>
+                <button class="btn-primary" style="margin-top: 15px;" onclick="showPage('add-equipment-page')">
+                    Добавить технику
+                </button>
             </div>
         `;
+        lucide.createIcons();
         return;
     }
     
-    userEquipment.forEach(equipment => {
-        const equipmentItem = createEquipmentCard(equipment);
-        userEquipmentList.appendChild(equipmentItem);
+    userEquipments.forEach(equipment => {
+        const element = createEquipmentElement(equipment);
+        userEquipmentList.appendChild(element);
     });
 }
 
-function loadModerationStatus() {
-    if (!currentUser) return;
+function updateEquipmentForm(type) {
+    // Hide all specific input groups
+    document.getElementById('capacity-group').classList.add('hidden');
+    document.getElementById('length-group').classList.add('hidden');
+    document.getElementById('performance-group').classList.add('hidden');
+    document.getElementById('weight-group').classList.add('hidden');
+    document.getElementById('bucket-group').classList.add('hidden');
     
-    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid);
-    const pending = userEquipmentAll.filter(item => item.status === 'pending').length;
-    const approved = userEquipmentAll.filter(item => item.status === 'approved').length;
-    const rejected = userEquipmentAll.filter(item => item.status === 'rejected').length;
-    
-    const pendingCount = document.getElementById('pending-count');
-    const approvedCount = document.getElementById('approved-count');
-    const rejectedCount = document.getElementById('rejected-count');
-    
-    if (pendingCount) pendingCount.textContent = pending;
-    if (approvedCount) approvedCount.textContent = approved;
-    if (rejectedCount) rejectedCount.textContent = rejected;
-    
-    const moderationEquipmentList = document.getElementById('moderation-equipment');
-    if (!moderationEquipmentList) return;
-    
-    moderationEquipmentList.innerHTML = '';
-    
-    if (userEquipmentAll.length === 0) {
-        moderationEquipmentList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>У вас пока нет добавленной техники</p>
-            </div>
-        `;
-        return;
-    }
-    
-    userEquipmentAll.forEach(equipment => {
-        const div = document.createElement('div');
-        div.className = `equipment-item ${equipment.status || 'pending'}`;
-        
-        const icon = getEquipmentIcon(equipment.category);
-        const statusText = getStatusText(equipment);
-        
-        div.innerHTML = `
-            <div class="equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>
-            <div class="equipment-info">
-                <h3>${equipment.name}</h3>
-                <div class="equipment-location">
-                    <i data-lucide="map-pin"></i>
-                    <span>${equipment.location}</span>
-                </div>
-                <div class="equipment-footer">
-                    <div class="equipment-price">${equipment.price} тыс. сум/час</div>
-                    <div class="equipment-status ${equipment.status || 'pending'}">${statusText}</div>
-                    ${equipment.status === 'rejected' ? `
-                    <div class="rejection-reason">
-                        <small>Причина: ${equipment.rejectionReason || 'Не указана'}</small>
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-        
-        moderationEquipmentList.appendChild(div);
-    });
-}
-
-function toggleFormFields() {
-    const type = document.getElementById('equipment-type')?.value;
-    if (!type) return;
-    
-    const capacityGroup = document.getElementById('capacity-group');
-    const lengthGroup = document.getElementById('length-group');
-    const performanceGroup = document.getElementById('performance-group');
-    const weightGroup = document.getElementById('weight-group');
-    const bucketGroup = document.getElementById('bucket-group');
-    
-    if (capacityGroup) capacityGroup.classList.add('hidden');
-    if (lengthGroup) lengthGroup.classList.add('hidden');
-    if (performanceGroup) performanceGroup.classList.add('hidden');
-    if (weightGroup) weightGroup.classList.add('hidden');
-    if (bucketGroup) bucketGroup.classList.add('hidden');
-    
-    switch (type) {
-        case 'mixers':
-            if (capacityGroup) capacityGroup.classList.remove('hidden');
-            break;
-        case 'pumps':
-            if (lengthGroup) lengthGroup.classList.remove('hidden');
-            if (performanceGroup) performanceGroup.classList.remove('hidden');
-            break;
-        case 'dump-trucks':
-        case 'tonars':
-        case 'cranes':
-            if (weightGroup) weightGroup.classList.remove('hidden');
-            break;
-        case 'excavators':
-            if (bucketGroup) bucketGroup.classList.remove('hidden');
-            break;
-    }
-}
-
-// ОСНОВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ТЕХНИКИ
-async function saveEquipment() {
-    console.log('Save equipment function called');
-    
-    if (!currentUser) {
-        showNotification('Ошибка: пользователь не авторизован', 'error');
-        return;
-    }
-    
-    // Получаем значения из формы
-    const type = document.getElementById('equipment-type')?.value;
-    const name = document.getElementById('equipment-name')?.value.trim();
-    const price = document.getElementById('equipment-price')?.value;
-    const location = document.getElementById('equipment-location')?.value.trim();
-    const description = document.getElementById('equipment-description')?.value.trim();
-    const paymentMethod = document.getElementById('payment-method')?.value;
-    const userPhone = document.getElementById('user-phone-input')?.value.replace(/\D/g, '');
-
-    console.log('Form values:', { type, name, price, location, description, paymentMethod, userPhone });
-
-    // Валидация
-    if (!type || !name || !price || !location || !userPhone || !description) {
-        showNotification('Пожалуйста, заполните все обязательные поля', 'error');
-        return;
-    }
-
-    if (userPhone.length !== 9) {
-        showNotification('Введите номер из 9 цифр (без +998)', 'error');
-        return;
-    }
-    
-    try {
-        // Создаем объект техники
-        const newEquipment = {
-            category: type,
-            name: name,
-            location: location,
-            price: parseInt(price),
-            available: true,
-            ownerId: currentUser.uid,
-            owner: {
-                name: currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : ''),
-                username: currentUser.username,
-                rating: 5.0,
-                reviews: 0
-            },
-            ownerPhone: '+998' + userPhone,
-            paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
-            description: description,
-            status: 'pending',
-            createdAt: Date.now()
-        };
-        
-        // Добавляем специфичные поля
+    // Show relevant input group based on equipment type
+    const config = equipmentConfig[type];
+    if (config) {
         switch (type) {
             case 'mixers':
-                const capacity = document.getElementById('equipment-capacity')?.value;
-                if (capacity) newEquipment.capacity = parseInt(capacity);
+                document.getElementById('capacity-group').classList.remove('hidden');
+                document.querySelector('#capacity-group label').textContent = `${config.capacityLabel} (${config.capacityUnit}) *`;
                 break;
             case 'pumps':
-                const length = document.getElementById('equipment-length')?.value;
-                const performance = document.getElementById('equipment-performance')?.value;
-                if (length) newEquipment.length = parseInt(length);
-                if (performance) newEquipment.performance = parseInt(performance);
+                document.getElementById('length-group').classList.remove('hidden');
                 break;
             case 'dump-trucks':
             case 'tonars':
             case 'cranes':
-                const weight = document.getElementById('equipment-weight')?.value;
-                if (weight) newEquipment.weight = parseInt(weight);
+                document.getElementById('weight-group').classList.remove('hidden');
                 break;
             case 'excavators':
-                const bucket = document.getElementById('equipment-bucket')?.value;
-                if (bucket) newEquipment.bucket = parseFloat(bucket);
+                document.getElementById('bucket-group').classList.remove('hidden');
                 break;
         }
-        
-        console.log('Saving equipment:', newEquipment);
-        
-        // Сохраняем в Firebase с автоматическим ID
-        const equipmentRef = database.ref('equipment').push();
-        const equipmentId = equipmentRef.key;
-        newEquipment.id = equipmentId;
-        
-        await equipmentRef.set(newEquipment);
-        
-        showNotification('✅ Техника отправлена на модерацию!', 'success');
-        
-        // Возвращаемся на страницу профиля
-        setTimeout(() => {
-            navigateTo('profile-page');
-            resetEquipmentForm();
-        }, 1500);
-        
-    } catch (error) {
-        console.error('Error saving equipment:', error);
-        showNotification('❌ Ошибка при добавлении техники: ' + error.message, 'error');
     }
 }
 
-function resetEquipmentForm() {
+function saveEquipment() {
     const form = document.querySelector('.add-equipment-form');
-    if (form) {
-        form.reset();
-    }
-    toggleFormFields();
-}
-
-// Admin Panel Functions
-function loadAdminPanel() {
-    console.log('Loading admin panel...');
-    console.log('Current user:', currentUser);
-    console.log('Is admin:', isAdmin());
+    const formData = new FormData();
     
-    if (!isAdmin()) {
-        showNotification('❌ У вас нет прав доступа к админ-панели', 'error');
-        navigateTo('home-page');
+    // Get form values
+    const type = document.getElementById('equipment-type').value;
+    const name = document.getElementById('equipment-name').value;
+    const price = document.getElementById('equipment-price').value;
+    const location = document.getElementById('equipment-location').value;
+    const phone = document.getElementById('user-phone-input').value;
+    const description = document.getElementById('equipment-description').value;
+    const paymentMethod = document.getElementById('payment-method').value;
+    
+    // Validate required fields
+    if (!type || !name || !price || !location || !phone || !description) {
+        alert('Пожалуйста, заполните все обязательные поля');
         return;
     }
     
-    let adminPanel = document.getElementById('admin-panel');
-    if (!adminPanel) {
-        console.log('Admin panel not found, creating...');
-        createAdminPanel();
-        adminPanel = document.getElementById('admin-panel');
+    // Get capacity based on type
+    let capacity;
+    switch (type) {
+        case 'mixers':
+            capacity = document.getElementById('equipment-capacity').value;
+            break;
+        case 'pumps':
+            capacity = document.getElementById('equipment-length').value;
+            break;
+        case 'dump-trucks':
+        case 'tonars':
+        case 'cranes':
+            capacity = document.getElementById('equipment-weight').value;
+            break;
+        case 'excavators':
+            capacity = document.getElementById('equipment-bucket').value;
+            break;
     }
     
-    if (adminPanel) {
-        renderAdminPanel();
-    } else {
-        console.error('Admin panel element not found after creation');
-        showNotification('❌ Ошибка загрузки админ-панели', 'error');
-    }
-}
-
-function createAdminPanel() {
-    console.log('Creating admin panel...');
-    
-    const adminPanel = document.createElement('section');
-    adminPanel.id = 'admin-panel';
-    adminPanel.className = 'page';
-    adminPanel.innerHTML = `
-        <div class="page-header">
-            <button class="btn-back">
-                <i data-lucide="arrow-left"></i>
-            </button>
-            <h2>👑 Панель модерации</h2>
-        </div>
-        
-        <div class="admin-content">
-            <div class="admin-stats">
-                <div class="stat-card pending">
-                    <div class="stat-number stat-pending" id="stat-pending">0</div>
-                    <div>На модерации</div>
-                </div>
-                <div class="stat-card approved">
-                    <div class="stat-number stat-approved" id="stat-approved">0</div>
-                    <div>Одобрено</div>
-                </div>
-                <div class="stat-card rejected">
-                    <div class="stat-number stat-rejected" id="stat-rejected">0</div>
-                    <div>Отклонено</div>
-                </div>
-            </div>
-
-            <div class="filter-tabs">
-                <button class="tab-btn active" data-filter="pending">⏳ На модерации</button>
-                <button class="tab-btn" data-filter="approved">✅ Одобренные</button>
-                <button class="tab-btn" data-filter="rejected">❌ Отклоненные</button>
-            </div>
-
-            <div class="equipment-list" id="admin-equipment-list">
-                <!-- Заявки будут загружаться здесь -->
-            </div>
-        </div>
-
-        <!-- Equipment Details Modal -->
-        <div id="equipment-modal" class="modal hidden">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title" id="modal-title">Детали заявки</h3>
-                    <button class="close-modal" onclick="closeAdminModal()">×</button>
-                </div>
-                
-                <div id="modal-content">
-                    <!-- Детали заявки -->
-                </div>
-                
-                <div class="moderation-controls" id="modal-controls">
-                    <!-- Кнопки модерации -->
-                </div>
-            </div>
-        </div>
-    `;
-    
-    const main = document.querySelector('main');
-    if (main) {
-        main.appendChild(adminPanel);
-        console.log('Admin panel added to DOM');
-    } else {
-        console.error('Main element not found');
+    if (!capacity) {
+        alert('Пожалуйста, укажите характеристики техники');
         return;
     }
     
-    setupAdminEventListeners();
-    console.log('Admin panel created successfully');
+    // Create equipment object
+    const equipment = {
+        id: `${type}-${Date.now()}`,
+        name: name,
+        type: type,
+        capacity: parseFloat(capacity),
+        price: parseInt(price),
+        location: location,
+        owner: {
+            name: currentUser ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : 'Пользователь',
+            phone: `+998 ${phone}`,
+            rating: '0.0',
+            reviewCount: 0
+        },
+        status: 'pending',
+        description: description,
+        paymentMethod: paymentMethod,
+        specs: getSpecs(type, capacity),
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser?.id || 'unknown'
+    };
+    
+    // In real app, save to Firebase
+    console.log('Saving equipment:', equipment);
+    
+    // Show success message
+    alert('Техника успешно отправлена на модерацию!');
+    
+    // Return to profile
+    showPage('profile-page');
 }
 
-function setupAdminEventListeners() {
-    // Tab event listeners
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentAdminFilter = this.dataset.filter;
-            renderAdminPanel();
-        });
+function updateModerationStatus() {
+    // In real app, count equipment by status for current user
+    const userEquipments = Object.values(equipmentData).flat().filter(eq => 
+        eq.owner.name.includes(currentUser?.firstName || '')
+    );
+    
+    const pendingCount = userEquipments.filter(eq => eq.status === 'pending').length;
+    const approvedCount = userEquipments.filter(eq => eq.status === 'available').length;
+    const rejectedCount = userEquipments.filter(eq => eq.status === 'rejected').length;
+    
+    document.getElementById('pending-count').textContent = pendingCount;
+    document.getElementById('approved-count').textContent = approvedCount;
+    document.getElementById('rejected-count').textContent = rejectedCount;
+    
+    // Update moderation list
+    const moderationList = document.getElementById('moderation-equipment');
+    moderationList.innerHTML = '';
+    
+    userEquipments.forEach(equipment => {
+        const element = createModerationEquipmentElement(equipment);
+        moderationList.appendChild(element);
     });
-    
-    // Back button
-    const backBtn = document.querySelector('#admin-panel .btn-back');
-    if (backBtn) {
-        backBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            goBack();
-        });
-    }
-    
-    // Close modal on background click
-    const modal = document.getElementById('equipment-modal');
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) closeAdminModal();
-        });
-    }
 }
 
-function renderAdminPanel() {
-    console.log('Rendering admin panel with filter:', currentAdminFilter);
-    console.log('All equipment count:', allEquipment.length);
-    console.log('All equipment:', allEquipment);
+function createModerationEquipmentElement(equipment) {
+    const config = equipmentConfig[equipment.type];
+    const element = document.createElement('div');
+    element.className = `equipment-item ${equipment.status}`;
     
-    // Update statistics
-    const pending = allEquipment.filter(item => item.status === 'pending').length;
-    const approved = allEquipment.filter(item => item.status === 'approved').length;
-    const rejected = allEquipment.filter(item => item.status === 'rejected').length;
-    
-    const statPending = document.getElementById('stat-pending');
-    const statApproved = document.getElementById('stat-approved');
-    const statRejected = document.getElementById('stat-rejected');
-    
-    if (statPending) statPending.textContent = pending;
-    if (statApproved) statApproved.textContent = approved;
-    if (statRejected) statRejected.textContent = rejected;
-    
-    // Filter equipment
-    const filteredEquipment = allEquipment.filter(item => {
-        const itemStatus = item.status || 'pending';
-        return itemStatus === currentAdminFilter;
-    });
-    
-    console.log(`Filtered equipment (${currentAdminFilter}):`, filteredEquipment.length, 'items');
-    
-    const listElement = document.getElementById('admin-equipment-list');
-    if (!listElement) {
-        console.error('Admin equipment list element not found');
-        return;
-    }
-    
-    if (filteredEquipment.length === 0) {
-        listElement.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="inbox"></i>
-                <p>Нет заявок со статусом "${getAdminStatusText(currentAdminFilter)}"</p>
-            </div>
-        `;
-    } else {
-        listElement.innerHTML = filteredEquipment.map(equipment => {
-            const status = equipment.status || 'pending';
-            const ownerName = equipment.owner?.name || 'Неизвестно';
-            const ownerPhone = equipment.ownerPhone || 'Не указан';
-            
-            return `
-                <div class="equipment-item ${status}" onclick="showAdminEquipmentDetails('${equipment.id}')">
-                    <div class="equipment-image">
-                        <i data-lucide="${getEquipmentIcon(equipment.category)}"></i>
-                    </div>
-                    <div class="equipment-info">
-                        <h3>${equipment.name}</h3>
-                        <div class="equipment-location">
-                            <i data-lucide="map-pin"></i>
-                            <span>${equipment.location}</span>
-                        </div>
-                        <div class="equipment-meta">
-                            <span class="equipment-price">${equipment.price} тыс. сум/час</span>
-                            <span class="equipment-type">${getCategoryName(equipment.category)}</span>
-                        </div>
-                        <div class="owner-info">
-                            <i data-lucide="user"></i>
-                            <span>${ownerName}</span>
-                            <span style="color: #94a3b8;">•</span>
-                            <span>${ownerPhone}</span>
-                        </div>
-                    </div>
-                    <div class="equipment-status ${status}">
-                        ${getAdminStatusBadge(status)}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-    
-    setTimeout(() => lucide.createIcons(), 100);
-}
-
-function showAdminEquipmentDetails(equipmentId) {
-    console.log('Showing equipment details for:', equipmentId);
-    const equipment = allEquipment.find(item => item.id === equipmentId);
-    if (!equipment) {
-        console.error('Equipment not found:', equipmentId);
-        showNotification('❌ Оборудование не найдено', 'error');
-        return;
-    }
-    
-    const modalTitle = document.getElementById('modal-title');
-    if (modalTitle) {
-        modalTitle.textContent = equipment.name;
-    }
-    
-    const modalContent = document.getElementById('modal-content');
-    if (!modalContent) {
-        console.error('Modal content element not found');
-        return;
-    }
-    
-    const status = equipment.status || 'pending';
-    const ownerName = equipment.owner?.name || 'Неизвестно';
-    const ownerPhone = equipment.ownerPhone || 'Не указан';
-    
-    modalContent.innerHTML = `
-        <div class="equipment-details">
-            <div class="detail-row">
-                <strong>ID заявки:</strong> 
-                <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${equipment.id}</span>
-            </div>
-            <div class="detail-row">
-                <strong>Категория:</strong> ${getCategoryName(equipment.category)}
-            </div>
-            <div class="detail-row">
-                <strong>Местоположение:</strong> ${equipment.location}
-            </div>
-            <div class="detail-row">
-                <strong>Цена:</strong> ${equipment.price} тыс. сум/час
-            </div>
-            <div class="detail-row">
-                <strong>Владелец:</strong> ${ownerName}
-            </div>
-            <div class="detail-row">
-                <strong>Телефон:</strong> ${ownerPhone}
-            </div>
-            <div class="detail-row">
-                <strong>Статус:</strong> 
-                <span class="equipment-status ${status}">
-                    ${getAdminStatusBadge(status)}
-                </span>
-            </div>
-            <div class="detail-row">
-                <strong>Описание:</strong> 
-                <div style="margin-top: 5px; padding: 10px; background: #f1f5f9; border-radius: 6px;">
-                    ${equipment.description || 'Нет описания'}
-                </div>
-            </div>
-            ${equipment.rejectionReason ? `
-            <div class="detail-row">
-                <strong>Причина отклонения:</strong> 
-                <div style="margin-top: 5px; padding: 10px; background: #fee2e2; border-radius: 6px; color: #dc2626;">
-                    ${equipment.rejectionReason}
-                </div>
-            </div>
-            ` : ''}
-            ${equipment.capacity ? `
-            <div class="detail-row">
-                <strong>Вместимость:</strong> ${equipment.capacity} м³
-            </div>
-            ` : ''}
-            ${equipment.length ? `
-            <div class="detail-row">
-                <strong>Длина стрелы:</strong> ${equipment.length} м
-            </div>
-            ` : ''}
-            ${equipment.performance ? `
-            <div class="detail-row">
-                <strong>Производительность:</strong> ${equipment.performance} м³/ч
-            </div>
-            ` : ''}
-            ${equipment.weight ? `
-            <div class="detail-row">
-                <strong>Грузоподъемность:</strong> ${equipment.weight} т
-            </div>
-            ` : ''}
-            ${equipment.bucket ? `
-            <div class="detail-row">
-                <strong>Объем ковша:</strong> ${equipment.bucket} м³
-            </div>
-            ` : ''}
-            <div class="detail-row">
-                <strong>Дата создания:</strong> 
-                ${equipment.createdAt ? new Date(equipment.createdAt).toLocaleString('ru-RU') : 'Неизвестно'}
-            </div>
+    element.innerHTML = `
+        <div class="equipment-image">
+            <i data-lucide="${config.icon}"></i>
         </div>
-    `;
-    
-    const modalControls = document.getElementById('modal-controls');
-    if (modalControls) {
-        if (equipment.status === 'pending') {
-            modalControls.innerHTML = `
-                <button class="btn btn-approve" onclick="approveEquipment('${equipment.id}')">
-                    ✅ Одобрить заявку
-                </button>
-                <button class="btn btn-reject" onclick="showAdminRejectionForm()">
-                    ❌ Отклонить заявку
-                </button>
-                <div class="rejection-reason" id="admin-rejection-form" style="display: none;">
-                    <textarea id="admin-rejection-reason" placeholder="Укажите причину отклонения заявки..."></textarea>
-                    <button class="btn btn-reject" onclick="rejectEquipment('${equipment.id}')" style="margin-top: 10px; width: 100%;">
-                        📨 Отправить отклонение
-                    </button>
+        <div class="equipment-info">
+            <h3>${equipment.name}</h3>
+            <div class="equipment-details">
+                <div class="equipment-detail">
+                    <i data-lucide="ruler"></i>
+                    <span>${equipment.capacity} ${config.capacityUnit}</span>
                 </div>
-            `;
-        } else {
-            modalControls.innerHTML = `
-                <div style="text-align: center; color: #64748b; padding: 20px;">
-                    Заявка уже обработана
-                </div>
-            `;
-        }
-    }
-    
-    const modal = document.getElementById('equipment-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
-}
-
-function closeAdminModal() {
-    const modal = document.getElementById('equipment-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-    const rejectionForm = document.getElementById('admin-rejection-form');
-    if (rejectionForm) {
-        rejectionForm.style.display = 'none';
-    }
-}
-
-function showAdminRejectionForm() {
-    const rejectionForm = document.getElementById('admin-rejection-form');
-    if (rejectionForm) {
-        rejectionForm.style.display = 'block';
-    }
-}
-
-async function approveEquipment(equipmentId) {
-    if (!confirm('Вы уверены, что хотите одобрить эту заявку?')) return;
-    
-    try {
-        const equipmentRef = database.ref(`equipment/${equipmentId}`);
-        await equipmentRef.update({
-            status: 'approved',
-            moderatedBy: currentUser.uid,
-            moderatedAt: Date.now(),
-            rejectionReason: null
-        });
-        
-        showNotification('✅ Заявка одобрена!', 'success');
-        closeAdminModal();
-        // Обновляем данные
-        loadEquipmentData();
-    } catch (error) {
-        console.error('Error approving equipment:', error);
-        showNotification('❌ Ошибка при одобрении заявки: ' + error.message, 'error');
-    }
-}
-
-async function rejectEquipment(equipmentId) {
-    const reasonInput = document.getElementById('admin-rejection-reason');
-    if (!reasonInput) return;
-    
-    const reason = reasonInput.value.trim();
-    if (!reason) {
-        showNotification('📝 Пожалуйста, укажите причину отклонения', 'error');
-        return;
-    }
-    
-    if (!confirm('Вы уверены, что хотите отклонить эту заявку?')) return;
-    
-    try {
-        const equipmentRef = database.ref(`equipment/${equipmentId}`);
-        await equipmentRef.update({
-            status: 'rejected',
-            rejectionReason: reason,
-            moderatedBy: currentUser.uid,
-            moderatedAt: Date.now()
-        });
-        
-        showNotification('❌ Заявка отклонена!', 'success');
-        closeAdminModal();
-        // Обновляем данные
-        loadEquipmentData();
-    } catch (error) {
-        console.error('Error rejecting equipment:', error);
-        showNotification('❌ Ошибка при отклонении заявки: ' + error.message, 'error');
-    }
-}
-
-// Availability Management
-function loadAvailabilityEquipment() {
-    if (!currentUser) return;
-    
-    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid && item.status === 'approved');
-    const availabilityList = document.getElementById('availability-equipment');
-    if (!availabilityList) return;
-    
-    availabilityList.innerHTML = '';
-    
-    if (userEquipmentAll.length === 0) {
-        availabilityList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>У вас нет одобренной техники</p>
-            </div>
-        `;
-        return;
-    }
-    
-    userEquipmentAll.forEach(equipment => {
-        const div = document.createElement('div');
-        div.className = `equipment-item ${equipment.available ? 'available' : 'busy'}`;
-        
-        const icon = getEquipmentIcon(equipment.category);
-        
-        div.innerHTML = `
-            <div class="equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>
-            <div class="equipment-info">
-                <h3>${equipment.name}</h3>
                 <div class="equipment-location">
                     <i data-lucide="map-pin"></i>
                     <span>${equipment.location}</span>
                 </div>
-                <div class="equipment-footer">
-                    <div class="equipment-price">${equipment.price} тыс. сум/час</div>
-                    <div class="equipment-status ${equipment.available ? 'available' : 'busy'}">
-                        ${equipment.available ? '✅ Доступен' : '⏳ Занят'}
-                    </div>
-                </div>
             </div>
-            <button class="toggle-availability-btn" onclick="toggleAvailability('${equipment.id}', ${!equipment.available})">
-                ${equipment.available ? 'Сделать занятым' : 'Сделать доступным'}
-            </button>
-        `;
-        
-        availabilityList.appendChild(div);
-    });
-}
-
-async function toggleAvailability(equipmentId, newAvailability) {
-    try {
-        const equipmentRef = database.ref(`equipment/${equipmentId}`);
-        await equipmentRef.update({
-            available: newAvailability
-        });
-        
-        showNotification(newAvailability ? '✅ Техника теперь доступна' : '⏳ Техника отмечена как занятая', 'success');
-        loadAvailabilityEquipment();
-    } catch (error) {
-        console.error('Error toggling availability:', error);
-        showNotification('❌ Ошибка при изменении статуса', 'error');
-    }
-}
-
-// Utility functions
-function getCategoryTitle(category) {
-    const titles = {
-        'mixers': 'Автомиксеры',
-        'pumps': 'Автобетононасосы',
-        'dump-trucks': 'Самосвалы',
-        'tonars': 'Тонары',
-        'cranes': 'Краны',
-        'excavators': 'Экскаваторы'
-    };
-    return titles[category] || 'Категория';
-}
-
-function getEquipmentIcon(category) {
-    const icons = {
-        'mixers': 'truck',
-        'pumps': 'construction',
-        'dump-trucks': 'truck',
-        'tonars': 'truck',
-        'cranes': 'crane',
-        'excavators': 'hammer'
-    };
-    return icons[category] || 'construction';
-}
-
-function callOwner(phone) {
-    if (!phone || phone === 'Не указан') {
-        showNotification('❌ Номер телефона не указан', 'error');
-        return;
-    }
-    window.open(`tel:${phone}`);
-}
-
-function messageOwner(phone, equipmentName) {
-    if (!phone || phone === 'Не указан') {
-        showNotification('❌ Номер телефона не указан', 'error');
-        return;
-    }
-    const message = `Здравствуйте! Интересует ваша техника: ${equipmentName}`;
-    window.open(`https://t.me/${phone.replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank');
-}
-
-// Admin helper functions
-function getAdminStatusText(status) {
-    const statuses = {
-        'pending': 'На модерации',
-        'approved': 'Одобренные',
-        'rejected': 'Отклоненные'
-    };
-    return statuses[status] || status;
-}
-
-function getAdminStatusBadge(status) {
-    const badges = {
-        'pending': '⏳ На модерации',
-        'approved': '✅ Одобрено',
-        'rejected': '❌ Отклонено'
-    };
-    return badges[status] || status;
-}
-
-function getCategoryName(category) {
-    const categories = {
-        'mixers': '🚛 Автомиксер',
-        'pumps': '🏗️ Автобетононасос',
-        'dump-trucks': '🚚 Самосвал',
-        'tonars': '🛻 Тонар',
-        'cranes': '🏗️ Кран',
-        'excavators': '🔧 Экскаватор'
-    };
-    return categories[category] || '🚜 Другая техника';
-}
-
-function getStatusColor(status) {
-    const colors = {
-        'pending': '#f59e0b',
-        'approved': '#10b981', 
-        'rejected': '#ef4444'
-    };
-    return colors[status] || '#f59e0b';
-}
-
-function getStatusBackgroundColor(status) {
-    const colors = {
-        'pending': 'rgba(245, 158, 11, 0.1)',
-        'approved': 'rgba(16, 185, 129, 0.1)',
-        'rejected': 'rgba(239, 68, 68, 0.1)'
-    };
-    return colors[status] || 'rgba(245, 158, 11, 0.1)';
-}
-
-// Notification function
-function showNotification(message, type = 'info') {
-    // Удаляем старые уведомления
-    document.querySelectorAll('.notification').forEach(notification => {
-        notification.remove();
-    });
-    
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i>
-            <span>${message}</span>
+            <div class="equipment-meta">
+                <div class="equipment-price">${equipment.price.toLocaleString()} сум/час</div>
+                <div class="equipment-type">${config.title}</div>
+            </div>
+            ${equipment.status === 'rejected' ? `
+                <div class="rejection-reason">
+                    <strong>Причина отклонения:</strong> Требуется дополнительная информация о технике
+                </div>
+            ` : ''}
+        </div>
+        <div class="equipment-status ${equipment.status}">
+            ${equipment.status === 'pending' ? 'На модерации' : 
+              equipment.status === 'available' ? 'Одобрено' : 'Отклонено'}
         </div>
     `;
     
-    document.body.appendChild(notification);
-    
-    // Показываем уведомление
-    setTimeout(() => notification.classList.add('show'), 100);
-    
-    // Автоматически скрываем через 3 секунды
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-    
-    setTimeout(() => lucide.createIcons(), 100);
+    lucide.createIcons();
+    return element;
 }
 
-// Global functions for onclick handlers
-window.callOwner = callOwner;
-window.messageOwner = messageOwner;
-window.saveEquipment = saveEquipment;
-window.toggleAvailability = toggleAvailability;
-window.showAdminEquipmentDetails = showAdminEquipmentDetails;
-window.closeAdminModal = closeAdminModal;
-window.showAdminRejectionForm = showAdminRejectionForm;
-window.approveEquipment = approveEquipment;
-window.rejectEquipment = rejectEquipment;
+function loadAdminData() {
+    // In real app, load all equipment for moderation
+    const allEquipment = Object.values(equipmentData).flat();
+    
+    // Update stats
+    const pendingCount = allEquipment.filter(eq => eq.status === 'pending').length;
+    const approvedCount = allEquipment.filter(eq => eq.status === 'available').length;
+    const rejectedCount = allEquipment.filter(eq => eq.status === 'rejected').length;
+    
+    document.getElementById('stat-pending').textContent = pendingCount;
+    document.getElementById('stat-approved').textContent = approvedCount;
+    document.getElementById('stat-rejected').textContent = rejectedCount;
+    
+    // Load equipment for moderation
+    filterAdminEquipment('pending');
+}
 
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', init);
+function filterAdminEquipment(filter) {
+    const allEquipment = Object.values(equipmentData).flat();
+    const filteredEquipment = allEquipment.filter(eq => {
+        switch (filter) {
+            case 'pending': return eq.status === 'pending';
+            case 'approved': return eq.status === 'available';
+            case 'rejected': return eq.status === 'rejected';
+            default: return true;
+        }
+    });
+    
+    const adminList = document.getElementById('admin-equipment-list');
+    adminList.innerHTML = '';
+    
+    filteredEquipment.forEach(equipment => {
+        const element = createAdminEquipmentElement(equipment);
+        adminList.appendChild(element);
+    });
+}
+
+function createAdminEquipmentElement(equipment) {
+    const config = equipmentConfig[equipment.type];
+    const element = document.createElement('div');
+    element.className = `equipment-item ${equipment.status}`;
+    
+    element.innerHTML = `
+        <div class="equipment-image">
+            <i data-lucide="${config.icon}"></i>
+        </div>
+        <div class="equipment-info">
+            <h3>${equipment.name}</h3>
+            <div class="equipment-details">
+                <div class="equipment-detail">
+                    <i data-lucide="ruler"></i>
+                    <span>${equipment.capacity} ${config.capacityUnit}</span>
+                </div>
+                <div class="equipment-location">
+                    <i data-lucide="map-pin"></i>
+                    <span>${equipment.location}</span>
+                </div>
+            </div>
+            <div class="owner-info">
+                <i data-lucide="user"></i>
+                <span>${equipment.owner.name}</span>
+                <span>•</span>
+                <span>${equipment.owner.phone}</span>
+            </div>
+            <div class="equipment-meta">
+                <div class="equipment-price">${equipment.price.toLocaleString()} сум/час</div>
+                <div class="equipment-type">${config.title}</div>
+            </div>
+        </div>
+        <div class="equipment-status ${equipment.status}">
+            ${equipment.status === 'pending' ? 'На модерации' : 
+              equipment.status === 'available' ? 'Одобрено' : 'Отклонено'}
+        </div>
+    `;
+    
+    // Add click event for moderation
+    if (equipment.status === 'pending') {
+        element.style.cursor = 'pointer';
+        element.addEventListener('click', () => openAdminModal(equipment));
+    }
+    
+    lucide.createIcons();
+    return element;
+}
+
+function openAdminModal(equipment) {
+    const modal = document.getElementById('equipment-modal');
+    const modalContent = document.getElementById('modal-content');
+    const modalControls = document.getElementById('modal-controls');
+    const modalTitle = document.getElementById('modal-title');
+    
+    modalTitle.textContent = equipment.name;
+    
+    modalContent.innerHTML = `
+        <div class="modal-body">
+            <div class="equipment-details-admin">
+                <div class="detail-row">
+                    <strong>Тип:</strong> ${equipmentConfig[equipment.type].title}
+                </div>
+                <div class="detail-row">
+                    <strong>Характеристики:</strong> ${equipment.capacity} ${equipmentConfig[equipment.type].capacityUnit}
+                </div>
+                <div class="detail-row">
+                    <strong>Цена:</strong> ${equipment.price.toLocaleString()} сум/час
+                </div>
+                <div class="detail-row">
+                    <strong>Местоположение:</strong> ${equipment.location}
+                </div>
+                <div class="detail-row">
+                    <strong>Владелец:</strong> ${equipment.owner.name}
+                </div>
+                <div class="detail-row">
+                    <strong>Телефон:</strong> ${equipment.owner.phone}
+                </div>
+                <div class="detail-row">
+                    <strong>Описание:</strong> ${equipment.description}
+                </div>
+                <div class="detail-row">
+                    <strong>Способ оплаты:</strong> ${getPaymentMethodText(equipment.paymentMethod)}
+                </div>
+                <div class="detail-row">
+                    <strong>Дата добавления:</strong> ${new Date(equipment.createdAt).toLocaleDateString('ru-RU')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modalControls.innerHTML = `
+        <div class="modal-footer">
+            <button class="modal-btn reject" onclick="moderateEquipment('${equipment.id}', 'reject')">
+                Отклонить
+            </button>
+            <button class="modal-btn approve" onclick="moderateEquipment('${equipment.id}', 'approve')">
+                Одобрить
+            </button>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function closeAdminModal() {
+    document.getElementById('equipment-modal').classList.add('hidden');
+}
+
+function moderateEquipment(equipmentId, action) {
+    // In real app, update equipment status in Firebase
+    console.log(`Moderating equipment ${equipmentId}: ${action}`);
+    
+    // Update local data for demo
+    Object.keys(equipmentData).forEach(type => {
+        equipmentData[type] = equipmentData[type].map(eq => {
+            if (eq.id === equipmentId) {
+                return {
+                    ...eq,
+                    status: action === 'approve' ? 'available' : 'rejected'
+                };
+            }
+            return eq;
+        });
+    });
+    
+    // Close modal and refresh
+    closeAdminModal();
+    loadAdminData();
+    
+    alert(`Техника ${action === 'approve' ? 'одобрена' : 'отклонена'}!`);
+}
+
+// Utility function to format phone numbers
+function formatPhoneNumber(phone) {
+    const cleaned = phone.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{2})(\d{2})$/);
+    if (match) {
+        return `+998 ${match[1]} ${match[2]} ${match[3]} ${match[4]}`;
+    }
+    return phone;
+}
+
+// Handle browser back button
+window.addEventListener('popstate', function(event) {
+    // Simple navigation handling
+    showPage('home-page');
+    navItems.forEach(nav => {
+        if (nav.getAttribute('data-page') === 'home-page') {
+            nav.classList.add('active');
+        } else {
+            nav.classList.remove('active');
+        }
+    });
+});

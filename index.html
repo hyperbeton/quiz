@@ -42,9 +42,8 @@
                     <div class="category-list">
                         <div class="category-item" data-category="mixers">
                             <div class="category-image">
-                                <img src="img/миксер.jpg" alt="Автомиксеры" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="category-icon fallback">
-                                    <i data-lucide="mixer"></i>
+                                <div class="category-icon">
+                                    <i data-lucide="concrete-mixer"></i>
                                 </div>
                             </div>
                             <div class="category-info">
@@ -55,9 +54,8 @@
 
                         <div class="category-item" data-category="pumps">
                             <div class="category-image">
-                                <img src="img/насос.jpg" alt="Автобетононасосы" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="category-icon fallback">
-                                    <i data-lucide="sprout"></i>
+                                <div class="category-icon">
+                                    <i data-lucide="pump"></i>
                                 </div>
                             </div>
                             <div class="category-info">
@@ -68,9 +66,8 @@
 
                         <div class="category-item" data-category="dump-trucks">
                             <div class="category-image">
-                                <img src="img/самосвал.jpg" alt="Самосвалы" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="category-icon fallback">
-                                    <i data-lucide="truck"></i>
+                                <div class="category-icon">
+                                    <i data-lucide="dump-truck"></i>
                                 </div>
                             </div>
                             <div class="category-info">
@@ -81,8 +78,7 @@
 
                         <div class="category-item" data-category="tonars">
                             <div class="category-image">
-                                <img src="img/самосвал.jpg" alt="Тонары" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="category-icon fallback">
+                                <div class="category-icon">
                                     <i data-lucide="truck"></i>
                                 </div>
                             </div>
@@ -94,8 +90,7 @@
 
                         <div class="category-item" data-category="cranes">
                             <div class="category-image">
-                                <img src="img/кран.jpg" alt="Краны" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="category-icon fallback">
+                                <div class="category-icon">
                                     <i data-lucide="crane"></i>
                                 </div>
                             </div>
@@ -107,9 +102,8 @@
 
                         <div class="category-item" data-category="excavators">
                             <div class="category-image">
-                                <img src="img/экскаватор.jpg" alt="Экскаваторы" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="category-icon fallback">
-                                    <i data-lucide="digging"></i>
+                                <div class="category-icon">
+                                    <i data-lucide="excavator"></i>
                                 </div>
                             </div>
                             <div class="category-info">
@@ -172,7 +166,7 @@
 
                 <div class="profile-actions">
                     <button class="profile-action-btn" id="add-equipment-btn">
-                        <i data-lucide="plus"></i>
+                        <i data-lucide="plus-circle"></i>
                         <span>Добавить технику</span>
                     </button>
                     <button class="profile-action-btn" id="my-equipment-btn">
@@ -243,7 +237,7 @@
 
                     <div id="bucket-group" class="form-group hidden">
                         <label for="equipment-bucket">Объем ковша (м³) *</label>
-                        <input type="number" id="equipment-bucket" placeholder="Например: 1.2" required>
+                        <input type="number" id="equipment-bucket" placeholder="Например: 1.2" step="0.1" required>
                     </div>
 
                     <div class="form-group">
@@ -340,6 +334,61 @@
                     <!-- Equipment for moderation will be loaded here -->
                 </div>
             </section>
+
+            <!-- Admin Panel -->
+            <section id="admin-panel" class="page">
+                <div class="page-header">
+                    <button class="btn-back">
+                        <i data-lucide="arrow-left"></i>
+                    </button>
+                    <h2>👑 Панель модерации</h2>
+                </div>
+                
+                <div class="admin-content">
+                    <div class="admin-stats">
+                        <div class="stat-card pending">
+                            <div class="stat-number stat-pending" id="stat-pending">0</div>
+                            <div>На модерации</div>
+                        </div>
+                        <div class="stat-card approved">
+                            <div class="stat-number stat-approved" id="stat-approved">0</div>
+                            <div>Одобрено</div>
+                        </div>
+                        <div class="stat-card rejected">
+                            <div class="stat-number stat-rejected" id="stat-rejected">0</div>
+                            <div>Отклонено</div>
+                        </div>
+                    </div>
+
+                    <div class="filter-tabs">
+                        <button class="tab-btn active" data-filter="pending">⏳ На модерации</button>
+                        <button class="tab-btn" data-filter="approved">✅ Одобренные</button>
+                        <button class="tab-btn" data-filter="rejected">❌ Отклоненные</button>
+                    </div>
+
+                    <div class="equipment-list" id="admin-equipment-list">
+                        <!-- Заявки будут загружаться здесь -->
+                    </div>
+                </div>
+
+                <!-- Equipment Details Modal -->
+                <div id="equipment-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="modal-title">Детали заявки</h3>
+                            <button class="close-modal" onclick="closeAdminModal()">×</button>
+                        </div>
+                        
+                        <div id="modal-content">
+                            <!-- Детали заявки -->
+                        </div>
+                        
+                        <div class="moderation-controls" id="modal-controls">
+                            <!-- Кнопки модерации -->
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
 
         <!-- Bottom Navigation -->
@@ -352,13 +401,13 @@
             </div>
             <div class="nav-item" data-page="category-page" data-category="mixers">
                 <div class="nav-icon">
-                    <i data-lucide="mixer"></i>
+                    <i data-lucide="concrete-mixer"></i>
                 </div>
                 <span>Миксеры</span>
             </div>
             <div class="nav-item" data-page="category-page" data-category="pumps">
                 <div class="nav-icon">
-                    <i data-lucide="sprout"></i>
+                    <i data-lucide="pump"></i>
                 </div>
                 <span>Насосы</span>
             </div>
@@ -367,6 +416,12 @@
                     <i data-lucide="user"></i>
                 </div>
                 <span>Профиль</span>
+            </div>
+            <div class="nav-item" data-page="admin-panel">
+                <div class="nav-icon">
+                    <i data-lucide="shield"></i>
+                </div>
+                <span>Админ</span>
             </div>
         </nav>
     </div>
