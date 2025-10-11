@@ -36,7 +36,6 @@ const mainContent = document.getElementById('main-content');
 // Check if current user is admin
 function isAdmin() {
     if (!currentUser) return false;
-    // Проверяем как число и как строку
     const userId = currentUser.uid;
     return ADMIN_IDS.includes(parseInt(userId)) || ADMIN_IDS.includes(userId);
 }
@@ -44,22 +43,13 @@ function isAdmin() {
 // Initialize the application
 async function init() {
     try {
-        console.log('Initializing Telegram Web App...');
+        console.log('Initializing application...');
         
-        // Initialize Telegram Web App
-        tg.expand();
-        tg.enableClosingConfirmation();
-        
-        // Initialize icons
+        // Initialize icons first
         lucide.createIcons();
         
-        // Load user data from Telegram first
-        await loadUserFromTelegram();
-        
-        // Debug info
-        console.log('User loaded:', currentUser);
-        console.log('Is admin:', isAdmin());
-        console.log('Admin IDs:', ADMIN_IDS);
+        // Try to initialize Telegram Web App with timeout
+        await initializeTelegram();
         
         // Setup event listeners
         setupEventListeners();
@@ -67,13 +57,7 @@ async function init() {
         // Load equipment data (async, won't block)
         loadEquipmentData();
         
-        // Add admin button if user is admin
-        if (isAdmin()) {
-            console.log('User is admin, adding admin button');
-            addAdminButton();
-        }
-        
-        // Hide loading screen immediately after user is loaded
+        // Hide loading screen
         setTimeout(() => {
             if (loadingScreen) {
                 loadingScreen.classList.add('hidden');
@@ -82,13 +66,129 @@ async function init() {
                 mainContent.classList.remove('hidden');
             }
             console.log('App initialized successfully');
-        }, 500);
+        }, 1000);
         
     } catch (error) {
         console.error('Error initializing app:', error);
+        // Fallback: show app anyway
         if (loadingScreen) loadingScreen.classList.add('hidden');
         if (mainContent) mainContent.classList.remove('hidden');
-        showNotification('Ошибка загрузки приложения', 'error');
+        showNotification('Приложение загружено в автономном режиме', 'info');
+    }
+}
+
+// Initialize Telegram with timeout
+async function initializeTelegram() {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            console.log('Telegram initialization timeout, using fallback');
+            createFallbackUser();
+            resolve();
+        }, 3000);
+
+        try {
+            console.log('Initializing Telegram Web App...');
+            
+            // Check if we're in Telegram
+            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+                tg.expand();
+                tg.enableClosingConfirmation();
+                
+                // Load user data from Telegram
+                loadUserFromTelegram();
+                console.log('Telegram Web App initialized successfully');
+            } else {
+                console.log('Not in Telegram environment, using fallback');
+                createFallbackUser();
+            }
+            
+            clearTimeout(timeout);
+            resolve();
+        } catch (error) {
+            console.error('Error initializing Telegram:', error);
+            clearTimeout(timeout);
+            createFallbackUser();
+            resolve();
+        }
+    });
+}
+
+// Create fallback user for testing outside Telegram
+function createFallbackUser() {
+    currentUser = {
+        uid: 'fallback_user_' + Date.now(),
+        firstName: 'Тестовый',
+        lastName: 'Пользователь',
+        username: 'testuser',
+        photoUrl: '',
+        languageCode: 'ru',
+        isPremium: false
+    };
+    
+    console.log('Fallback user created:', currentUser);
+    updateUIForAuthenticatedUser();
+    
+    // Add admin button for testing
+    setTimeout(() => {
+        addAdminButton();
+    }, 500);
+}
+
+// Load user data from Telegram
+function loadUserFromTelegram() {
+    try {
+        const initData = tg.initDataUnsafe;
+        console.log('Telegram init data:', initData);
+        
+        if (initData && initData.user) {
+            const tgUser = initData.user;
+            currentUser = {
+                uid: tgUser.id.toString(),
+                firstName: tgUser.first_name,
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || '',
+                photoUrl: tgUser.photo_url || '',
+                languageCode: tgUser.language_code || 'ru',
+                isPremium: tgUser.is_premium || false
+            };
+            
+            console.log('User loaded from Telegram:', currentUser);
+            updateUIForAuthenticatedUser();
+            
+            // Add admin button if user is admin
+            if (isAdmin()) {
+                console.log('User is admin, adding admin button');
+                addAdminButton();
+            }
+        } else {
+            createFallbackUser();
+        }
+    } catch (error) {
+        console.error('Error loading user from Telegram:', error);
+        createFallbackUser();
+    }
+}
+
+// Update UI for authenticated user
+function updateUIForAuthenticatedUser() {
+    const userNameElement = document.getElementById('user-name');
+    const userPhoneElement = document.getElementById('user-phone');
+    const userAvatarImg = document.getElementById('user-avatar-img');
+    const avatarFallback = document.querySelector('.avatar-fallback');
+    
+    if (userNameElement) {
+        const displayName = currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : '');
+        userNameElement.textContent = displayName;
+    }
+    
+    if (userPhoneElement) {
+        userPhoneElement.textContent = currentUser.username ? '@' + currentUser.username : 'Номер не указан';
+    }
+    
+    if (currentUser.photoUrl && userAvatarImg && avatarFallback) {
+        userAvatarImg.src = currentUser.photoUrl;
+        userAvatarImg.style.display = 'block';
+        avatarFallback.style.display = 'none';
     }
 }
 
@@ -100,7 +200,7 @@ function addAdminButton() {
         return;
     }
     
-    // Проверяем, не добавлена ли уже кнопка
+    // Check if admin button already exists
     if (document.querySelector('.nav-item[data-page="admin-panel"]')) {
         return;
     }
@@ -123,88 +223,6 @@ function addAdminButton() {
     bottomNav.appendChild(adminNavItem);
     lucide.createIcons();
     console.log('Admin button added to navigation');
-}
-
-// Load user data from Telegram
-async function loadUserFromTelegram() {
-    return new Promise((resolve) => {
-        try {
-            const initData = tg.initDataUnsafe;
-            console.log('Telegram init data:', initData);
-            
-            if (initData && initData.user) {
-                const tgUser = initData.user;
-                currentUser = {
-                    uid: tgUser.id.toString(),
-                    firstName: tgUser.first_name,
-                    lastName: tgUser.last_name || '',
-                    username: tgUser.username || '',
-                    photoUrl: tgUser.photo_url || '',
-                    languageCode: tgUser.language_code || 'ru',
-                    isPremium: tgUser.is_premium || false
-                };
-                
-                console.log('User loaded from Telegram:', currentUser);
-                updateUIForAuthenticatedUser();
-            } else {
-                currentUser = {
-                    uid: 'guest_' + Date.now(),
-                    firstName: 'Гость',
-                    lastName: '',
-                    username: '',
-                    photoUrl: '',
-                    languageCode: 'ru',
-                    isPremium: false
-                };
-                console.log('Created guest user:', currentUser);
-                updateUIForAuthenticatedUser();
-            }
-        } catch (error) {
-            console.error('Error loading user from Telegram:', error);
-            currentUser = {
-                uid: 'error_guest_' + Date.now(),
-                firstName: 'Гость',
-                lastName: '',
-                username: '',
-                photoUrl: '',
-                languageCode: 'ru',
-                isPremium: false
-            };
-            updateUIForAuthenticatedUser();
-        }
-        resolve();
-    });
-}
-
-// Update UI for authenticated user
-function updateUIForAuthenticatedUser() {
-    const userNameElement = document.getElementById('user-name');
-    const userPhoneElement = document.getElementById('user-phone');
-    const userAvatarImg = document.getElementById('user-avatar-img');
-    const avatarFallback = document.querySelector('.avatar-fallback');
-    
-    if (userNameElement) {
-        const displayName = currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : '');
-        userNameElement.textContent = displayName;
-    }
-    
-    if (userPhoneElement) {
-        userPhoneElement.textContent = currentUser.phone || 'Номер не указан';
-    }
-    
-    if (currentUser.photoUrl && userAvatarImg && avatarFallback) {
-        userAvatarImg.src = currentUser.photoUrl;
-        userAvatarImg.style.display = 'block';
-        avatarFallback.style.display = 'none';
-    }
-    
-    userEquipment = allEquipment.filter(item => 
-        item.ownerId === currentUser.uid && item.status === 'approved'
-    );
-    
-    if (document.getElementById('profile-page')?.classList.contains('active')) {
-        renderUserEquipment();
-    }
 }
 
 // Setup event listeners
@@ -295,18 +313,6 @@ function setupEventListeners() {
     if (myEquipmentBtn) {
         myEquipmentBtn.addEventListener('click', () => {
             navigateTo('moderation-page');
-        });
-    }
-    
-    // Test admin button (временно для отладки)
-    const testAdminBtn = document.getElementById('test-admin-btn');
-    if (testAdminBtn) {
-        testAdminBtn.addEventListener('click', () => {
-            console.log('Test admin button clicked');
-            console.log('Current user:', currentUser);
-            console.log('Is admin:', isAdmin());
-            loadAdminPanel();
-            navigateTo('admin-panel');
         });
     }
 }
@@ -404,7 +410,6 @@ function loadEquipmentData() {
                     ...value
                 })).filter(item => item !== null);
                 console.log('Equipment loaded:', allEquipment.length, 'items');
-                console.log('Equipment data:', allEquipment);
                 
                 if (currentUser) {
                     userEquipment = allEquipment.filter(item => 
@@ -412,7 +417,7 @@ function loadEquipmentData() {
                     );
                 }
                 
-                // Обновляем админ-панель если она активна
+                // Update admin panel if active
                 if (document.getElementById('admin-panel')?.classList.contains('active')) {
                     renderAdminPanel();
                 }
@@ -975,7 +980,6 @@ function setupAdminEventListeners() {
 function renderAdminPanel() {
     console.log('Rendering admin panel with filter:', currentAdminFilter);
     console.log('All equipment count:', allEquipment.length);
-    console.log('All equipment:', allEquipment);
     
     // Update statistics
     const pending = allEquipment.filter(item => item.status === 'pending').length;
@@ -1388,24 +1392,6 @@ function getCategoryName(category) {
         'excavators': '🔧 Экскаватор'
     };
     return categories[category] || '🚜 Другая техника';
-}
-
-function getStatusColor(status) {
-    const colors = {
-        'pending': '#f59e0b',
-        'approved': '#10b981', 
-        'rejected': '#ef4444'
-    };
-    return colors[status] || '#f59e0b';
-}
-
-function getStatusBackgroundColor(status) {
-    const colors = {
-        'pending': 'rgba(245, 158, 11, 0.1)',
-        'approved': 'rgba(16, 185, 129, 0.1)',
-        'rejected': 'rgba(239, 68, 68, 0.1)'
-    };
-    return colors[status] || 'rgba(245, 158, 11, 0.1)';
 }
 
 // Notification function
