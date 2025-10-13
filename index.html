@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Строительная техника в Ташкенте</title>
+    <title>BuildRent - Аренда техники</title>
     <link rel="stylesheet" href="style.css">
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -22,7 +22,7 @@
                     <i data-lucide="loader-2" class="spinner-icon"></i>
                 </div>
                 <h2>Строительная техника</h2>
-                <p>Подключаемся к Telegram...</p>
+                <p>Загрузка приложения...</p>
             </div>
         </div>
 
@@ -30,87 +30,137 @@
         <main id="main-content" class="hidden">
             <!-- Home Page -->
             <section id="home-page" class="page active">
-                <div class="page-header">
+                <div class="page-header compact">
+                    <div class="app-brand">
+                        <div class="brand-logo">
+                            <i data-lucide="building-2"></i>
+                        </div>
+                        <h1>Строительная техника</h1>
+                    </div>
                     <div class="location">
                         <i data-lucide="map-pin"></i>
                         <span>Ташкент</span>
                     </div>
-                    <h1>Строительная техника</h1>
                 </div>
 
-                <div class="categories">
-                    <div class="category-list">
-                        <div class="category-item" data-category="mixers">
-                            <div class="category-image">
-                                <div class="category-icon">
-                                    <i data-lucide="concrete-mixer"></i>
-                                </div>
-                            </div>
-                            <div class="category-info">
-                                <h3>Автомиксеры</h3>
-                                <p>Бетономешалки 8-12 м³</p>
-                            </div>
-                        </div>
+                <!-- Search Bar -->
+                <div class="search-section">
+                    <div class="search-container">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="global-search" placeholder="Поиск техники..." class="search-input">
+                        <button class="search-filter-btn">
+                            <i data-lucide="filter"></i>
+                        </button>
+                    </div>
+                </div>
 
-                        <div class="category-item" data-category="pumps">
-                            <div class="category-image">
-                                <div class="category-icon">
-                                    <i data-lucide="pump"></i>
-                                </div>
-                            </div>
-                            <div class="category-info">
-                                <h3>Автобетононасосы</h3>
-                                <p>Насосы 30-50 метров</p>
-                            </div>
-                        </div>
+                <!-- Top Equipment -->
+                <div class="section-header">
+                    <h2>🔥 Топовая техника</h2>
+                    <a href="#" class="see-all">Все</a>
+                </div>
 
-                        <div class="category-item" data-category="dump-trucks">
-                            <div class="category-image">
-                                <div class="category-icon">
-                                    <i data-lucide="dump-truck"></i>
-                                </div>
-                            </div>
-                            <div class="category-info">
-                                <h3>Самосвалы</h3>
-                                <p>Грузовики 10-20 тонн</p>
-                            </div>
-                        </div>
+                <div class="top-equipment-scroll">
+                    <div class="top-equipment-list">
+                        <!-- Top equipment cards will be loaded here -->
+                    </div>
+                </div>
 
-                        <div class="category-item" data-category="tonars">
-                            <div class="category-image">
-                                <div class="category-icon">
-                                    <i data-lucide="truck"></i>
-                                </div>
-                            </div>
-                            <div class="category-info">
-                                <h3>Тонары</h3>
-                                <p>Малые грузовики 3-5 тонн</p>
-                            </div>
-                        </div>
+                <!-- Categories -->
+                <div class="section-header">
+                    <h2>📦 Категории</h2>
+                </div>
 
-                        <div class="category-item" data-category="cranes">
-                            <div class="category-image">
-                                <div class="category-icon">
-                                    <i data-lucide="crane"></i>
-                                </div>
-                            </div>
-                            <div class="category-info">
-                                <h3>Краны</h3>
-                                <p>Подъемные 25-100 тонн</p>
-                            </div>
+                <div class="categories-grid">
+                    <div class="category-card" data-category="mixers">
+                        <div class="category-icon">
+                            <img src="img/mixer.png" alt="Миксеры" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE0IDdWMTdNMTAgN1YxN00zIDIxSDIxTTYgMTBIMTBNNiAxNEgxME0xOCAxNEgyMk0xOCAxMEgyMk0xOCA3VjE3TTIyIDdWMTciIHN0cm9rZT0iIzI1NjNlYiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';">
                         </div>
+                        <div class="category-info">
+                            <h3>Миксеры</h3>
+                            <p>8-12 м³</p>
+                        </div>
+                    </div>
 
-                        <div class="category-item" data-category="excavators">
-                            <div class="category-image">
-                                <div class="category-icon">
-                                    <i data-lucide="excavator"></i>
-                                </div>
-                            </div>
-                            <div class="category-info">
-                                <h3>Экскаваторы</h3>
-                                <p>Землеройная техника</p>
-                            </div>
+                    <div class="category-card" data-category="pumps">
+                        <div class="category-icon">
+                            <img src="img/pump.png" alt="Насосы" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIyIDEySDE5TTUgMTJIMk0xMiA1VjJNMTIgMjJWMTlNMTcuNDk0MiA2LjQ5NDI1TDE5LjY1NjkgNC4zNDMxNk0xNy40OTQyIDE3LjUwNThMMTkuNjU2OSAxOS42NTY5TTYuNTA1NzggNi40OTQyNUw0LjM0MzE2IDQuMzQzMTZNNi41MDU3OCAxNy41MDU4TDQuMzQzMTYgMTkuNjU2OSIgc3Ryb2tlPSIjMjU2M2ViIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=';">
                         </div>
+                        <div class="category-info">
+                            <h3>Насосы</h3>
+                            <p>30-50 м</p>
+                        </div>
+                    </div>
+
+                    <div class="category-card" data-category="dump-trucks">
+                        <div class="category-icon">
+                            <img src="img/truck.png" alt="Самосвалы" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE0IDdIMmExIDEgMCAwIDAtMSAxdjExYTEgMSAwIDAgMCAxIDFoMW0wIDBoMTBtMCAwaDFhMSAxIDAgMCAwIDEgMXYtM00zIDE4VjVhMiAyIDAgMCAxIDItMmg3YTIgMiAwIDAgMSAyIDJ2MTNtMCAwaDRhMiAyIDAgMSAwIDQtMHYtMyIgc3Ryb2tlPSIjMjU2M2ViIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=';">
+                        </div>
+                        <div class="category-info">
+                            <h3>Самосвалы</h3>
+                            <p>10-20 т</p>
+                        </div>
+                    </div>
+
+                    <div class="category-card" data-category="cranes">
+                        <div class="category-icon">
+                            <img src="img/crane.png" alt="Краны" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgMTlWMTVNOCAxOVYxNU0xMiAxOVYxNU0xNiAxOVYxNU0yMCAxOVYxNU0zIDIxSDIxTTMgN0gyMU0zIDNIN00xNyAzSDIxTTcgMTlWN1YzIiBzdHJva2U9IiMyNTYzZWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxp5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=';">
+                        </div>
+                        <div class="category-info">
+                            <h3>Краны</h3>
+                            <p>25-100 т</p>
+                        </div>
+                    </div>
+
+                    <div class="category-card" data-category="tonars">
+                        <div class="category-icon">
+                            <img src="img/tonar.png" alt="Тонары" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTggMTZWMTZNMjAgMTZWMjBNMTYgMTZIMjBNMTYgMTZIMjBNMTIgMTZIMkg0QTIgMiAwIDAgMSAyIDE0VjZBMiAyIDAgMCAxIDQgNEgxNkEyIDIgMCAwIDEgMTggNlYxNEEyIDIgMCAwIDEgMTYgMTZaIiBzdHJva2U9IiMyNTYzZWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==';">
+                        </div>
+                        <div class="category-info">
+                            <h3>Тонары</h3>
+                            <p>3-5 т</p>
+                        </div>
+                    </div>
+
+                    <div class="category-card" data-category="excavators">
+                        <div class="category-icon">
+                            <img src="img/excavator.png" alt="Экскаваторы" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDEwSDE0VjE0SDEwVjEwWk0xNiAxMEgyMFYxNEgxNlYxMFpNMTAgMTZIMjBWMjBIMTBWMTZaIiBzdHJva2U9IiMyNTYzZWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==';">
+                        </div>
+                        <div class="category-info">
+                            <h3>Экскаваторы</h3>
+                            <p>Землеройные</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- All Equipment -->
+                <div class="section-header">
+                    <h2>🚜 Вся техника</h2>
+                </div>
+
+                <div class="equipment-list" id="home-equipment">
+                    <!-- Equipment items will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Search Results Page -->
+            <section id="search-page" class="page">
+                <div class="page-header compact">
+                    <button class="btn-back">
+                        <i data-lucide="arrow-left"></i>
+                    </button>
+                    <div class="search-header">
+                        <div class="search-container inline">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="search-input" placeholder="Поиск техники..." class="search-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="search-results">
+                    <div class="results-count" id="results-count"></div>
+                    <div class="equipment-list" id="search-results">
+                        <!-- Search results will be loaded here -->
                     </div>
                 </div>
             </section>
@@ -121,7 +171,7 @@
                     <button class="btn-back">
                         <i data-lucide="arrow-left"></i>
                     </button>
-                    <h2 id="category-title">Автомиксеры</h2>
+                    <h2 id="category-title">Категория</h2>
                 </div>
 
                 <div class="equipment-list" id="category-equipment">
@@ -135,7 +185,7 @@
                     <button class="btn-back">
                         <i data-lucide="arrow-left"></i>
                     </button>
-                    <h2 id="equipment-title">Детали техники</h2>
+                    <h2 id="equipment-title">Детали</h2>
                 </div>
 
                 <div class="equipment-details" id="equipment-details">
@@ -146,7 +196,7 @@
             <!-- Profile Page -->
             <section id="profile-page" class="page">
                 <div class="page-header">
-                    <h2>Мой профиль</h2>
+                    <h2>Профиль</h2>
                 </div>
 
                 <div class="profile-info">
@@ -156,25 +206,31 @@
                     </div>
                     <div class="user-data">
                         <h3 id="user-name">Загрузка...</h3>
-                        <p id="user-phone">Ташкент, Узбекистан</p>
+                        <p id="user-phone">Ташкент</p>
                         <div class="user-rating">
                             <span class="rating-stars">★★★★☆</span>
-                            <span class="rating-value" id="user-rating-value">0 (0 отзывов)</span>
+                            <span class="rating-value" id="user-rating-value">0 отзывов</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="profile-actions">
                     <button class="profile-action-btn" id="add-equipment-btn">
-                        <i data-lucide="plus-circle"></i>
+                        <div class="action-icon">
+                            <i data-lucide="plus"></i>
+                        </div>
                         <span>Добавить технику</span>
                     </button>
                     <button class="profile-action-btn" id="my-equipment-btn">
-                        <i data-lucide="list"></i>
+                        <div class="action-icon">
+                            <i data-lucide="list"></i>
+                        </div>
                         <span>Моя техника</span>
                     </button>
                     <button class="profile-action-btn" id="toggle-availability-btn">
-                        <i data-lucide="toggle-right"></i>
+                        <div class="action-icon">
+                            <i data-lucide="toggle-right"></i>
+                        </div>
                         <span>Управление доступностью</span>
                     </button>
                 </div>
@@ -308,7 +364,7 @@
                         <i data-lucide="clock"></i>
                         <div class="status-info">
                             <h3>На модерации</h3>
-                            <p>Ожидает проверки администратором</p>
+                            <p>Ожидает проверки</p>
                             <span class="count" id="pending-count">0</span>
                         </div>
                     </div>
@@ -395,35 +451,43 @@
         <nav class="bottom-nav">
             <div class="nav-item active" data-page="home-page">
                 <div class="nav-icon">
-                    <i data-lucide="home"></i>
+                    <img src="img/home.png" alt="Главная" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMgOUwxMiAyTDIxIDlWMjBDMjEgMjAuNTUyMyAyMC41NTIzIDIxIDIwIDIxSDVDNC40NDc3MiAyMSA0IDIwLjU1MjMgNCAyMFY5WiIgc3Ryb2tlPSIjMjU2M2ViIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8cGF0aCBkPSJNOSAyMVYxMkgxNVYyMSIgc3Ryb2tlPSIjMjU2M2ViIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=';">
                 </div>
                 <span>Главная</span>
             </div>
-            <div class="nav-item" data-page="category-page" data-category="mixers">
+            <div class="nav-item" data-page="search-page">
                 <div class="nav-icon">
-                    <i data-lucide="concrete-mixer"></i>
+                    <img src="img/search.png" alt="Поиск" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTEiIGN5PSIxMSIgcj0iOCIgc3Ryb2tlPSIjMjU2M2ViIiBzdHJva2Utd2lkdGg9IjIiLz4KPHBhdGggZD0ibTIxIDIxLTQtNCIgc3Ryb2tlPSIjMjU2M2ViIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4=';">
                 </div>
-                <span>Миксеры</span>
+                <span>Поиск</span>
             </div>
-            <div class="nav-item" data-page="category-page" data-category="pumps">
-                <div class="nav-icon">
-                    <i data-lucide="pump"></i>
+            <div class="nav-item" data-page="add-equipment-page">
+                <div class="nav-icon add-icon">
+                    <i data-lucide="plus"></i>
                 </div>
-                <span>Насосы</span>
+                <span>Добавить</span>
             </div>
             <div class="nav-item" data-page="profile-page">
                 <div class="nav-icon">
-                    <i data-lucide="user"></i>
+                    <img src="img/profile.png" alt="Профиль" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDIxVjE5QzIwIDE3LjEzOSAxOC44NjEgMTYgMTcgMTZIN0M1LjEzOSAxNiA0IDE3LjEzOSA0IDE5VjIxIiBzdHJva2U9IiMyNTYzZWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIgc3Ryb2tlPSIjMjU2M2ViIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+';">
                 </div>
                 <span>Профиль</span>
             </div>
-            <div class="nav-item" data-page="admin-panel">
+            <div class="nav-item admin-nav" data-page="admin-panel">
                 <div class="nav-icon">
-                    <i data-lucide="shield"></i>
+                    <img src="img/admin.png" alt="Админ" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDIyQzE3LjUyMjggMjIgMjIgMTcuNTIyOCAyMiAxMkMyMiA2LjQ3NzE1IDE3LjUyMjggMiAxMiAyQzYuNDc3MTUgMiAyIDYuNDc3MTUgMiAxMkMyIDE3LjUyMjggNi40NzcxNSAyMiAxMiAyMloiIHN0cm9rZT0iIzI1NjNlYiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTEyIDE2VjEyIiBzdHJva2U9IiMyNTYzZWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA4SDEyLjAxIiBzdHJva2U9IiMyNTYzZWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPg==';">
                 </div>
                 <span>Админ</span>
             </div>
         </nav>
+
+        <!-- Bottom Search Bar -->
+        <div class="bottom-search hidden">
+            <div class="search-container bottom">
+                <i data-lucide="search"></i>
+                <input type="text" id="bottom-search" placeholder="Поиск техники..." class="search-input">
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
