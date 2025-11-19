@@ -25,6 +25,121 @@
     --transition: all 0.3s ease;
 }
 
+
+
+
+
+
+/* Добавьте эти стили в конец файла style.css */
+
+/* Стили для аватара владельца в карточках техники */
+.owner-avatar-image {
+    position: relative;
+    overflow: hidden;
+}
+
+.owner-avatar-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.avatar-fallback-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    color: white;
+}
+
+/* Уменьшаем ширину карточек для более компактного вида */
+.equipment-item {
+    min-height: 100px;
+}
+
+.equipment-image {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+}
+
+.top-equipment-image {
+    width: 60px;
+    height: 60px;
+}
+
+/* Уменьшаем отступы для более компактного вида */
+.equipment-info {
+    padding-right: 8px;
+}
+
+.equipment-footer {
+    margin-top: 6px;
+}
+
+/* Адаптируем топовые карточки */
+.top-equipment-card {
+    min-width: 260px;
+    padding: 14px;
+}
+
+.top-card-header {
+    margin-bottom: 10px;
+}
+
+/* Уменьшаем шрифты для более компактного вида */
+.equipment-info h3 {
+    font-size: 0.95rem;
+    line-height: 1.3;
+}
+
+.equipment-detail {
+    font-size: 0.75rem;
+}
+
+.equipment-location {
+    font-size: 0.75rem;
+}
+
+.owner-name {
+    font-size: 0.75rem;
+}
+
+.equipment-price {
+    font-size: 0.9rem;
+}
+
+.equipment-status {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+}
+
+/* Для мобильных устройств делаем еще компактнее */
+@media (max-width: 380px) {
+    .equipment-item {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .equipment-image {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .top-equipment-card {
+        min-width: 240px;
+        padding: 12px;
+    }
+    
+    .top-equipment-image {
+        width: 50px;
+        height: 50px;
+    }
+}
+
 * {
     margin: 0;
     padding: 0;

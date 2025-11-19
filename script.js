@@ -48,7 +48,7 @@ async function init() {
         // Initialize icons first
         lucide.createIcons();
         
-        // Try to initialize Telegram Web App with timeout
+        // Try to initialize Telegram with timeout
         await initializeTelegram();
         
         // Setup event listeners
@@ -516,16 +516,21 @@ function createTopEquipmentCard(equipment, position) {
     div.className = 'top-equipment-card';
     
     const icon = getEquipmentIcon(equipment.category);
-    const ownerAvatarHtml = equipment.owner?.photoUrl ? 
-        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-        '';
+    
+    // Используем аватар владельца вместо иконки техники, если есть фото
+    const equipmentImageHtml = equipment.owner?.photoUrl ? 
+        `<div class="top-equipment-image owner-avatar-image">
+            <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
+        </div>` :
+        `<div class="top-equipment-image">
+            <i data-lucide="${icon}"></i>
+        </div>`;
     
     div.innerHTML = `
         <div class="top-badge">#${position}</div>
         <div class="top-card-header">
-            <div class="top-equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>
+            ${equipmentImageHtml}
             <div class="top-equipment-info">
                 <h3>${equipment.name}</h3>
                 <div class="top-equipment-price">${equipment.price} тыс. сум/час</div>
@@ -537,10 +542,6 @@ function createTopEquipmentCard(equipment, position) {
         </div>
         <div class="top-card-footer">
             <div class="owner-info">
-                <div class="owner-avatar-small">
-                    ${ownerAvatarHtml}
-                    <i data-lucide="user" class="avatar-fallback-small"></i>
-                </div>
                 <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
             </div>
             <div class="equipment-rating">
@@ -680,15 +681,18 @@ function createEquipmentCard(equipment) {
     const icon = getEquipmentIcon(equipment.category);
     const statusText = getStatusText(equipment);
     
-    // Создаем HTML для аватарки владельца
-    const ownerAvatarHtml = equipment.owner?.photoUrl ? 
-        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-        '';
+    // Используем аватар владельца вместо иконки техники, если есть фото
+    const equipmentImageHtml = equipment.owner?.photoUrl ? 
+        `<div class="equipment-image owner-avatar-image">
+            <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
+        </div>` :
+        `<div class="equipment-image">
+            <i data-lucide="${icon}"></i>
+        </div>`;
     
     div.innerHTML = `
-        <div class="equipment-image">
-            <i data-lucide="${icon}"></i>
-        </div>
+        ${equipmentImageHtml}
         <div class="equipment-info">
             <h3>${equipment.name}</h3>
             <div class="equipment-details">
@@ -702,10 +706,6 @@ function createEquipmentCard(equipment) {
             </div>
             <div class="equipment-footer">
                 <div class="owner-info">
-                    <div class="owner-avatar-small">
-                        ${ownerAvatarHtml}
-                        <i data-lucide="user" class="avatar-fallback-small"></i>
-                    </div>
                     <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
                 </div>
                 <div class="equipment-price">${equipment.price} тыс. сум/час</div>
@@ -905,15 +905,18 @@ function loadModerationStatus() {
         const icon = getEquipmentIcon(equipment.category);
         const statusText = getStatusText(equipment);
         
-        // Аватарка владельца для модерации
-        const ownerAvatarHtml = equipment.owner?.photoUrl ? 
-            `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-            '';
+        // Используем аватар владельца вместо иконки техники, если есть фото
+        const equipmentImageHtml = equipment.owner?.photoUrl ? 
+            `<div class="equipment-image owner-avatar-image">
+                <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
+            </div>` :
+            `<div class="equipment-image">
+                <i data-lucide="${icon}"></i>
+            </div>`;
         
         div.innerHTML = `
-            <div class="equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>
+            ${equipmentImageHtml}
             <div class="equipment-info">
                 <h3>${equipment.name}</h3>
                 <div class="equipment-location">
@@ -922,10 +925,6 @@ function loadModerationStatus() {
                 </div>
                 <div class="equipment-footer">
                     <div class="owner-info">
-                        <div class="owner-avatar-small">
-                            ${ownerAvatarHtml}
-                            <i data-lucide="user" class="avatar-fallback-small"></i>
-                        </div>
                         <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
                     </div>
                     <div class="equipment-price">${equipment.price} тыс. сум/час</div>
@@ -1022,7 +1021,8 @@ async function saveEquipment() {
                 name: currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : ''),
                 username: currentUser.username,
                 rating: 5.0,
-                reviews: 0
+                reviews: 0,
+                photoUrl: currentUser.photoUrl || ''
             },
             ownerPhone: '+998' + userPhone,
             paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
@@ -1518,10 +1518,18 @@ function loadAvailabilityEquipment() {
         
         const icon = getEquipmentIcon(equipment.category);
         
-        div.innerHTML = `
-            <div class="equipment-image">
+        // Используем аватар владельца вместо иконки техники, если есть фото
+        const equipmentImageHtml = equipment.owner?.photoUrl ? 
+            `<div class="equipment-image owner-avatar-image">
+                <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
+            </div>` :
+            `<div class="equipment-image">
                 <i data-lucide="${icon}"></i>
-            </div>
+            </div>`;
+        
+        div.innerHTML = `
+            ${equipmentImageHtml}
             <div class="equipment-info">
                 <h3>${equipment.name}</h3>
                 <div class="equipment-location">
