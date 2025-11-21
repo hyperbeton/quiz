@@ -212,13 +212,6 @@ function setupEventListeners() {
             e.preventDefault();
             const pageId = item.getAttribute('data-page');
             
-            if (pageId === 'search-page') {
-                // Для страницы поиска показываем нижний поиск
-                showBottomSearch();
-            } else {
-                hideBottomSearch();
-            }
-            
             navigateTo(pageId);
             updateNavigation(item);
         });
@@ -235,7 +228,6 @@ function setupEventListeners() {
                 categoryTitle.textContent = getCategoryTitle(category);
             }
             navigateTo('category-page');
-            hideBottomSearch();
         });
     });
 
@@ -255,7 +247,6 @@ function setupEventListeners() {
     if (addEquipmentBtn) {
         addEquipmentBtn.addEventListener('click', () => {
             navigateTo('add-equipment-page');
-            hideBottomSearch();
         });
     }
     
@@ -263,7 +254,6 @@ function setupEventListeners() {
         toggleAvailabilityBtn.addEventListener('click', () => {
             loadAvailabilityEquipment();
             navigateTo('availability-page');
-            hideBottomSearch();
         });
     }
 
@@ -289,16 +279,14 @@ function setupEventListeners() {
     if (myEquipmentBtn) {
         myEquipmentBtn.addEventListener('click', () => {
             navigateTo('moderation-page');
-            hideBottomSearch();
         });
     }
     
     // Global search functionality
     const globalSearch = document.getElementById('global-search');
-    const bottomSearch = document.getElementById('bottom-search');
     const searchInput = document.getElementById('search-input');
     
-    [globalSearch, bottomSearch, searchInput].forEach(input => {
+    [globalSearch, searchInput].forEach(input => {
         if (input) {
             input.addEventListener('input', (e) => {
                 const searchTerm = e.target.value.trim();
@@ -312,25 +300,10 @@ function setupEventListeners() {
             input.addEventListener('focus', () => {
                 if (input !== searchInput) {
                     navigateTo('search-page');
-                    hideBottomSearch();
                 }
             });
         }
     });
-    
-    // Scroll event for bottom search
-    let lastScrollTop = 0;
-    window.addEventListener('scroll', () => {
-        const st = window.pageYOffset || document.documentElement.scrollTop;
-        if (st > lastScrollTop && st > 100) {
-            // Scrolling down
-            showBottomSearch();
-        } else if (st < lastScrollTop) {
-            // Scrolling up
-            hideBottomSearch();
-        }
-        lastScrollTop = st <= 0 ? 0 : st;
-    }, { passive: true });
 }
 
 function formatPhoneNumber() {
@@ -403,21 +376,6 @@ function displaySearchResults(equipment, searchTerm) {
     }
     
     setTimeout(() => lucide.createIcons(), 100);
-}
-
-// Bottom search visibility
-function showBottomSearch() {
-    const bottomSearch = document.querySelector('.bottom-search');
-    if (bottomSearch) {
-        bottomSearch.classList.remove('hidden');
-    }
-}
-
-function hideBottomSearch() {
-    const bottomSearch = document.querySelector('.bottom-search');
-    if (bottomSearch) {
-        bottomSearch.classList.add('hidden');
-    }
 }
 
 // Navigation functions
@@ -516,24 +474,19 @@ function createTopEquipmentCard(equipment, position) {
     div.className = 'top-equipment-card';
     
     const icon = getEquipmentIcon(equipment.category);
-    
-    // Используем аватар владельца вместо иконки техники, если есть фото
-    const equipmentImageHtml = equipment.owner?.photoUrl ? 
-        `<div class="top-equipment-image owner-avatar-image">
-            <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
-        </div>` :
-        `<div class="top-equipment-image">
-            <i data-lucide="${icon}"></i>
-        </div>`;
+    const ownerAvatarHtml = equipment.owner?.photoUrl ? 
+        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+        '';
     
     div.innerHTML = `
         <div class="top-badge">#${position}</div>
         <div class="top-card-header">
-            ${equipmentImageHtml}
+            <div class="top-equipment-image">
+                <i data-lucide="${icon}"></i>
+            </div>
             <div class="top-equipment-info">
                 <h3>${equipment.name}</h3>
-                <div class="top-equipment-price">${equipment.price} тыс. сум/час</div>
+                <div class="top-equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
             </div>
         </div>
         <div class="top-card-details">
@@ -542,6 +495,10 @@ function createTopEquipmentCard(equipment, position) {
         </div>
         <div class="top-card-footer">
             <div class="owner-info">
+                <div class="owner-avatar-small">
+                    ${ownerAvatarHtml}
+                    <i data-lucide="user" class="avatar-fallback-small"></i>
+                </div>
                 <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
             </div>
             <div class="equipment-rating">
@@ -681,18 +638,15 @@ function createEquipmentCard(equipment) {
     const icon = getEquipmentIcon(equipment.category);
     const statusText = getStatusText(equipment);
     
-    // Используем аватар владельца вместо иконки техники, если есть фото
-    const equipmentImageHtml = equipment.owner?.photoUrl ? 
-        `<div class="equipment-image owner-avatar-image">
-            <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
-        </div>` :
-        `<div class="equipment-image">
-            <i data-lucide="${icon}"></i>
-        </div>`;
+    // Создаем HTML для аватарки владельца
+    const ownerAvatarHtml = equipment.owner?.photoUrl ? 
+        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+        '';
     
     div.innerHTML = `
-        ${equipmentImageHtml}
+        <div class="equipment-image">
+            <i data-lucide="${icon}"></i>
+        </div>
         <div class="equipment-info">
             <h3>${equipment.name}</h3>
             <div class="equipment-details">
@@ -706,9 +660,13 @@ function createEquipmentCard(equipment) {
             </div>
             <div class="equipment-footer">
                 <div class="owner-info">
+                    <div class="owner-avatar-small">
+                        ${ownerAvatarHtml}
+                        <i data-lucide="user" class="avatar-fallback-small"></i>
+                    </div>
                     <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
                 </div>
-                <div class="equipment-price">${equipment.price} тыс. сум/час</div>
+                <div class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
             </div>
         </div>
         <div class="equipment-status ${equipment.status || 'approved'} ${equipment.available ? 'available' : 'busy'}">${statusText}</div>
@@ -796,7 +754,7 @@ function showEquipmentDetails(equipment) {
                 ` : ''}
                 <div class="detail-item">
                     <span class="detail-label">Цена</span>
-                    <span class="detail-value">${equipment.price} тыс. сум/час</span>
+                    <span class="detail-value">${equipment.price} ${getPriceSuffix(equipment.category)}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Местоположение</span>
@@ -905,18 +863,15 @@ function loadModerationStatus() {
         const icon = getEquipmentIcon(equipment.category);
         const statusText = getStatusText(equipment);
         
-        // Используем аватар владельца вместо иконки техники, если есть фото
-        const equipmentImageHtml = equipment.owner?.photoUrl ? 
-            `<div class="equipment-image owner-avatar-image">
-                <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
-            </div>` :
-            `<div class="equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>`;
+        // Аватарка владельца для модерации
+        const ownerAvatarHtml = equipment.owner?.photoUrl ? 
+            `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+            '';
         
         div.innerHTML = `
-            ${equipmentImageHtml}
+            <div class="equipment-image">
+                <i data-lucide="${icon}"></i>
+            </div>
             <div class="equipment-info">
                 <h3>${equipment.name}</h3>
                 <div class="equipment-location">
@@ -925,9 +880,13 @@ function loadModerationStatus() {
                 </div>
                 <div class="equipment-footer">
                     <div class="owner-info">
+                        <div class="owner-avatar-small">
+                            ${ownerAvatarHtml}
+                            <i data-lucide="user" class="avatar-fallback-small"></i>
+                        </div>
                         <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
                     </div>
-                    <div class="equipment-price">${equipment.price} тыс. сум/час</div>
+                    <div class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
                 </div>
                 <div class="equipment-status ${equipment.status || 'pending'}">${statusText}</div>
                 ${equipment.status === 'rejected' ? `
@@ -951,12 +910,18 @@ function toggleFormFields() {
     const performanceGroup = document.getElementById('performance-group');
     const weightGroup = document.getElementById('weight-group');
     const bucketGroup = document.getElementById('bucket-group');
+    const priceSuffix = document.getElementById('price-suffix');
     
     if (capacityGroup) capacityGroup.classList.add('hidden');
     if (lengthGroup) lengthGroup.classList.add('hidden');
     if (performanceGroup) performanceGroup.classList.add('hidden');
     if (weightGroup) weightGroup.classList.add('hidden');
     if (bucketGroup) bucketGroup.classList.add('hidden');
+    
+    // Update price suffix based on equipment type
+    if (priceSuffix) {
+        priceSuffix.textContent = getPriceSuffix(type);
+    }
     
     switch (type) {
         case 'mixers':
@@ -967,7 +932,6 @@ function toggleFormFields() {
             if (performanceGroup) performanceGroup.classList.remove('hidden');
             break;
         case 'dump-trucks':
-        case 'tonars':
         case 'cranes':
             if (weightGroup) weightGroup.classList.remove('hidden');
             break;
@@ -1021,8 +985,7 @@ async function saveEquipment() {
                 name: currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : ''),
                 username: currentUser.username,
                 rating: 5.0,
-                reviews: 0,
-                photoUrl: currentUser.photoUrl || ''
+                reviews: 0
             },
             ownerPhone: '+998' + userPhone,
             paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
@@ -1044,7 +1007,6 @@ async function saveEquipment() {
                 if (performance) newEquipment.performance = parseInt(performance);
                 break;
             case 'dump-trucks':
-            case 'tonars':
             case 'cranes':
                 const weight = document.getElementById('equipment-weight')?.value;
                 if (weight) newEquipment.weight = parseInt(weight);
@@ -1271,7 +1233,7 @@ function renderAdminPanel() {
                             <span>${equipment.location}</span>
                         </div>
                         <div class="equipment-meta">
-                            <span class="equipment-price">${equipment.price} тыс. сум/час</span>
+                            <span class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</span>
                             <span class="equipment-type">${getCategoryName(equipment.category)}</span>
                         </div>
                         <div class="owner-info">
@@ -1329,7 +1291,7 @@ function showAdminEquipmentDetails(equipmentId) {
                 <strong>Местоположение:</strong> ${equipment.location}
             </div>
             <div class="detail-row">
-                <strong>Цена:</strong> ${equipment.price} тыс. сум/час
+                <strong>Цена:</strong> ${equipment.price} ${getPriceSuffix(equipment.category)}
             </div>
             <div class="detail-row">
                 <strong>Владелец:</strong> ${ownerName}
@@ -1518,18 +1480,10 @@ function loadAvailabilityEquipment() {
         
         const icon = getEquipmentIcon(equipment.category);
         
-        // Используем аватар владельца вместо иконки техники, если есть фото
-        const equipmentImageHtml = equipment.owner?.photoUrl ? 
-            `<div class="equipment-image owner-avatar-image">
-                <img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <i data-lucide="${icon}" class="avatar-fallback-icon"></i>
-            </div>` :
-            `<div class="equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>`;
-        
         div.innerHTML = `
-            ${equipmentImageHtml}
+            <div class="equipment-image">
+                <i data-lucide="${icon}"></i>
+            </div>
             <div class="equipment-info">
                 <h3>${equipment.name}</h3>
                 <div class="equipment-location">
@@ -1537,7 +1491,7 @@ function loadAvailabilityEquipment() {
                     <span>${equipment.location}</span>
                 </div>
                 <div class="equipment-footer">
-                    <div class="equipment-price">${equipment.price} тыс. сум/час</div>
+                    <div class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
                     <div class="equipment-status ${equipment.available ? 'available' : 'busy'}">
                         ${equipment.available ? '✅ Доступен' : '⏳ Занят'}
                     </div>
@@ -1573,7 +1527,6 @@ function getCategoryTitle(category) {
         'mixers': 'Автомиксеры',
         'pumps': 'Автобетононасосы',
         'dump-trucks': 'Самосвалы',
-        'tonars': 'Тонары',
         'cranes': 'Краны',
         'excavators': 'Экскаваторы'
     };
@@ -1583,13 +1536,19 @@ function getCategoryTitle(category) {
 function getEquipmentIcon(category) {
     const icons = {
         'mixers': 'truck',
-        'pumps': 'construction',
+        'pumps': 'gauge',
         'dump-trucks': 'truck',
-        'tonars': 'truck',
         'cranes': 'crane',
         'excavators': 'hammer'
     };
     return icons[category] || 'construction';
+}
+
+function getPriceSuffix(category) {
+    if (category === 'mixers' || category === 'dump-trucks') {
+        return 'сум/ходка';
+    }
+    return 'сум/час';
 }
 
 function callOwner(phone) {
@@ -1633,7 +1592,6 @@ function getCategoryName(category) {
         'mixers': '🚛 Автомиксер',
         'pumps': '🏗️ Автобетононасос',
         'dump-trucks': '🚚 Самосвал',
-        'tonars': '🛻 Тонар',
         'cranes': '🏗️ Кран',
         'excavators': '🔧 Экскаватор'
     };
