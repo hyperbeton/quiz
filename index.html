@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BuildRent - Аренда техники</title>
+    <title>BuildRent | Аренда техники</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="style.css">
-    <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
@@ -18,11 +16,9 @@
         <!-- Loading Screen -->
         <div id="loading-screen" class="loading-screen active">
             <div class="loading-content">
-                <div class="loading-spinner">
-                    <i data-lucide="loader-2" class="spinner-icon"></i>
-                </div>
-                <h2>Строительная техника</h2>
-                <p>Загрузка приложения...</p>
+                <div class="gradient-spinner"></div>
+                <h2 class="loading-title">BuildRent</h2>
+                <p class="loading-subtitle">Строительная логистика</p>
             </div>
         </div>
 
@@ -30,205 +26,437 @@
         <main id="main-content" class="hidden">
             <!-- Home Page -->
             <section id="home-page" class="page active">
-                <div class="page-header compact">
-                    <div class="app-brand">
-                        <div class="brand-logo">
-                            <i data-lucide="building-2"></i>
+                <div class="page-header">
+                    <div class="header-content">
+                        <div class="user-greeting">
+                            <h1 id="user-greeting-text">Привет!</h1>
+                            <p class="location-text" id="location-text">Ташкент</p>
                         </div>
-                        <h1>Строительная техника</h1>
-                    </div>
-                    <div class="location">
-                        <i data-lucide="map-pin"></i>
-                        <span>Ташкент</span>
-                    </div>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="search-section">
-                    <div class="search-container">
-                        <i data-lucide="search"></i>
-                        <input type="text" id="global-search" placeholder="Поиск техники..." class="search-input">
-                        <button class="search-filter-btn">
-                            <i data-lucide="filter"></i>
+                        <button class="notification-btn" id="notification-btn">
+                            <i data-lucide="bell"></i>
+                            <span class="notification-badge hidden"></span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Top Equipment -->
-                <div class="section-header">
-                    <h2>🔥 Топовая техника</h2>
-                    <a href="#" class="see-all">Все</a>
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-gradient-blue">
+                            <i data-lucide="truck"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>245</h3>
+                            <p>Техники онлайн</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-gradient-orange">
+                            <i data-lucide="users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>1.2K</h3>
+                            <p>Арендаторов</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="top-equipment-scroll">
-                    <div class="top-equipment-list">
-                        <!-- Top equipment cards will be loaded here -->
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <div class="section-title">
+                        <h2>Быстрые действия</h2>
+                        <div class="title-line"></div>
+                    </div>
+                    <div class="actions-grid">
+                        <button class="action-card" data-action="search">
+                            <div class="action-icon bg-gradient-purple">
+                                <i data-lucide="search"></i>
+                            </div>
+                            <span>Найти технику</span>
+                        </button>
+                        <button class="action-card" data-action="route" onclick="navigateTo('route-page')">
+                            <div class="action-icon bg-gradient-green">
+                                <i data-lucide="map"></i>
+                            </div>
+                            <span>Маршрут</span>
+                        </button>
+                        <button class="action-card" data-action="add">
+                            <div class="action-icon bg-gradient-red">
+                                <i data-lucide="plus"></i>
+                            </div>
+                            <span>Добавить</span>
+                        </button>
+                        <button class="action-card" data-action="orders">
+                            <div class="action-icon bg-gradient-yellow">
+                                <i data-lucide="package"></i>
+                            </div>
+                            <span>Заказы</span>
+                        </button>
                     </div>
                 </div>
 
                 <!-- Categories -->
-                <div class="section-header">
-                    <h2>📦 Категории</h2>
-                </div>
-
-                <div class="categories-grid">
-                    <div class="category-card" data-category="mixers">
-                        <div class="category-icon">
+                <div class="categories-section">
+                    <div class="section-title">
+                        <h2>Категории</h2>
+                        <a href="#" class="see-all">Все</a>
+                    </div>
+                    <div class="categories-scroll">
+                        <div class="category-pill active" data-category="all">
+                            <i data-lucide="grid"></i>
+                            <span>Все</span>
+                        </div>
+                        <div class="category-pill" data-category="trucks">
                             <i data-lucide="truck"></i>
+                            <span>Тонары/Самосвалы</span>
                         </div>
-                        <div class="category-info">
-                            <h3>Миксеры</h3>
-                            <p>8-12 м³</p>
+                        <div class="category-pill" data-category="mixers">
+                            <i data-lucide="mixer"></i>
+                            <span>Миксеры</span>
                         </div>
-                    </div>
-
-                    <div class="category-card" data-category="pumps">
-                        <div class="category-icon">
-                            <i data-lucide="gauge"></i>
-                        </div>
-                        <div class="category-info">
-                            <h3>Насосы</h3>
-                            <p>30-50 м</p>
-                        </div>
-                    </div>
-
-                    <div class="category-card" data-category="dump-trucks">
-                        <div class="category-icon">
-                            <i data-lucide="truck"></i>
-                        </div>
-                        <div class="category-info">
-                            <h3>Самосвалы</h3>
-                            <p>10-20 т</p>
-                        </div>
-                    </div>
-
-                    <div class="category-card" data-category="cranes">
-                        <div class="category-icon">
+                        <div class="category-pill" data-category="cranes">
                             <i data-lucide="crane"></i>
+                            <span>Краны</span>
                         </div>
-                        <div class="category-info">
-                            <h3>Краны</h3>
-                            <p>25-100 т</p>
-                        </div>
-                    </div>
-
-                    <div class="category-card" data-category="excavators">
-                        <div class="category-icon">
-                            <i data-lucide="hammer"></i>
-                        </div>
-                        <div class="category-info">
-                            <h3>Экскаваторы</h3>
-                            <p>Землеройные</p>
+                        <div class="category-pill" data-category="excavators">
+                            <i data-lucide="excavator"></i>
+                            <span>Экскаваторы</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- All Equipment -->
-                <div class="section-header">
-                    <h2>🚜 Вся техника</h2>
+                <!-- Featured Equipment -->
+                <div class="featured-section">
+                    <div class="section-title">
+                        <h2>Рекомендуем</h2>
+                        <a href="#" class="see-all">Все</a>
+                    </div>
+                    <div class="featured-grid" id="featured-equipment">
+                        <!-- Equipment cards will be loaded here -->
+                    </div>
                 </div>
 
-                <div class="equipment-list" id="home-equipment">
-                    <!-- Equipment items will be loaded here -->
+                <!-- City-to-City Transport -->
+                <div class="transport-section">
+                    <div class="section-title">
+                        <h2>Междугородние перевозки</h2>
+                        <div class="title-line"></div>
+                    </div>
+                    <div class="transport-card" onclick="navigateTo('route-page')">
+                        <div class="transport-icon">
+                            <i data-lucide="route"></i>
+                        </div>
+                        <div class="transport-content">
+                            <h3>Построить маршрут</h3>
+                            <p>Рассчитать стоимость перевозки между городами</p>
+                        </div>
+                        <div class="transport-arrow">
+                            <i data-lucide="chevron-right"></i>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <!-- Search Results Page -->
+            <!-- Route Planning Page -->
+            <section id="route-page" class="page">
+                <div class="page-header">
+                    <button class="btn-back">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <h2 class="page-title">Построение маршрута</h2>
+                </div>
+
+                <div class="route-form">
+                    <div class="form-group">
+                        <label class="form-label">Откуда</label>
+                        <div class="input-with-icon">
+                            <i data-lucide="map-pin"></i>
+                            <input type="text" id="route-from" placeholder="Город отправления" class="modern-input">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Куда</label>
+                        <div class="input-with-icon">
+                            <i data-lucide="flag"></i>
+                            <input type="text" id="route-to" placeholder="Город назначения" class="modern-input">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Груз</label>
+                        <div class="input-with-icon">
+                            <i data-lucide="package"></i>
+                            <input type="text" id="route-cargo" placeholder="Тип груза, тоннаж" class="modern-input">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Дата перевозки</label>
+                        <div class="input-with-icon">
+                            <i data-lucide="calendar"></i>
+                            <input type="date" id="route-date" class="modern-input">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Тип транспорта</label>
+                        <select id="transport-type" class="modern-select">
+                            <option value="tonar">Тонар (20-40т)</option>
+                            <option value="samosval">Самосвал (10-30т)</option>
+                            <option value="refrigerator">Рефрежиратор</option>
+                            <option value="container">Контейнеровоз</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-primary gradient-btn" onclick="calculateRoute()">
+                        <i data-lucide="calculator"></i>
+                        <span>Рассчитать стоимость</span>
+                    </button>
+                </div>
+
+                <div class="route-results hidden" id="route-results">
+                    <div class="result-card">
+                        <div class="result-header">
+                            <h3>Расчет стоимости</h3>
+                            <div class="result-price">850,000 сум</div>
+                        </div>
+                        <div class="result-details">
+                            <div class="detail-item">
+                                <span>Расстояние</span>
+                                <span class="detail-value">350 км</span>
+                            </div>
+                            <div class="detail-item">
+                                <span>Время в пути</span>
+                                <span class="detail-value">6-7 часов</span>
+                            </div>
+                            <div class="detail-item">
+                                <span>Топливо</span>
+                                <span class="detail-value">~150,000 сум</span>
+                            </div>
+                            <div class="detail-item">
+                                <span>Доступные машины</span>
+                                <span class="detail-value badge-success">12 ед.</span>
+                            </div>
+                        </div>
+                        <button class="btn-secondary" onclick="showAvailableTrucks()">
+                            <i data-lucide="truck"></i>
+                            <span>Найти транспорт</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Search Page -->
             <section id="search-page" class="page">
-                <div class="page-header compact">
-                    <button class="btn-back">
-                        <i data-lucide="arrow-left"></i>
-                    </button>
+                <div class="page-header">
                     <div class="search-header">
-                        <div class="search-container inline">
+                        <button class="btn-back">
+                            <i data-lucide="chevron-left"></i>
+                        </button>
+                        <div class="search-input-container">
                             <i data-lucide="search"></i>
-                            <input type="text" id="search-input" placeholder="Поиск техники..." class="search-input">
+                            <input type="text" id="main-search" placeholder="Поиск техники или маршрутов..." class="modern-input" autofocus>
+                            <button class="clear-search hidden">
+                                <i data-lucide="x"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="search-results">
-                    <div class="results-count" id="results-count"></div>
-                    <div class="equipment-list" id="search-results">
-                        <!-- Search results will be loaded here -->
+                <div class="search-filters">
+                    <div class="filter-chips">
+                        <button class="filter-chip active">Все</button>
+                        <button class="filter-chip">Тонары</button>
+                        <button class="filter-chip">Самосвалы</button>
+                        <button class="filter-chip">Миксеры</button>
+                        <button class="filter-chip">Маршруты</button>
                     </div>
                 </div>
-            </section>
 
-            <!-- Category Page -->
-            <section id="category-page" class="page">
-                <div class="page-header">
-                    <button class="btn-back">
-                        <i data-lucide="arrow-left"></i>
-                    </button>
-                    <h2 id="category-title">Категория</h2>
-                </div>
-
-                <div class="equipment-list" id="category-equipment">
-                    <!-- Equipment items will be loaded here -->
+                <div class="search-results" id="search-results-container">
+                    <!-- Results will be loaded here -->
                 </div>
             </section>
 
-            <!-- Details Page -->
+            <!-- Equipment Details -->
             <section id="details-page" class="page">
-                <div class="page-header">
+                <div class="page-header sticky">
                     <button class="btn-back">
-                        <i data-lucide="arrow-left"></i>
+                        <i data-lucide="chevron-left"></i>
                     </button>
-                    <h2 id="equipment-title">Детали</h2>
+                    <h2 class="page-title" id="equipment-title"></h2>
+                    <button class="icon-btn" id="favorite-btn">
+                        <i data-lucide="heart"></i>
+                    </button>
                 </div>
 
-                <div class="equipment-details" id="equipment-details">
-                    <!-- Equipment details will be loaded here -->
+                <div class="equipment-gallery">
+                    <div class="gallery-placeholder">
+                        <i data-lucide="image"></i>
+                    </div>
+                    <div class="gallery-dots">
+                        <span class="dot active"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                </div>
+
+                <div class="equipment-content">
+                    <div class="equipment-header">
+                        <h1 id="detail-equipment-name"></h1>
+                        <div class="price-tag" id="detail-price"></div>
+                    </div>
+
+                    <div class="specs-grid">
+                        <div class="spec-item">
+                            <i data-lucide="ruler"></i>
+                            <div>
+                                <span class="spec-label">Грузоподъемность</span>
+                                <span class="spec-value" id="spec-capacity"></span>
+                            </div>
+                        </div>
+                        <div class="spec-item">
+                            <i data-lucide="map-pin"></i>
+                            <div>
+                                <span class="spec-label">Местоположение</span>
+                                <span class="spec-value" id="spec-location"></span>
+                            </div>
+                        </div>
+                        <div class="spec-item">
+                            <i data-lucide="user"></i>
+                            <div>
+                                <span class="spec-label">Владелец</span>
+                                <span class="spec-value" id="spec-owner"></span>
+                            </div>
+                        </div>
+                        <div class="spec-item">
+                            <i data-lucide="star"></i>
+                            <div>
+                                <span class="spec-label">Рейтинг</span>
+                                <span class="spec-value" id="spec-rating"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <h3 class="section-title">Описание</h3>
+                        <p id="equipment-description-text"></p>
+                    </div>
+
+                    <div class="section-card">
+                        <h3 class="section-title">Возможности</h3>
+                        <div class="tags-container" id="equipment-tags"></div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn-primary gradient-btn" onclick="contactOwner()">
+                            <i data-lucide="phone"></i>
+                            <span>Связаться</span>
+                        </button>
+                        <button class="btn-secondary" onclick="requestRent()">
+                            <i data-lucide="calendar"></i>
+                            <span>Забронировать</span>
+                        </button>
+                    </div>
                 </div>
             </section>
 
             <!-- Profile Page -->
             <section id="profile-page" class="page">
                 <div class="page-header">
-                    <h2>Профиль</h2>
+                    <h2 class="page-title">Профиль</h2>
+                    <button class="icon-btn" onclick="navigateTo('settings-page')">
+                        <i data-lucide="settings"></i>
+                    </button>
                 </div>
 
-                <div class="profile-info">
-                    <div class="user-avatar">
-                        <img id="user-avatar-img" src="" alt="Аватар" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <i data-lucide="user" class="avatar-fallback"></i>
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="avatar-large">
+                            <img id="profile-avatar" src="" alt="">
+                            <i data-lucide="user" class="avatar-fallback"></i>
+                        </div>
+                        <div class="profile-info">
+                            <h2 id="profile-name">Пользователь</h2>
+                            <p id="profile-role">Владелец техники</p>
+                            <div class="profile-rating">
+                                <i data-lucide="star"></i>
+                                <span>4.8</span>
+                                <span class="rating-count">(42 отзыва)</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="user-data">
-                        <h3 id="user-name">Загрузка...</h3>
-                        <p id="user-phone">Ташкент</p>
-                        <div class="user-rating">
-                            <span class="rating-stars">★★★★☆</span>
-                            <span class="rating-value" id="user-rating-value">0 отзывов</span>
+
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">12</div>
+                            <div class="stat-label">Техники</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">47</div>
+                            <div class="stat-label">Заказы</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">98%</div>
+                            <div class="stat-label">Рейтинг</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="profile-actions">
-                    <button class="profile-action-btn" id="add-equipment-btn">
-                        <div class="action-icon">
-                            <i data-lucide="plus"></i>
+                <div class="profile-menu">
+                    <div class="menu-section">
+                        <h3 class="menu-title">Моя деятельность</h3>
+                        <div class="menu-items">
+                            <a href="#" class="menu-item" onclick="navigateTo('my-equipment-page')">
+                                <div class="menu-icon bg-gradient-blue">
+                                    <i data-lucide="truck"></i>
+                                </div>
+                                <span>Моя техника</span>
+                                <i data-lucide="chevron-right"></i>
+                            </a>
+                            <a href="#" class="menu-item" onclick="navigateTo('orders-page')">
+                                <div class="menu-icon bg-gradient-green">
+                                    <i data-lucide="package"></i>
+                                </div>
+                                <span>Мои заказы</span>
+                                <i data-lucide="chevron-right"></i>
+                            </a>
+                            <a href="#" class="menu-item" onclick="navigateTo('transports-page')">
+                                <div class="menu-icon bg-gradient-purple">
+                                    <i data-lucide="route"></i>
+                                </div>
+                                <span>Мои перевозки</span>
+                                <i data-lucide="chevron-right"></i>
+                            </a>
                         </div>
-                        <span>Добавить технику</span>
-                    </button>
-                    <button class="profile-action-btn" id="my-equipment-btn">
-                        <div class="action-icon">
-                            <i data-lucide="list"></i>
-                        </div>
-                        <span>Моя техника</span>
-                    </button>
-                    <button class="profile-action-btn" id="toggle-availability-btn">
-                        <div class="action-icon">
-                            <i data-lucide="toggle-right"></i>
-                        </div>
-                        <span>Управление доступностью</span>
-                    </button>
-                </div>
+                    </div>
 
-                <div class="user-equipment">
-                    <h3>Моя техника</h3>
-                    <div class="equipment-list" id="user-equipment">
-                        <!-- User equipment will be loaded here -->
+                    <div class="menu-section">
+                        <h3 class="menu-title">Управление</h3>
+                        <div class="menu-items">
+                            <a href="#" class="menu-item" onclick="navigateTo('add-equipment-page')">
+                                <div class="menu-icon bg-gradient-red">
+                                    <i data-lucide="plus"></i>
+                                </div>
+                                <span>Добавить технику</span>
+                                <i data-lucide="chevron-right"></i>
+                            </a>
+                            <a href="#" class="menu-item" onclick="navigateTo('availability-page')">
+                                <div class="menu-icon bg-gradient-orange">
+                                    <i data-lucide="toggle-right"></i>
+                                </div>
+                                <span>Доступность</span>
+                                <i data-lucide="chevron-right"></i>
+                            </a>
+                            <a href="#" class="menu-item" onclick="navigateTo('finance-page')">
+                                <div class="menu-icon bg-gradient-yellow">
+                                    <i data-lucide="credit-card"></i>
+                                </div>
+                                <span>Финансы</span>
+                                <i data-lucide="chevron-right"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -237,204 +465,237 @@
             <section id="add-equipment-page" class="page">
                 <div class="page-header">
                     <button class="btn-back">
-                        <i data-lucide="arrow-left"></i>
+                        <i data-lucide="chevron-left"></i>
                     </button>
-                    <h2>Добавить технику</h2>
+                    <h2 class="page-title">Новая техника</h2>
                 </div>
 
-                <div class="add-equipment-form">
-                    <div class="form-group">
-                        <label for="equipment-type">Тип техники *</label>
-                        <select id="equipment-type" required>
-                            <option value="">Выберите тип</option>
-                            <option value="mixers">Автомиксер</option>
-                            <option value="pumps">Автобетононасос</option>
-                            <option value="dump-trucks">Самосвал</option>
-                            <option value="cranes">Кран</option>
-                            <option value="excavators">Экскаватор</option>
-                        </select>
+                <div class="form-container">
+                    <div class="form-step active" id="step-1">
+                        <h3 class="step-title">Основная информация</h3>
+                        <div class="form-group">
+                            <label class="form-label">Тип техники</label>
+                            <select id="equipment-category" class="modern-select">
+                                <option value="tonar">Тонар / Самосвал</option>
+                                <option value="mixer">Автомиксер</option>
+                                <option value="crane">Кран</option>
+                                <option value="excavator">Экскаватор</option>
+                                <option value="pump">Бетононасос</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Название модели</label>
+                            <input type="text" id="equipment-model" placeholder="Например: Камаз 65115" class="modern-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Грузоподъемность</label>
+                            <div class="input-with-suffix">
+                                <input type="number" id="equipment-capacity" placeholder="0" class="modern-input">
+                                <span class="input-suffix">тонн</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Год выпуска</label>
+                            <input type="number" id="equipment-year" placeholder="2023" class="modern-input" min="2000" max="2025">
+                        </div>
+
+                        <button class="btn-primary gradient-btn" onclick="nextStep(2)">
+                            <span>Продолжить</span>
+                            <i data-lucide="arrow-right"></i>
+                        </button>
                     </div>
 
-                    <div class="form-group">
-                        <label for="equipment-name">Название техники *</label>
-                        <input type="text" id="equipment-name" placeholder="Например: Камаз 65115" required>
-                    </div>
+                    <div class="form-step" id="step-2">
+                        <h3 class="step-title">Локация и цена</h3>
+                        <div class="form-group">
+                            <label class="form-label">Местоположение</label>
+                            <div class="input-with-icon">
+                                <i data-lucide="map-pin"></i>
+                                <input type="text" id="equipment-location" placeholder="Город, район" class="modern-input">
+                            </div>
+                        </div>
 
-                    <div id="capacity-group" class="form-group">
-                        <label for="equipment-capacity">Вместимость (м³) *</label>
-                        <input type="number" id="equipment-capacity" placeholder="Например: 10" required>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Тарифы</label>
+                            <div class="price-inputs">
+                                <div class="price-input">
+                                    <label>За смену (8ч)</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">сум</span>
+                                        <input type="number" id="price-shift" placeholder="0" class="modern-input">
+                                    </div>
+                                </div>
+                                <div class="price-input">
+                                    <label>За час</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">сум</span>
+                                        <input type="number" id="price-hour" placeholder="0" class="modern-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    <div id="length-group" class="form-group hidden">
-                        <label for="equipment-length">Длина стрелы (м) *</label>
-                        <input type="number" id="equipment-length" placeholder="Например: 36" required>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Мин. срок аренды</label>
+                            <select id="min-rental" class="modern-select">
+                                <option value="4">4 часа</option>
+                                <option value="8">Смена (8ч)</option>
+                                <option value="24">Сутки</option>
+                                <option value="168">Неделя</option>
+                            </select>
+                        </div>
 
-                    <div id="performance-group" class="form-group hidden">
-                        <label for="equipment-performance">Производительность (м³/ч) *</label>
-                        <input type="number" id="equipment-performance" placeholder="Например: 90" required>
-                    </div>
-
-                    <div id="weight-group" class="form-group hidden">
-                        <label for="equipment-weight">Грузоподъемность (т) *</label>
-                        <input type="number" id="equipment-weight" placeholder="Например: 25" required>
-                    </div>
-
-                    <div id="bucket-group" class="form-group hidden">
-                        <label for="equipment-bucket">Объем ковша (м³) *</label>
-                        <input type="number" id="equipment-bucket" placeholder="Например: 1.2" step="0.1" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="equipment-price">Цена *</label>
-                        <div class="price-input-container">
-                            <input type="number" id="equipment-price" placeholder="Например: 80000" required>
-                            <span class="price-suffix" id="price-suffix">сум/час</span>
+                        <div class="form-actions">
+                            <button class="btn-secondary" onclick="prevStep(1)">
+                                <i data-lucide="arrow-left"></i>
+                                <span>Назад</span>
+                            </button>
+                            <button class="btn-primary gradient-btn" onclick="nextStep(3)">
+                                <span>Далее</span>
+                                <i data-lucide="arrow-right"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="equipment-location">Местоположение *</label>
-                        <input type="text" id="equipment-location" placeholder="Например: Ташкент, Юнусабадский район" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="user-phone-input">Ваш номер для связи *</label>
-                        <div class="phone-input-container">
-                            <span class="phone-prefix">+998</span>
-                            <input type="tel" id="user-phone-input" placeholder="90 123 45 67" maxlength="9" required>
+                    <div class="form-step" id="step-3">
+                        <h3 class="step-title">Контакты и фото</h3>
+                        <div class="form-group">
+                            <label class="form-label">Контактный телефон</label>
+                            <div class="input-with-icon">
+                                <i data-lucide="phone"></i>
+                                <input type="tel" id="owner-phone" placeholder="+998 90 123 45 67" class="modern-input">
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="equipment-description">Описание *</label>
-                        <textarea id="equipment-description" placeholder="Опишите состояние и особенности техники" required></textarea>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Описание</label>
+                            <textarea id="equipment-description" placeholder="Опишите состояние и особенности техники..." class="modern-textarea"></textarea>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="payment-method">Способ оплаты *</label>
-                        <select id="payment-method" required>
-                            <option value="cash">Наличные</option>
-                            <option value="transfer">Безналичный расчет</option>
-                            <option value="both">Оба способа</option>
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Фотографии техники</label>
+                            <div class="upload-area" id="upload-area">
+                                <i data-lucide="upload"></i>
+                                <p>Перетащите фото или нажмите для загрузки</p>
+                                <input type="file" id="photo-upload" accept="image/*" multiple hidden>
+                            </div>
+                        </div>
 
-                    <div class="form-actions">
-                        <button class="btn-primary" id="save-equipment">Отправить на модерацию</button>
+                        <div class="form-actions">
+                            <button class="btn-secondary" onclick="prevStep(2)">
+                                <i data-lucide="arrow-left"></i>
+                                <span>Назад</span>
+                            </button>
+                            <button class="btn-primary gradient-btn" onclick="saveEquipment()">
+                                <i data-lucide="check"></i>
+                                <span>Опубликовать</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Availability Management Page -->
-            <section id="availability-page" class="page">
+            <!-- Settings Page -->
+            <section id="settings-page" class="page">
                 <div class="page-header">
                     <button class="btn-back">
-                        <i data-lucide="arrow-left"></i>
+                        <i data-lucide="chevron-left"></i>
                     </button>
-                    <h2>Управление доступностью</h2>
+                    <h2 class="page-title">Настройки</h2>
                 </div>
 
-                <div class="availability-management">
-                    <div class="equipment-list" id="availability-equipment">
-                        <!-- Equipment for availability management will be loaded here -->
+                <div class="settings-list">
+                    <div class="settings-section">
+                        <h3 class="settings-title">Аккаунт</h3>
+                        <div class="settings-items">
+                            <div class="settings-item">
+                                <div class="settings-icon">
+                                    <i data-lucide="user"></i>
+                                </div>
+                                <div class="settings-content">
+                                    <span>Профиль</span>
+                                    <p>Личная информация</p>
+                                </div>
+                                <i data-lucide="chevron-right"></i>
+                            </div>
+                            <div class="settings-item">
+                                <div class="settings-icon">
+                                    <i data-lucide="shield"></i>
+                                </div>
+                                <div class="settings-content">
+                                    <span>Безопасность</span>
+                                    <p>Пароль и входы</p>
+                                </div>
+                                <i data-lucide="chevron-right"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 class="settings-title">Уведомления</h3>
+                        <div class="settings-items">
+                            <div class="settings-item toggle-item">
+                                <div class="settings-icon">
+                                    <i data-lucide="bell"></i>
+                                </div>
+                                <div class="settings-content">
+                                    <span>Push-уведомления</span>
+                                    <p>Звонки и сообщения</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="settings-item toggle-item">
+                                <div class="settings-icon">
+                                    <i data-lucide="mail"></i>
+                                </div>
+                                <div class="settings-content">
+                                    <span>Email-рассылка</span>
+                                    <p>Новости и обновления</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 class="settings-title">О приложении</h3>
+                        <div class="settings-items">
+                            <div class="settings-item">
+                                <div class="settings-icon">
+                                    <i data-lucide="info"></i>
+                                </div>
+                                <div class="settings-content">
+                                    <span>Версия</span>
+                                    <p>1.0.0</p>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <div class="settings-icon">
+                                    <i data-lucide="file-text"></i>
+                                </div>
+                                <div class="settings-content">
+                                    <span>Условия использования</span>
+                                </div>
+                                <i data-lucide="chevron-right"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- Moderation Status Page -->
-            <section id="moderation-page" class="page">
-                <div class="page-header">
-                    <button class="btn-back">
-                        <i data-lucide="arrow-left"></i>
+                <div class="logout-section">
+                    <button class="btn-logout" onclick="logout()">
+                        <i data-lucide="log-out"></i>
+                        <span>Выйти</span>
                     </button>
-                    <h2>Статус модерации</h2>
-                </div>
-
-                <div class="moderation-status">
-                    <div class="status-item pending">
-                        <i data-lucide="clock"></i>
-                        <div class="status-info">
-                            <h3>На модерации</h3>
-                            <p>Ожидает проверки</p>
-                            <span class="count" id="pending-count">0</span>
-                        </div>
-                    </div>
-                    <div class="status-item approved">
-                        <i data-lucide="check-circle"></i>
-                        <div class="status-info">
-                            <h3>Одобрено</h3>
-                            <p>Прошло модерацию</p>
-                            <span class="count" id="approved-count">0</span>
-                        </div>
-                    </div>
-                    <div class="status-item rejected">
-                        <i data-lucide="x-circle"></i>
-                        <div class="status-info">
-                            <h3>Отклонено</h3>
-                            <p>Требует исправлений</p>
-                            <span class="count" id="rejected-count">0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="moderation-list" id="moderation-equipment">
-                    <!-- Equipment for moderation will be loaded here -->
-                </div>
-            </section>
-
-            <!-- Admin Panel -->
-            <section id="admin-panel" class="page">
-                <div class="page-header">
-                    <button class="btn-back">
-                        <i data-lucide="arrow-left"></i>
-                    </button>
-                    <h2>👑 Панель модерации</h2>
-                </div>
-                
-                <div class="admin-content">
-                    <div class="admin-stats">
-                        <div class="stat-card pending">
-                            <div class="stat-number stat-pending" id="stat-pending">0</div>
-                            <div>На модерации</div>
-                        </div>
-                        <div class="stat-card approved">
-                            <div class="stat-number stat-approved" id="stat-approved">0</div>
-                            <div>Одобрено</div>
-                        </div>
-                        <div class="stat-card rejected">
-                            <div class="stat-number stat-rejected" id="stat-rejected">0</div>
-                            <div>Отклонено</div>
-                        </div>
-                    </div>
-
-                    <div class="filter-tabs">
-                        <button class="tab-btn active" data-filter="pending">⏳ На модерации</button>
-                        <button class="tab-btn" data-filter="approved">✅ Одобренные</button>
-                        <button class="tab-btn" data-filter="rejected">❌ Отклоненные</button>
-                    </div>
-
-                    <div class="equipment-list" id="admin-equipment-list">
-                        <!-- Заявки будут загружаться здесь -->
-                    </div>
-                </div>
-
-                <!-- Equipment Details Modal -->
-                <div id="equipment-modal" class="modal hidden">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 class="modal-title" id="modal-title">Детали заявки</h3>
-                            <button class="close-modal" onclick="closeAdminModal()">×</button>
-                        </div>
-                        
-                        <div id="modal-content">
-                            <!-- Детали заявки -->
-                        </div>
-                        
-                        <div class="moderation-controls" id="modal-controls">
-                            <!-- Кнопки модерации -->
-                        </div>
-                    </div>
                 </div>
             </section>
         </main>
@@ -453,23 +714,22 @@
                 </div>
                 <span>Поиск</span>
             </div>
-            <div class="nav-item" data-page="add-equipment-page">
-                <div class="nav-icon add-icon">
+            <div class="nav-item center-item" data-page="add-equipment-page">
+                <div class="nav-center-icon">
                     <i data-lucide="plus"></i>
                 </div>
-                <span>Добавить</span>
+            </div>
+            <div class="nav-item" data-page="route-page">
+                <div class="nav-icon">
+                    <i data-lucide="route"></i>
+                </div>
+                <span>Маршруты</span>
             </div>
             <div class="nav-item" data-page="profile-page">
                 <div class="nav-icon">
                     <i data-lucide="user"></i>
                 </div>
                 <span>Профиль</span>
-            </div>
-            <div class="nav-item admin-nav" data-page="admin-panel">
-                <div class="nav-icon">
-                    <i data-lucide="shield"></i>
-                </div>
-                <span>Админ</span>
             </div>
         </nav>
     </div>

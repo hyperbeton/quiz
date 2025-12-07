@@ -1,5 +1,4 @@
-// script.js
-// Firebase configuration
+// Firebase configuration (используйте свои настройки)
 const firebaseConfig = {
     apiKey: "AIzaSyD_dZ3uPra32WQGDIZZ2vyFwCdNgWCBPEM",
     authDomain: "apprent-e0f19.firebaseapp.com",
@@ -19,86 +18,61 @@ const database = firebase.database();
 const tg = window.Telegram.WebApp;
 
 // Current state
-let currentCategory = '';
 let currentUser = null;
-let userEquipment = [];
 let allEquipment = [];
-let pageHistory = [];
-let currentAdminFilter = 'pending';
-
-// Admin IDs
-const ADMIN_IDS = [543221724];
-
-// DOM elements
-const loadingScreen = document.getElementById('loading-screen');
-const mainContent = document.getElementById('main-content');
-
-// Check if current user is admin
-function isAdmin() {
-    if (!currentUser) return false;
-    const userId = currentUser.uid;
-    return ADMIN_IDS.includes(parseInt(userId)) || ADMIN_IDS.includes(userId);
-}
+let currentStep = 1;
 
 // Initialize the application
 async function init() {
     try {
-        console.log('Initializing application...');
+        console.log('🚀 Initializing modern application...');
         
-        // Initialize icons first
+        // Initialize icons
         lucide.createIcons();
         
-        // Try to initialize Telegram with timeout
+        // Try to initialize Telegram
         await initializeTelegram();
         
         // Setup event listeners
         setupEventListeners();
         
-        // Load equipment data (async, won't block)
+        // Load equipment data
         loadEquipmentData();
+        
+        // Load user greeting
+        updateUserGreeting();
         
         // Hide loading screen
         setTimeout(() => {
-            if (loadingScreen) {
-                loadingScreen.classList.add('hidden');
-            }
-            if (mainContent) {
-                mainContent.classList.remove('hidden');
-            }
-            console.log('App initialized successfully');
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            console.log('✅ App initialized successfully');
         }, 1000);
         
     } catch (error) {
         console.error('Error initializing app:', error);
-        // Fallback: show app anyway
-        if (loadingScreen) loadingScreen.classList.add('hidden');
-        if (mainContent) mainContent.classList.remove('hidden');
-        showNotification('Приложение загружено в автономном режиме', 'info');
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('main-content').classList.remove('hidden');
+        showNotification('Приложение загружено', 'info');
     }
 }
 
-// Initialize Telegram with timeout
+// Initialize Telegram
 async function initializeTelegram() {
     return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-            console.log('Telegram initialization timeout, using fallback');
+            console.log('Telegram timeout, using fallback');
             createFallbackUser();
             resolve();
         }, 3000);
 
         try {
-            console.log('Initializing Telegram Web App...');
-            
-            // Check if we're in Telegram
             if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
                 tg.expand();
                 tg.enableClosingConfirmation();
-                
-                // Load user data from Telegram
                 loadUserFromTelegram();
-                console.log('Telegram Web App initialized successfully');
+                console.log('Telegram initialized');
             } else {
-                console.log('Not in Telegram environment, using fallback');
                 createFallbackUser();
             }
             
@@ -113,35 +87,25 @@ async function initializeTelegram() {
     });
 }
 
-// Create fallback user for testing outside Telegram
+// Create fallback user
 function createFallbackUser() {
     currentUser = {
-        uid: 'fallback_user_' + Date.now(),
-        firstName: 'Тестовый',
-        lastName: 'Пользователь',
-        username: 'testuser',
+        uid: 'fallback_' + Date.now(),
+        firstName: 'Александр',
+        lastName: 'Иванов',
+        username: 'alexivanov',
         photoUrl: '',
-        languageCode: 'ru',
         isPremium: false
     };
     
     console.log('Fallback user created:', currentUser);
     updateUIForAuthenticatedUser();
-    
-    // Add admin button for testing
-    setTimeout(() => {
-        if (isAdmin()) {
-            addAdminButton();
-        }
-    }, 500);
 }
 
-// Load user data from Telegram
+// Load user from Telegram
 function loadUserFromTelegram() {
     try {
         const initData = tg.initDataUnsafe;
-        console.log('Telegram init data:', initData);
-        
         if (initData && initData.user) {
             const tgUser = initData.user;
             currentUser = {
@@ -150,55 +114,55 @@ function loadUserFromTelegram() {
                 lastName: tgUser.last_name || '',
                 username: tgUser.username || '',
                 photoUrl: tgUser.photo_url || '',
-                languageCode: tgUser.language_code || 'ru',
                 isPremium: tgUser.is_premium || false
             };
             
             console.log('User loaded from Telegram:', currentUser);
             updateUIForAuthenticatedUser();
-            
-            // Add admin button if user is admin
-            if (isAdmin()) {
-                console.log('User is admin, adding admin button');
-                addAdminButton();
-            }
         } else {
             createFallbackUser();
         }
     } catch (error) {
-        console.error('Error loading user from Telegram:', error);
+        console.error('Error loading user:', error);
         createFallbackUser();
     }
 }
 
 // Update UI for authenticated user
 function updateUIForAuthenticatedUser() {
-    const userNameElement = document.getElementById('user-name');
-    const userPhoneElement = document.getElementById('user-phone');
-    const userAvatarImg = document.getElementById('user-avatar-img');
-    const avatarFallback = document.querySelector('.avatar-fallback');
+    const profileName = document.getElementById('profile-name');
+    const userGreeting = document.getElementById('user-greeting-text');
+    const profileAvatar = document.getElementById('profile-avatar');
     
-    if (userNameElement) {
+    if (currentUser) {
         const displayName = currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : '');
-        userNameElement.textContent = displayName;
-    }
-    
-    if (userPhoneElement) {
-        userPhoneElement.textContent = currentUser.username ? '@' + currentUser.username : 'Ташкент';
-    }
-    
-    if (currentUser.photoUrl && userAvatarImg && avatarFallback) {
-        userAvatarImg.src = currentUser.photoUrl;
-        userAvatarImg.style.display = 'block';
-        avatarFallback.style.display = 'none';
+        const greeting = getTimeBasedGreeting();
+        
+        if (profileName) profileName.textContent = displayName;
+        if (userGreeting) userGreeting.textContent = greeting + ', ' + currentUser.firstName;
+        
+        if (currentUser.photoUrl && profileAvatar) {
+            profileAvatar.src = currentUser.photoUrl;
+            profileAvatar.style.display = 'block';
+        }
     }
 }
 
-// Add admin button to navigation
-function addAdminButton() {
-    const adminNav = document.querySelector('.admin-nav');
-    if (adminNav) {
-        adminNav.style.display = 'flex';
+// Get time-based greeting
+function getTimeBasedGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 6) return 'Доброй ночи';
+    if (hour < 12) return 'Доброе утро';
+    if (hour < 18) return 'Добрый день';
+    return 'Добрый вечер';
+}
+
+// Update user greeting
+function updateUserGreeting() {
+    const greetingText = document.getElementById('user-greeting-text');
+    if (greetingText && currentUser) {
+        const greeting = getTimeBasedGreeting();
+        greetingText.textContent = greeting + ', ' + currentUser.firstName;
     }
 }
 
@@ -213,21 +177,33 @@ function setupEventListeners() {
             const pageId = item.getAttribute('data-page');
             
             navigateTo(pageId);
-            updateNavigation(item);
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
+            });
+            item.classList.add('active');
         });
     });
 
-    // Category cards
-    document.querySelectorAll('.category-card').forEach(item => {
-        item.addEventListener('click', () => {
-            const category = item.getAttribute('data-category');
-            currentCategory = category;
-            loadCategoryEquipment(category);
-            const categoryTitle = document.getElementById('category-title');
-            if (categoryTitle) {
-                categoryTitle.textContent = getCategoryTitle(category);
-            }
-            navigateTo('category-page');
+    // Category pills
+    document.querySelectorAll('.category-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('.category-pill').forEach(p => {
+                p.classList.remove('active');
+            });
+            pill.classList.add('active');
+            
+            const category = pill.getAttribute('data-category');
+            filterEquipmentByCategory(category);
+        });
+    });
+
+    // Quick actions
+    document.querySelectorAll('.action-card').forEach(action => {
+        action.addEventListener('click', () => {
+            const actionType = action.getAttribute('data-action');
+            handleQuickAction(actionType);
         });
     });
 
@@ -239,311 +215,143 @@ function setupEventListeners() {
         });
     });
 
-    // Profile actions
-    const addEquipmentBtn = document.getElementById('add-equipment-btn');
-    const toggleAvailabilityBtn = document.getElementById('toggle-availability-btn');
-    const myEquipmentBtn = document.getElementById('my-equipment-btn');
+    // Search functionality
+    const searchInput = document.getElementById('main-search');
+    const clearSearch = document.querySelector('.clear-search');
     
-    if (addEquipmentBtn) {
-        addEquipmentBtn.addEventListener('click', () => {
-            navigateTo('add-equipment-page');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.trim();
+            if (term.length > 0) {
+                clearSearch?.classList.remove('hidden');
+                if (term.length >= 2) {
+                    performSearch(term);
+                }
+            } else {
+                clearSearch?.classList.add('hidden');
+                clearSearchResults();
+            }
+        });
+        
+        searchInput.addEventListener('focus', () => {
+            navigateTo('search-page');
         });
     }
     
-    if (toggleAvailabilityBtn) {
-        toggleAvailabilityBtn.addEventListener('click', () => {
-            loadAvailabilityEquipment();
-            navigateTo('availability-page');
+    if (clearSearch) {
+        clearSearch.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearch.classList.add('hidden');
+            clearSearchResults();
         });
     }
 
-    // Equipment form
-    const saveEquipmentBtn = document.getElementById('save-equipment');
-    const equipmentTypeSelect = document.getElementById('equipment-type');
-    
-    if (saveEquipmentBtn) {
-        saveEquipmentBtn.addEventListener('click', saveEquipment);
-    }
-    
-    if (equipmentTypeSelect) {
-        equipmentTypeSelect.addEventListener('change', toggleFormFields);
-    }
-    
-    // Phone input formatting
-    const phoneInput = document.getElementById('user-phone-input');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', formatPhoneNumber);
-    }
-    
-    // Moderation page navigation
-    if (myEquipmentBtn) {
-        myEquipmentBtn.addEventListener('click', () => {
-            navigateTo('moderation-page');
-        });
-    }
-    
-    // Global search functionality
-    const globalSearch = document.getElementById('global-search');
-    const searchInput = document.getElementById('search-input');
-    
-    [globalSearch, searchInput].forEach(input => {
-        if (input) {
-            input.addEventListener('input', (e) => {
-                const searchTerm = e.target.value.trim();
-                if (searchTerm.length >= 2) {
-                    performSearch(searchTerm);
-                } else if (searchTerm.length === 0) {
-                    clearSearch();
-                }
+    // Filter chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.filter-chip').forEach(c => {
+                c.classList.remove('active');
             });
+            chip.classList.add('active');
             
-            input.addEventListener('focus', () => {
-                if (input !== searchInput) {
-                    navigateTo('search-page');
-                }
-            });
-        }
+            const filter = chip.textContent.toLowerCase();
+            filterSearchResults(filter);
+        });
     });
-}
 
-function formatPhoneNumber() {
-    const input = document.getElementById('user-phone-input');
-    if (!input) return;
+    // Form step navigation
+    window.nextStep = function(next) {
+        document.querySelector(`#step-${currentStep}`).classList.remove('active');
+        currentStep = next;
+        document.querySelector(`#step-${currentStep}`).classList.add('active');
+    };
+
+    window.prevStep = function(prev) {
+        document.querySelector(`#step-${currentStep}`).classList.remove('active');
+        currentStep = prev;
+        document.querySelector(`#step-${currentStep}`).classList.add('active');
+    };
+
+    // Upload area
+    const uploadArea = document.getElementById('upload-area');
+    const photoUpload = document.getElementById('photo-upload');
     
-    let value = input.value.replace(/\D/g, '');
-
-    if (value.length > 9) value = value.substring(0, 9);
-
-    if (value.length > 2) {
-        value = value.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, (_, p1, p2, p3, p4) => {
-            return `${p1}-${p2}-${p3}-${p4}`;
+    if (uploadArea && photoUpload) {
+        uploadArea.addEventListener('click', () => {
+            photoUpload.click();
+        });
+        
+        photoUpload.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                uploadArea.innerHTML = `
+                    <i data-lucide="check-circle"></i>
+                    <p>Загружено ${files.length} фото</p>
+                `;
+                lucide.createIcons();
+            }
         });
     }
-
-    input.value = value;
-}
-
-// Search functionality
-function performSearch(searchTerm) {
-    console.log('Searching for:', searchTerm);
-    
-    const filteredEquipment = allEquipment.filter(item => 
-        item.status === 'approved' && item.available && (
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.owner?.name && item.owner.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-    );
-    
-    displaySearchResults(filteredEquipment, searchTerm);
-}
-
-function clearSearch() {
-    const searchResults = document.getElementById('search-results');
-    const resultsCount = document.getElementById('results-count');
-    
-    if (searchResults) {
-        searchResults.innerHTML = '';
-    }
-    if (resultsCount) {
-        resultsCount.textContent = '';
-    }
-}
-
-function displaySearchResults(equipment, searchTerm) {
-    const searchResults = document.getElementById('search-results');
-    const resultsCount = document.getElementById('results-count');
-    
-    if (!searchResults || !resultsCount) return;
-    
-    searchResults.innerHTML = '';
-    
-    if (equipment.length === 0) {
-        resultsCount.textContent = `По запросу "${searchTerm}" ничего не найдено`;
-        searchResults.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="search-x"></i>
-                <p>Ничего не найдено</p>
-            </div>
-        `;
-    } else {
-        resultsCount.textContent = `Найдено ${equipment.length} техники по запросу "${searchTerm}"`;
-        equipment.forEach(item => {
-            const equipmentItem = createEquipmentCard(item);
-            searchResults.appendChild(equipmentItem);
-        });
-    }
-    
-    setTimeout(() => lucide.createIcons(), 100);
 }
 
 // Navigation functions
 function navigateTo(pageId) {
     console.log('Navigating to:', pageId);
     
-    const currentActivePage = document.querySelector('.page.active');
-    if (currentActivePage && currentActivePage.id !== pageId) {
-        pageHistory.push(currentActivePage.id);
-    }
-
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-        if (page.id === pageId) {
-            page.classList.add('active');
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => page.classList.remove('active'));
+    
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) {
+        targetPage.classList.add('active');
+        
+        // Scroll to top
+        window.scrollTo(0, 0);
+        
+        // Update page-specific content
+        switch(pageId) {
+            case 'home-page':
+                loadFeaturedEquipment();
+                break;
+            case 'search-page':
+                document.getElementById('main-search')?.focus();
+                break;
         }
-    });
-
-    if (pageId === 'profile-page') {
-        renderUserEquipment();
-        loadModerationStatus();
-    } else if (pageId === 'category-page') {
-        loadCategoryEquipment(currentCategory);
-    } else if (pageId === 'moderation-page') {
-        loadModerationStatus();
-    } else if (pageId === 'admin-panel') {
-        if (!isAdmin()) {
-            showNotification('❌ У вас нет прав доступа к админ-панели', 'error');
-            navigateTo('home-page');
-            return;
-        }
-        loadAdminPanel();
-    } else if (pageId === 'home-page') {
-        loadHomePage();
     }
-
+    
+    // Recreate icons
     setTimeout(() => lucide.createIcons(), 100);
 }
 
 function goBack() {
-    if (pageHistory.length > 0) {
-        const previousPageId = pageHistory.pop();
-        navigateTo(previousPageId);
+    const pages = document.querySelectorAll('.page.active');
+    if (pages.length > 0) {
+        const currentPage = pages[0].id;
+        
+        switch(currentPage) {
+            case 'details-page':
+            case 'route-page':
+            case 'add-equipment-page':
+            case 'settings-page':
+                navigateTo('home-page');
+                break;
+            case 'search-page':
+                if (document.getElementById('main-search')?.value) {
+                    document.getElementById('main-search').value = '';
+                    clearSearchResults();
+                } else {
+                    navigateTo('home-page');
+                }
+                break;
+            default:
+                navigateTo('home-page');
+        }
     } else {
         navigateTo('home-page');
     }
 }
 
-function updateNavigation(activeItem) {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    if (activeItem) {
-        activeItem.classList.add('active');
-    }
-}
-
-// Home page loading
-function loadHomePage() {
-    loadTopEquipment();
-    loadAllEquipment();
-}
-
-function loadTopEquipment() {
-    const topEquipmentList = document.querySelector('.top-equipment-list');
-    if (!topEquipmentList) return;
-    
-    // Get top rated equipment
-    const topEquipment = allEquipment
-        .filter(item => item.status === 'approved' && item.available)
-        .sort((a, b) => (b.owner?.rating || 0) - (a.owner?.rating || 0))
-        .slice(0, 5);
-    
-    topEquipmentList.innerHTML = '';
-    
-    if (topEquipment.length === 0) {
-        topEquipmentList.innerHTML = `
-            <div class="no-data" style="min-width: 280px;">
-                <i data-lucide="trending-up"></i>
-                <p>Популярной техники пока нет</p>
-            </div>
-        `;
-        return;
-    }
-    
-    topEquipment.forEach((equipment, index) => {
-        const topCard = createTopEquipmentCard(equipment, index + 1);
-        topEquipmentList.appendChild(topCard);
-    });
-    
-    setTimeout(() => lucide.createIcons(), 100);
-}
-
-function createTopEquipmentCard(equipment, position) {
-    const div = document.createElement('div');
-    div.className = 'top-equipment-card';
-    
-    const icon = getEquipmentIcon(equipment.category);
-    const ownerAvatarHtml = equipment.owner?.photoUrl ? 
-        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-        '';
-    
-    div.innerHTML = `
-        <div class="top-badge">#${position}</div>
-        <div class="top-card-header">
-            <div class="top-equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>
-            <div class="top-equipment-info">
-                <h3>${equipment.name}</h3>
-                <div class="top-equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
-            </div>
-        </div>
-        <div class="top-card-details">
-            ${equipment.capacity ? `<div class="top-detail"><i data-lucide="box"></i> ${equipment.capacity} м³</div>` : ''}
-            ${equipment.location ? `<div class="top-detail"><i data-lucide="map-pin"></i> ${equipment.location.split(',')[0]}</div>` : ''}
-        </div>
-        <div class="top-card-footer">
-            <div class="owner-info">
-                <div class="owner-avatar-small">
-                    ${ownerAvatarHtml}
-                    <i data-lucide="user" class="avatar-fallback-small"></i>
-                </div>
-                <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
-            </div>
-            <div class="equipment-rating">
-                <i data-lucide="star"></i>
-                <span>${equipment.owner?.rating || '5.0'}</span>
-            </div>
-        </div>
-    `;
-    
-    div.addEventListener('click', () => {
-        showEquipmentDetails(equipment);
-    });
-    
-    return div;
-}
-
-function loadAllEquipment() {
-    const homeEquipmentList = document.getElementById('home-equipment');
-    if (!homeEquipmentList) return;
-    
-    const approvedEquipment = allEquipment
-        .filter(item => item.status === 'approved' && item.available)
-        .slice(0, 10); // Limit to 10 items on home page
-    
-    homeEquipmentList.innerHTML = '';
-    
-    if (approvedEquipment.length === 0) {
-        homeEquipmentList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>Техника пока не добавлена</p>
-            </div>
-        `;
-        return;
-    }
-    
-    approvedEquipment.forEach(equipment => {
-        const equipmentItem = createEquipmentCard(equipment);
-        homeEquipmentList.appendChild(equipmentItem);
-    });
-    
-    setTimeout(() => lucide.createIcons(), 100);
-}
-
-// Equipment functions
+// Load equipment data
 function loadEquipmentData() {
     try {
         console.log('Loading equipment data...');
@@ -556,1070 +364,642 @@ function loadEquipmentData() {
                     id: key,
                     ...value
                 })).filter(item => item !== null);
+                
                 console.log('Equipment loaded:', allEquipment.length, 'items');
                 
-                // Update owner information with avatars
-                allEquipment = allEquipment.map(equipment => {
-                    if (equipment.ownerId === currentUser?.uid && currentUser?.photoUrl) {
-                        return {
-                            ...equipment,
-                            owner: {
-                                ...equipment.owner,
-                                photoUrl: currentUser.photoUrl
-                            }
-                        };
-                    }
-                    return equipment;
-                });
-                
-                if (currentUser) {
-                    userEquipment = allEquipment.filter(item => 
-                        item.ownerId === currentUser.uid && item.status === 'approved'
-                    );
-                }
-                
-                // Update home page if active
-                if (document.getElementById('home-page')?.classList.contains('active')) {
-                    loadHomePage();
-                }
-                
-                // Update admin panel if active
-                if (document.getElementById('admin-panel')?.classList.contains('active')) {
-                    renderAdminPanel();
+                // Update featured equipment on home page
+                if (document.getElementById('home-page').classList.contains('active')) {
+                    loadFeaturedEquipment();
                 }
             } else {
                 allEquipment = [];
                 console.log('No equipment data found');
             }
-            
-            setTimeout(() => lucide.createIcons(), 100);
         }, (error) => {
-            console.error('Error loading equipment data:', error);
+            console.error('Error loading equipment:', error);
             allEquipment = [];
         });
     } catch (error) {
-        console.error('Error loading equipment data:', error);
+        console.error('Error loading equipment:', error);
         allEquipment = [];
     }
 }
 
-function loadCategoryEquipment(category) {
-    console.log('Loading category equipment:', category);
-    const filteredEquipment = allEquipment.filter(item => 
-        item.category === category && item.status === 'approved' && item.available
-    );
+// Load featured equipment
+function loadFeaturedEquipment() {
+    const featuredGrid = document.getElementById('featured-equipment');
+    if (!featuredGrid) return;
     
-    const categoryEquipmentList = document.getElementById('category-equipment');
-    if (!categoryEquipmentList) return;
+    // Filter approved and available equipment
+    const featured = allEquipment
+        .filter(item => item.status === 'approved' && item.available)
+        .slice(0, 4); // Show 4 featured items
     
-    categoryEquipmentList.innerHTML = '';
-
-    if (filteredEquipment.length === 0) {
-        categoryEquipmentList.innerHTML = `
-            <div class="no-data">
+    featuredGrid.innerHTML = '';
+    
+    if (featured.length === 0) {
+        featuredGrid.innerHTML = `
+            <div class="no-results">
                 <i data-lucide="construction"></i>
-                <p>Техника в этой категории пока не добавлена</p>
+                <p>Популярной техники пока нет</p>
             </div>
         `;
-    } else {
-        filteredEquipment.forEach(equipment => {
-            const equipmentItem = createEquipmentCard(equipment);
-            categoryEquipmentList.appendChild(equipmentItem);
-        });
+        return;
     }
-
+    
+    featured.forEach(equipment => {
+        const card = createEquipmentCard(equipment);
+        featuredGrid.appendChild(card);
+    });
+    
     setTimeout(() => lucide.createIcons(), 100);
 }
 
+// Create equipment card
 function createEquipmentCard(equipment) {
     const div = document.createElement('div');
-    div.className = `equipment-item ${equipment.available ? 'available' : 'busy'} ${equipment.status || 'approved'}`;
+    div.className = 'equipment-card';
     
-    const icon = getEquipmentIcon(equipment.category);
-    const statusText = getStatusText(equipment);
-    
-    // Создаем HTML для аватарки владельца
-    const ownerAvatarHtml = equipment.owner?.photoUrl ? 
-        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-        '';
+    const categoryIcon = getCategoryIcon(equipment.category);
+    const categoryName = getCategoryName(equipment.category);
+    const price = formatPrice(equipment.price, equipment.category);
     
     div.innerHTML = `
         <div class="equipment-image">
-            <i data-lucide="${icon}"></i>
+            <i data-lucide="${categoryIcon}"></i>
+            <div class="equipment-badge">TOP</div>
         </div>
-        <div class="equipment-info">
-            <h3>${equipment.name}</h3>
-            <div class="equipment-details">
-                ${equipment.capacity ? `<div class="equipment-detail"><i data-lucide="box"></i> ${equipment.capacity} м³</div>` : ''}
-                ${equipment.length ? `<div class="equipment-detail"><i data-lucide="ruler"></i> ${equipment.length} м</div>` : ''}
-                ${equipment.weight ? `<div class="equipment-detail"><i data-lucide="weight"></i> ${equipment.weight} т</div>` : ''}
-            </div>
-            <div class="equipment-location">
-                <i data-lucide="map-pin"></i>
-                <span>${equipment.location}</span>
-            </div>
+        <div class="equipment-content">
+            <h3 class="equipment-title">${equipment.name}</h3>
+            <p class="equipment-specs">${categoryName} • ${equipment.capacity || equipment.weight || ''}${equipment.capacity ? 'т' : equipment.weight ? 'т' : ''}</p>
             <div class="equipment-footer">
-                <div class="owner-info">
-                    <div class="owner-avatar-small">
-                        ${ownerAvatarHtml}
-                        <i data-lucide="user" class="avatar-fallback-small"></i>
-                    </div>
-                    <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
+                <div class="equipment-price">${price}</div>
+                <div class="equipment-rating">
+                    <i data-lucide="star"></i>
+                    <span>${equipment.owner?.rating || '5.0'}</span>
                 </div>
-                <div class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
             </div>
         </div>
-        <div class="equipment-status ${equipment.status || 'approved'} ${equipment.available ? 'available' : 'busy'}">${statusText}</div>
     `;
     
-    if (equipment.status === 'approved') {
-        div.addEventListener('click', () => {
-            showEquipmentDetails(equipment);
-        });
-    }
+    div.addEventListener('click', () => {
+        showEquipmentDetails(equipment);
+    });
     
     return div;
 }
 
-function getStatusText(equipment) {
-    if (equipment.status === 'pending') return '⏳ На модерации';
-    if (equipment.status === 'rejected') return '❌ Отклонено';
-    return equipment.available ? '✅ Доступен' : '⏳ Занят';
-}
-
-function showEquipmentDetails(equipment) {
-    console.log('Showing equipment details:', equipment.name);
-    const equipmentTitle = document.getElementById('equipment-title');
-    if (equipmentTitle) {
-        equipmentTitle.textContent = equipment.name;
+// Filter equipment by category
+function filterEquipmentByCategory(category) {
+    const featuredGrid = document.getElementById('featured-equipment');
+    if (!featuredGrid) return;
+    
+    let filtered = [];
+    
+    if (category === 'all') {
+        filtered = allEquipment
+            .filter(item => item.status === 'approved' && item.available)
+            .slice(0, 4);
+    } else {
+        filtered = allEquipment
+            .filter(item => 
+                item.status === 'approved' && 
+                item.available && 
+                (item.category === category || 
+                 (category === 'trucks' && (item.category === 'tonar' || item.category === 'dump-trucks')))
+            )
+            .slice(0, 4);
     }
     
-    const statusText = getStatusText(equipment);
+    featuredGrid.innerHTML = '';
     
-    // Создаем HTML для аватарки владельца в деталях
-    const ownerAvatarHtml = equipment.owner?.photoUrl ? 
-        `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-        '';
-    
-    const equipmentDetails = document.getElementById('equipment-details');
-    if (!equipmentDetails) return;
-    
-    equipmentDetails.innerHTML = `
-        <div class="detail-section">
-            <div class="owner-info-large">
-                <div class="owner-avatar-large">
-                    ${ownerAvatarHtml}
-                    <i data-lucide="user" class="avatar-fallback-large"></i>
-                </div>
-                <div class="owner-details">
-                    <h4>${equipment.owner?.name || 'Владелец'}</h4>
-                    <div class="equipment-rating">
-                        <i data-lucide="star"></i>
-                        <span>${equipment.owner?.rating || 5.0} (${equipment.owner?.reviews || 0} отзывов)</span>
-                    </div>
-                </div>
+    if (filtered.length === 0) {
+        featuredGrid.innerHTML = `
+            <div class="no-results">
+                <i data-lucide="construction"></i>
+                <p>Техника не найдена</p>
             </div>
-        </div>
-        
-        <div class="detail-section">
-            <h3>Информация о технике</h3>
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Статус</span>
-                    <span class="detail-value ${equipment.status || 'approved'}">${statusText}</span>
-                </div>
-                ${equipment.capacity ? `
-                <div class="detail-item">
-                    <span class="detail-label">Вместимость</span>
-                    <span class="detail-value">${equipment.capacity} м³</span>
-                </div>
-                ` : ''}
-                ${equipment.length ? `
-                <div class="detail-item">
-                    <span class="detail-label">Длина стрелы</span>
-                    <span class="detail-value">${equipment.length} м</span>
-                </div>
-                ` : ''}
-                ${equipment.performance ? `
-                <div class="detail-item">
-                    <span class="detail-label">Производительность</span>
-                    <span class="detail-value">${equipment.performance} м³/ч</span>
-                </div>
-                ` : ''}
-                ${equipment.weight ? `
-                <div class="detail-item">
-                    <span class="detail-label">Грузоподъемность</span>
-                    <span class="detail-value">${equipment.weight} т</span>
-                </div>
-                ` : ''}
-                <div class="detail-item">
-                    <span class="detail-label">Цена</span>
-                    <span class="detail-value">${equipment.price} ${getPriceSuffix(equipment.category)}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Местоположение</span>
-                    <span class="detail-value">${equipment.location}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Телефон владельца</span>
-                    <span class="detail-value">${equipment.ownerPhone || 'Не указан'}</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="detail-section">
-            <h3>Описание</h3>
-            <p>${equipment.description || 'Нет описания'}</p>
-        </div>
-        
-        <div class="detail-section">
-            <h3>Способы оплаты</h3>
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Наличные</span>
-                    <span class="detail-value">${equipment.paymentMethods && equipment.paymentMethods.includes('cash') ? '✅' : '❌'}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Безналичный расчет</span>
-                    <span class="detail-value">${equipment.paymentMethods && equipment.paymentMethods.includes('transfer') ? '✅' : '❌'}</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="contact-buttons">
-            <button class="contact-btn phone" onclick="callOwner('${equipment.ownerPhone}')">
-                <i data-lucide="phone"></i>
-                Позвонить
-            </button>
-            <button class="contact-btn telegram" onclick="messageOwner('${equipment.ownerPhone}', '${equipment.name}')">
-                <i data-lucide="message-circle"></i>
-                Написать
-            </button>
-        </div>
-    `;
+        `;
+        return;
+    }
     
-    navigateTo('details-page');
+    filtered.forEach(equipment => {
+        const card = createEquipmentCard(equipment);
+        featuredGrid.appendChild(card);
+    });
+    
     setTimeout(() => lucide.createIcons(), 100);
 }
 
-function renderUserEquipment() {
-    console.log('Rendering user equipment');
-    const userEquipmentList = document.getElementById('user-equipment');
-    if (!userEquipmentList) return;
+// Handle quick actions
+function handleQuickAction(actionType) {
+    switch(actionType) {
+        case 'search':
+            navigateTo('search-page');
+            break;
+        case 'add':
+            navigateTo('add-equipment-page');
+            break;
+        case 'route':
+            navigateTo('route-page');
+            break;
+        case 'orders':
+            showNotification('Раздел в разработке', 'info');
+            break;
+    }
+}
+
+// Search functionality
+function performSearch(searchTerm) {
+    console.log('Searching for:', searchTerm);
     
-    userEquipmentList.innerHTML = '';
+    const resultsContainer = document.getElementById('search-results-container');
+    if (!resultsContainer) return;
     
-    if (!userEquipment.length) {
-        userEquipmentList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>У вас пока нет добавленной техники</p>
+    // Filter equipment by search term
+    const filtered = allEquipment.filter(item => 
+        item.status === 'approved' &&
+        (item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         (item.owner?.name && item.owner.name.toLowerCase().includes(searchTerm.toLowerCase())))
+    );
+    
+    displaySearchResults(filtered, searchTerm);
+}
+
+function filterSearchResults(filter) {
+    const resultsContainer = document.getElementById('search-results-container');
+    if (!resultsContainer) return;
+    
+    // Get current search term
+    const searchInput = document.getElementById('main-search');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    let filtered = allEquipment.filter(item => 
+        item.status === 'approved'
+    );
+    
+    // Apply category filter
+    if (filter !== 'все') {
+        filtered = filtered.filter(item => {
+            if (filter === 'тонары' || filter === 'самосвалы') {
+                return item.category === 'tonar' || item.category === 'dump-trucks';
+            }
+            if (filter === 'миксеры') return item.category === 'mixer';
+            if (filter === 'маршруты') return item.routeAvailable;
+            return item.category === filter;
+        });
+    }
+    
+    // Apply search term filter
+    if (searchTerm.length >= 2) {
+        filtered = filtered.filter(item => 
+            item.name.toLowerCase().includes(searchTerm) ||
+            item.location.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    displaySearchResults(filtered, searchTerm);
+}
+
+function displaySearchResults(results, searchTerm) {
+    const resultsContainer = document.getElementById('search-results-container');
+    if (!resultsContainer) return;
+    
+    resultsContainer.innerHTML = '';
+    
+    if (results.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="no-results">
+                <i data-lucide="search-x"></i>
+                <p>Ничего не найдено${searchTerm ? ` по запросу "${searchTerm}"` : ''}</p>
             </div>
         `;
         return;
     }
     
-    userEquipment.forEach(equipment => {
-        const equipmentItem = createEquipmentCard(equipment);
-        userEquipmentList.appendChild(equipmentItem);
+    results.forEach(equipment => {
+        const resultItem = createSearchResultItem(equipment);
+        resultsContainer.appendChild(resultItem);
     });
 }
 
-function loadModerationStatus() {
-    if (!currentUser) return;
+function createSearchResultItem(equipment) {
+    const div = document.createElement('div');
+    div.className = 'search-result-item';
     
-    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid);
-    const pending = userEquipmentAll.filter(item => item.status === 'pending').length;
-    const approved = userEquipmentAll.filter(item => item.status === 'approved').length;
-    const rejected = userEquipmentAll.filter(item => item.status === 'rejected').length;
+    const categoryIcon = getCategoryIcon(equipment.category);
+    const price = formatPrice(equipment.price, equipment.category);
     
-    const pendingCount = document.getElementById('pending-count');
-    const approvedCount = document.getElementById('approved-count');
-    const rejectedCount = document.getElementById('rejected-count');
+    div.innerHTML = `
+        <div class="result-icon">
+            <i data-lucide="${categoryIcon}"></i>
+        </div>
+        <div class="result-content">
+            <h3>${equipment.name}</h3>
+            <p class="result-location">${equipment.location}</p>
+            <div class="result-meta">
+                <span class="result-price">${price}</span>
+                <span class="result-rating">
+                    <i data-lucide="star"></i>
+                    ${equipment.owner?.rating || '5.0'}
+                </span>
+            </div>
+        </div>
+        <div class="result-arrow">
+            <i data-lucide="chevron-right"></i>
+        </div>
+    `;
     
-    if (pendingCount) pendingCount.textContent = pending;
-    if (approvedCount) approvedCount.textContent = approved;
-    if (rejectedCount) rejectedCount.textContent = rejected;
+    div.addEventListener('click', () => {
+        showEquipmentDetails(equipment);
+    });
     
-    const moderationEquipmentList = document.getElementById('moderation-equipment');
-    if (!moderationEquipmentList) return;
-    
-    moderationEquipmentList.innerHTML = '';
-    
-    if (userEquipmentAll.length === 0) {
-        moderationEquipmentList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>У вас пока нет добавленной техники</p>
+    return div;
+}
+
+function clearSearchResults() {
+    const resultsContainer = document.getElementById('search-results-container');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = `
+            <div class="search-placeholder">
+                <i data-lucide="search"></i>
+                <p>Начните вводить название техники или города</p>
             </div>
         `;
+        lucide.createIcons();
+    }
+}
+
+// Show equipment details
+function showEquipmentDetails(equipment) {
+    console.log('Showing details for:', equipment.name);
+    
+    // Update page title
+    const titleElement = document.getElementById('equipment-title');
+    if (titleElement) {
+        titleElement.textContent = equipment.name;
+    }
+    
+    // Update equipment details
+    document.getElementById('detail-equipment-name').textContent = equipment.name;
+    document.getElementById('detail-price').textContent = formatPrice(equipment.price, equipment.category);
+    document.getElementById('spec-capacity').textContent = equipment.capacity ? equipment.capacity + 'т' : equipment.weight ? equipment.weight + 'т' : 'Н/Д';
+    document.getElementById('spec-location').textContent = equipment.location;
+    document.getElementById('spec-owner').textContent = equipment.owner?.name || 'Неизвестно';
+    document.getElementById('spec-rating').textContent = equipment.owner?.rating || '5.0';
+    document.getElementById('equipment-description-text').textContent = equipment.description || 'Описание отсутствует';
+    
+    // Update tags
+    const tagsContainer = document.getElementById('equipment-tags');
+    if (tagsContainer) {
+        tagsContainer.innerHTML = '';
+        
+        const tags = [
+            equipment.capacity && `Грузоподъемность: ${equipment.capacity}т`,
+            equipment.available && 'Доступен сейчас',
+            equipment.paymentMethods?.includes('cash') && 'Наличные',
+            equipment.paymentMethods?.includes('transfer') && 'Безналичные',
+            'Страховка',
+            'GPS-трекер'
+        ].filter(tag => tag);
+        
+        tags.forEach(tag => {
+            const span = document.createElement('span');
+            span.className = 'tag';
+            span.textContent = tag;
+            tagsContainer.appendChild(span);
+        });
+    }
+    
+    navigateTo('details-page');
+}
+
+// Calculate route
+window.calculateRoute = function() {
+    const from = document.getElementById('route-from')?.value.trim();
+    const to = document.getElementById('route-to')?.value.trim();
+    const cargo = document.getElementById('route-cargo')?.value.trim();
+    const date = document.getElementById('route-date')?.value;
+    const transportType = document.getElementById('transport-type')?.value;
+    
+    if (!from || !to) {
+        showNotification('Укажите города отправления и назначения', 'error');
         return;
     }
     
-    userEquipmentAll.forEach(equipment => {
-        const div = document.createElement('div');
-        div.className = `equipment-item ${equipment.status || 'pending'}`;
+    // Simulate calculation
+    const resultsDiv = document.getElementById('route-results');
+    if (resultsDiv) {
+        resultsDiv.classList.remove('hidden');
         
-        const icon = getEquipmentIcon(equipment.category);
-        const statusText = getStatusText(equipment);
+        // Animate results
+        resultsDiv.style.opacity = '0';
+        resultsDiv.style.transform = 'translateY(20px)';
         
-        // Аватарка владельца для модерации
-        const ownerAvatarHtml = equipment.owner?.photoUrl ? 
-            `<img src="${equipment.owner.photoUrl}" alt="${equipment.owner.name}" class="owner-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-            '';
-        
-        div.innerHTML = `
-            <div class="equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>
-            <div class="equipment-info">
-                <h3>${equipment.name}</h3>
-                <div class="equipment-location">
-                    <i data-lucide="map-pin"></i>
-                    <span>${equipment.location}</span>
+        setTimeout(() => {
+            resultsDiv.style.transition = 'all 0.3s ease';
+            resultsDiv.style.opacity = '1';
+            resultsDiv.style.transform = 'translateY(0)';
+        }, 100);
+    }
+    
+    showNotification('Маршрут рассчитан', 'success');
+};
+
+window.showAvailableTrucks = function() {
+    const from = document.getElementById('route-from')?.value.trim();
+    const to = document.getElementById('route-to')?.value.trim();
+    
+    if (!from || !to) {
+        showNotification('Укажите маршрут', 'error');
+        return;
+    }
+    
+    // Filter trucks for the route
+    const availableTrucks = allEquipment.filter(item => 
+        (item.category === 'tonar' || item.category === 'dump-trucks') &&
+        item.status === 'approved' &&
+        item.available
+    );
+    
+    if (availableTrucks.length === 0) {
+        showNotification('Нет доступной техники на этом маршруте', 'info');
+        return;
+    }
+    
+    // Create modal with available trucks
+    const modalHTML = `
+        <div class="modal-overlay active" onclick="closeModal()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Доступная техника</h3>
+                    <button class="modal-close" onclick="closeModal()">×</button>
                 </div>
-                <div class="equipment-footer">
-                    <div class="owner-info">
-                        <div class="owner-avatar-small">
-                            ${ownerAvatarHtml}
-                            <i data-lucide="user" class="avatar-fallback-small"></i>
-                        </div>
-                        <span class="owner-name">${equipment.owner?.name || 'Владелец'}</span>
+                <div class="modal-body">
+                    <p>Маршрут: ${from} → ${to}</p>
+                    <div class="trucks-list">
+                        ${availableTrucks.map(truck => `
+                            <div class="truck-item" onclick="selectTruck('${truck.id}')">
+                                <div class="truck-icon">
+                                    <i data-lucide="truck"></i>
+                                </div>
+                                <div class="truck-info">
+                                    <h4>${truck.name}</h4>
+                                    <p>${truck.location} • ${formatPrice(truck.price, truck.category)}</p>
+                                </div>
+                                <button class="btn-small">Выбрать</button>
+                            </div>
+                        `).join('')}
                     </div>
-                    <div class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
                 </div>
-                <div class="equipment-status ${equipment.status || 'pending'}">${statusText}</div>
-                ${equipment.status === 'rejected' ? `
-                <div class="rejection-reason">
-                    <small>Причина: ${equipment.rejectionReason || 'Не указана'}</small>
-                </div>
-                ` : ''}
             </div>
-        `;
-        
-        moderationEquipmentList.appendChild(div);
-    });
-}
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    lucide.createIcons();
+};
 
-function toggleFormFields() {
-    const type = document.getElementById('equipment-type')?.value;
-    if (!type) return;
-    
-    const capacityGroup = document.getElementById('capacity-group');
-    const lengthGroup = document.getElementById('length-group');
-    const performanceGroup = document.getElementById('performance-group');
-    const weightGroup = document.getElementById('weight-group');
-    const bucketGroup = document.getElementById('bucket-group');
-    const priceSuffix = document.getElementById('price-suffix');
-    
-    if (capacityGroup) capacityGroup.classList.add('hidden');
-    if (lengthGroup) lengthGroup.classList.add('hidden');
-    if (performanceGroup) performanceGroup.classList.add('hidden');
-    if (weightGroup) weightGroup.classList.add('hidden');
-    if (bucketGroup) bucketGroup.classList.add('hidden');
-    
-    // Update price suffix based on equipment type
-    if (priceSuffix) {
-        priceSuffix.textContent = getPriceSuffix(type);
-    }
-    
-    switch (type) {
-        case 'mixers':
-            if (capacityGroup) capacityGroup.classList.remove('hidden');
-            break;
-        case 'pumps':
-            if (lengthGroup) lengthGroup.classList.remove('hidden');
-            if (performanceGroup) performanceGroup.classList.remove('hidden');
-            break;
-        case 'dump-trucks':
-        case 'cranes':
-            if (weightGroup) weightGroup.classList.remove('hidden');
-            break;
-        case 'excavators':
-            if (bucketGroup) bucketGroup.classList.remove('hidden');
-            break;
+function closeModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
     }
 }
 
-// ОСНОВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ТЕХНИКИ
-async function saveEquipment() {
-    console.log('Save equipment function called');
-    
+function selectTruck(truckId) {
+    const truck = allEquipment.find(item => item.id === truckId);
+    if (truck) {
+        showEquipmentDetails(truck);
+        closeModal();
+    }
+}
+
+// Save equipment
+window.saveEquipment = async function() {
     if (!currentUser) {
-        showNotification('Ошибка: пользователь не авторизован', 'error');
+        showNotification('Ошибка авторизации', 'error');
         return;
     }
     
-    // Получаем значения из формы
-    const type = document.getElementById('equipment-type')?.value;
-    const name = document.getElementById('equipment-name')?.value.trim();
-    const price = document.getElementById('equipment-price')?.value;
+    // Get form values
+    const category = document.getElementById('equipment-category')?.value;
+    const model = document.getElementById('equipment-model')?.value.trim();
+    const capacity = document.getElementById('equipment-capacity')?.value;
+    const year = document.getElementById('equipment-year')?.value;
     const location = document.getElementById('equipment-location')?.value.trim();
+    const priceShift = document.getElementById('price-shift')?.value;
+    const priceHour = document.getElementById('price-hour')?.value;
+    const minRental = document.getElementById('min-rental')?.value;
+    const phone = document.getElementById('owner-phone')?.value.trim();
     const description = document.getElementById('equipment-description')?.value.trim();
-    const paymentMethod = document.getElementById('payment-method')?.value;
-    const userPhone = document.getElementById('user-phone-input')?.value.replace(/\D/g, '');
-
-    console.log('Form values:', { type, name, price, location, description, paymentMethod, userPhone });
-
-    // Валидация
-    if (!type || !name || !price || !location || !userPhone || !description) {
-        showNotification('Пожалуйста, заполните все обязательные поля', 'error');
+    
+    // Validation
+    if (!category || !model || !location || !phone || !description) {
+        showNotification('Заполните все обязательные поля', 'error');
         return;
     }
-
-    if (userPhone.length !== 9) {
-        showNotification('Введите номер из 9 цифр (без +998)', 'error');
+    
+    if (!phone.match(/^\+998\s\d{2}\s\d{3}\s\d{2}\s\d{2}$/)) {
+        showNotification('Введите корректный номер телефона', 'error');
         return;
     }
     
     try {
-        // Создаем объект техники
+        // Create equipment object
         const newEquipment = {
-            category: type,
-            name: name,
+            category: category,
+            name: model,
+            capacity: capacity ? parseInt(capacity) : null,
+            year: year ? parseInt(year) : null,
             location: location,
-            price: parseInt(price),
-            available: true,
+            price: priceHour ? parseInt(priceHour) : 0,
+            priceShift: priceShift ? parseInt(priceShift) : null,
+            minRental: minRental,
             ownerId: currentUser.uid,
             owner: {
                 name: currentUser.firstName + (currentUser.lastName ? ' ' + currentUser.lastName : ''),
-                username: currentUser.username,
+                phone: phone,
                 rating: 5.0,
                 reviews: 0
             },
-            ownerPhone: '+998' + userPhone,
-            paymentMethods: paymentMethod === 'both' ? ['cash', 'transfer'] : [paymentMethod],
             description: description,
+            available: true,
             status: 'pending',
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            features: ['Страховка', 'GPS', 'Документы']
         };
-        
-        // Добавляем специфичные поля
-        switch (type) {
-            case 'mixers':
-                const capacity = document.getElementById('equipment-capacity')?.value;
-                if (capacity) newEquipment.capacity = parseInt(capacity);
-                break;
-            case 'pumps':
-                const length = document.getElementById('equipment-length')?.value;
-                const performance = document.getElementById('equipment-performance')?.value;
-                if (length) newEquipment.length = parseInt(length);
-                if (performance) newEquipment.performance = parseInt(performance);
-                break;
-            case 'dump-trucks':
-            case 'cranes':
-                const weight = document.getElementById('equipment-weight')?.value;
-                if (weight) newEquipment.weight = parseInt(weight);
-                break;
-            case 'excavators':
-                const bucket = document.getElementById('equipment-bucket')?.value;
-                if (bucket) newEquipment.bucket = parseFloat(bucket);
-                break;
-        }
         
         console.log('Saving equipment:', newEquipment);
         
-        // Сохраняем в Firebase с автоматическим ID
+        // Save to Firebase
         const equipmentRef = database.ref('equipment').push();
         const equipmentId = equipmentRef.key;
         newEquipment.id = equipmentId;
         
         await equipmentRef.set(newEquipment);
         
-        showNotification('✅ Техника отправлена на модерацию!', 'success');
+        showNotification('✅ Техника отправлена на модерацию', 'success');
         
-        // Возвращаемся на страницу профиля
+        // Reset form and navigate back
         setTimeout(() => {
             navigateTo('profile-page');
-            resetEquipmentForm();
+            resetForm();
         }, 1500);
         
     } catch (error) {
         console.error('Error saving equipment:', error);
-        showNotification('❌ Ошибка при добавлении техники: ' + error.message, 'error');
+        showNotification('❌ Ошибка при сохранении: ' + error.message, 'error');
     }
-}
+};
 
-function resetEquipmentForm() {
-    const form = document.querySelector('.add-equipment-form');
-    if (form) {
-        form.reset();
-    }
-    toggleFormFields();
-}
-
-// Admin Panel Functions
-function loadAdminPanel() {
-    console.log('Loading admin panel...');
-    console.log('Current user:', currentUser);
-    console.log('Is admin:', isAdmin());
-    
-    if (!isAdmin()) {
-        showNotification('❌ У вас нет прав доступа к админ-панели', 'error');
-        navigateTo('home-page');
-        return;
-    }
-    
-    let adminPanel = document.getElementById('admin-panel');
-    if (!adminPanel) {
-        console.log('Admin panel not found, creating...');
-        createAdminPanel();
-        adminPanel = document.getElementById('admin-panel');
-    }
-    
-    if (adminPanel) {
-        renderAdminPanel();
-    } else {
-        console.error('Admin panel element not found after creation');
-        showNotification('❌ Ошибка загрузки админ-панели', 'error');
-    }
-}
-
-function createAdminPanel() {
-    console.log('Creating admin panel...');
-    
-    const adminPanel = document.createElement('section');
-    adminPanel.id = 'admin-panel';
-    adminPanel.className = 'page';
-    adminPanel.innerHTML = `
-        <div class="page-header">
-            <button class="btn-back">
-                <i data-lucide="arrow-left"></i>
-            </button>
-            <h2>👑 Панель модерации</h2>
-        </div>
-        
-        <div class="admin-content">
-            <div class="admin-stats">
-                <div class="stat-card pending">
-                    <div class="stat-number stat-pending" id="stat-pending">0</div>
-                    <div>На модерации</div>
-                </div>
-                <div class="stat-card approved">
-                    <div class="stat-number stat-approved" id="stat-approved">0</div>
-                    <div>Одобрено</div>
-                </div>
-                <div class="stat-card rejected">
-                    <div class="stat-number stat-rejected" id="stat-rejected">0</div>
-                    <div>Отклонено</div>
-                </div>
-            </div>
-
-            <div class="filter-tabs">
-                <button class="tab-btn active" data-filter="pending">⏳ На модерации</button>
-                <button class="tab-btn" data-filter="approved">✅ Одобренные</button>
-                <button class="tab-btn" data-filter="rejected">❌ Отклоненные</button>
-            </div>
-
-            <div class="equipment-list" id="admin-equipment-list">
-                <!-- Заявки будут загружаться здесь -->
-            </div>
-        </div>
-
-        <!-- Equipment Details Modal -->
-        <div id="equipment-modal" class="modal hidden">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title" id="modal-title">Детали заявки</h3>
-                    <button class="close-modal" onclick="closeAdminModal()">×</button>
-                </div>
-                
-                <div id="modal-content">
-                    <!-- Детали заявки -->
-                </div>
-                
-                <div class="moderation-controls" id="modal-controls">
-                    <!-- Кнопки модерации -->
-                </div>
-            </div>
-        </div>
-    `;
-    
-    const main = document.querySelector('main');
-    if (main) {
-        main.appendChild(adminPanel);
-        console.log('Admin panel added to DOM');
-    } else {
-        console.error('Main element not found');
-        return;
-    }
-    
-    setupAdminEventListeners();
-    console.log('Admin panel created successfully');
-}
-
-function setupAdminEventListeners() {
-    // Tab event listeners
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentAdminFilter = this.dataset.filter;
-            renderAdminPanel();
-        });
+function resetForm() {
+    currentStep = 1;
+    document.querySelectorAll('.form-step').forEach(step => {
+        step.classList.remove('active');
     });
+    document.getElementById('step-1').classList.add('active');
     
-    // Back button
-    const backBtn = document.querySelector('#admin-panel .btn-back');
-    if (backBtn) {
-        backBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            goBack();
-        });
-    }
-    
-    // Close modal on background click
-    const modal = document.getElementById('equipment-modal');
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) closeAdminModal();
-        });
-    }
-}
-
-function renderAdminPanel() {
-    console.log('Rendering admin panel with filter:', currentAdminFilter);
-    console.log('All equipment count:', allEquipment.length);
-    
-    // Update statistics
-    const pending = allEquipment.filter(item => item.status === 'pending').length;
-    const approved = allEquipment.filter(item => item.status === 'approved').length;
-    const rejected = allEquipment.filter(item => item.status === 'rejected').length;
-    
-    const statPending = document.getElementById('stat-pending');
-    const statApproved = document.getElementById('stat-approved');
-    const statRejected = document.getElementById('stat-rejected');
-    
-    if (statPending) statPending.textContent = pending;
-    if (statApproved) statApproved.textContent = approved;
-    if (statRejected) statRejected.textContent = rejected;
-    
-    // Filter equipment
-    const filteredEquipment = allEquipment.filter(item => {
-        const itemStatus = item.status || 'pending';
-        return itemStatus === currentAdminFilter;
-    });
-    
-    console.log(`Filtered equipment (${currentAdminFilter}):`, filteredEquipment.length, 'items');
-    
-    const listElement = document.getElementById('admin-equipment-list');
-    if (!listElement) {
-        console.error('Admin equipment list element not found');
-        return;
-    }
-    
-    if (filteredEquipment.length === 0) {
-        listElement.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="inbox"></i>
-                <p>Нет заявок со статусом "${getAdminStatusText(currentAdminFilter)}"</p>
-            </div>
-        `;
-    } else {
-        listElement.innerHTML = filteredEquipment.map(equipment => {
-            const status = equipment.status || 'pending';
-            const ownerName = equipment.owner?.name || 'Неизвестно';
-            const ownerPhone = equipment.ownerPhone || 'Не указан';
-            
-            return `
-                <div class="equipment-item ${status}" onclick="showAdminEquipmentDetails('${equipment.id}')">
-                    <div class="equipment-image">
-                        <i data-lucide="${getEquipmentIcon(equipment.category)}"></i>
-                    </div>
-                    <div class="equipment-info">
-                        <h3>${equipment.name}</h3>
-                        <div class="equipment-location">
-                            <i data-lucide="map-pin"></i>
-                            <span>${equipment.location}</span>
-                        </div>
-                        <div class="equipment-meta">
-                            <span class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</span>
-                            <span class="equipment-type">${getCategoryName(equipment.category)}</span>
-                        </div>
-                        <div class="owner-info">
-                            <i data-lucide="user"></i>
-                            <span>${ownerName}</span>
-                            <span style="color: #94a3b8;">•</span>
-                            <span>${ownerPhone}</span>
-                        </div>
-                    </div>
-                    <div class="equipment-status ${status}">
-                        ${getAdminStatusBadge(status)}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-    
-    setTimeout(() => lucide.createIcons(), 100);
-}
-
-function showAdminEquipmentDetails(equipmentId) {
-    console.log('Showing equipment details for:', equipmentId);
-    const equipment = allEquipment.find(item => item.id === equipmentId);
-    if (!equipment) {
-        console.error('Equipment not found:', equipmentId);
-        showNotification('❌ Оборудование не найдено', 'error');
-        return;
-    }
-    
-    const modalTitle = document.getElementById('modal-title');
-    if (modalTitle) {
-        modalTitle.textContent = equipment.name;
-    }
-    
-    const modalContent = document.getElementById('modal-content');
-    if (!modalContent) {
-        console.error('Modal content element not found');
-        return;
-    }
-    
-    const status = equipment.status || 'pending';
-    const ownerName = equipment.owner?.name || 'Неизвестно';
-    const ownerPhone = equipment.ownerPhone || 'Не указан';
-    
-    modalContent.innerHTML = `
-        <div class="equipment-details">
-            <div class="detail-row">
-                <strong>ID заявки:</strong> 
-                <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${equipment.id}</span>
-            </div>
-            <div class="detail-row">
-                <strong>Категория:</strong> ${getCategoryName(equipment.category)}
-            </div>
-            <div class="detail-row">
-                <strong>Местоположение:</strong> ${equipment.location}
-            </div>
-            <div class="detail-row">
-                <strong>Цена:</strong> ${equipment.price} ${getPriceSuffix(equipment.category)}
-            </div>
-            <div class="detail-row">
-                <strong>Владелец:</strong> ${ownerName}
-            </div>
-            <div class="detail-row">
-                <strong>Телефон:</strong> ${ownerPhone}
-            </div>
-            <div class="detail-row">
-                <strong>Статус:</strong> 
-                <span class="equipment-status ${status}">
-                    ${getAdminStatusBadge(status)}
-                </span>
-            </div>
-            <div class="detail-row">
-                <strong>Описание:</strong> 
-                <div style="margin-top: 5px; padding: 10px; background: #f1f5f9; border-radius: 6px;">
-                    ${equipment.description || 'Нет описания'}
-                </div>
-            </div>
-            ${equipment.rejectionReason ? `
-            <div class="detail-row">
-                <strong>Причина отклонения:</strong> 
-                <div style="margin-top: 5px; padding: 10px; background: #fee2e2; border-radius: 6px; color: #dc2626;">
-                    ${equipment.rejectionReason}
-                </div>
-            </div>
-            ` : ''}
-            ${equipment.capacity ? `
-            <div class="detail-row">
-                <strong>Вместимость:</strong> ${equipment.capacity} м³
-            </div>
-            ` : ''}
-            ${equipment.length ? `
-            <div class="detail-row">
-                <strong>Длина стрелы:</strong> ${equipment.length} м
-            </div>
-            ` : ''}
-            ${equipment.performance ? `
-            <div class="detail-row">
-                <strong>Производительность:</strong> ${equipment.performance} м³/ч
-            </div>
-            ` : ''}
-            ${equipment.weight ? `
-            <div class="detail-row">
-                <strong>Грузоподъемность:</strong> ${equipment.weight} т
-            </div>
-            ` : ''}
-            ${equipment.bucket ? `
-            <div class="detail-row">
-                <strong>Объем ковша:</strong> ${equipment.bucket} м³
-            </div>
-            ` : ''}
-            <div class="detail-row">
-                <strong>Дата создания:</strong> 
-                ${equipment.createdAt ? new Date(equipment.createdAt).toLocaleString('ru-RU') : 'Неизвестно'}
-            </div>
-        </div>
-    `;
-    
-    const modalControls = document.getElementById('modal-controls');
-    if (modalControls) {
-        if (equipment.status === 'pending') {
-            modalControls.innerHTML = `
-                <button class="btn btn-approve" onclick="approveEquipment('${equipment.id}')">
-                    ✅ Одобрить заявку
-                </button>
-                <button class="btn btn-reject" onclick="showAdminRejectionForm()">
-                    ❌ Отклонить заявку
-                </button>
-                <div class="rejection-reason" id="admin-rejection-form" style="display: none;">
-                    <textarea id="admin-rejection-reason" placeholder="Укажите причину отклонения заявки..."></textarea>
-                    <button class="btn btn-reject" onclick="rejectEquipment('${equipment.id}')" style="margin-top: 10px; width: 100%;">
-                        📨 Отправить отклонение
-                    </button>
-                </div>
-            `;
-        } else {
-            modalControls.innerHTML = `
-                <div style="text-align: center; color: #64748b; padding: 20px;">
-                    Заявка уже обработана
-                </div>
-            `;
+    // Reset form fields
+    document.querySelectorAll('.modern-input, .modern-select, .modern-textarea').forEach(input => {
+        if (input.type !== 'file') {
+            input.value = '';
         }
-    }
-    
-    const modal = document.getElementById('equipment-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
-}
-
-function closeAdminModal() {
-    const modal = document.getElementById('equipment-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-    const rejectionForm = document.getElementById('admin-rejection-form');
-    if (rejectionForm) {
-        rejectionForm.style.display = 'none';
-    }
-}
-
-function showAdminRejectionForm() {
-    const rejectionForm = document.getElementById('admin-rejection-form');
-    if (rejectionForm) {
-        rejectionForm.style.display = 'block';
-    }
-}
-
-async function approveEquipment(equipmentId) {
-    if (!confirm('Вы уверены, что хотите одобрить эту заявку?')) return;
-    
-    try {
-        const equipmentRef = database.ref(`equipment/${equipmentId}`);
-        await equipmentRef.update({
-            status: 'approved',
-            moderatedBy: currentUser.uid,
-            moderatedAt: Date.now(),
-            rejectionReason: null
-        });
-        
-        showNotification('✅ Заявка одобрена!', 'success');
-        closeAdminModal();
-        // Обновляем данные
-        loadEquipmentData();
-    } catch (error) {
-        console.error('Error approving equipment:', error);
-        showNotification('❌ Ошибка при одобрении заявки: ' + error.message, 'error');
-    }
-}
-
-async function rejectEquipment(equipmentId) {
-    const reasonInput = document.getElementById('admin-rejection-reason');
-    if (!reasonInput) return;
-    
-    const reason = reasonInput.value.trim();
-    if (!reason) {
-        showNotification('📝 Пожалуйста, укажите причину отклонения', 'error');
-        return;
-    }
-    
-    if (!confirm('Вы уверены, что хотите отклонить эту заявку?')) return;
-    
-    try {
-        const equipmentRef = database.ref(`equipment/${equipmentId}`);
-        await equipmentRef.update({
-            status: 'rejected',
-            rejectionReason: reason,
-            moderatedBy: currentUser.uid,
-            moderatedAt: Date.now()
-        });
-        
-        showNotification('❌ Заявка отклонена!', 'success');
-        closeAdminModal();
-        // Обновляем данные
-        loadEquipmentData();
-    } catch (error) {
-        console.error('Error rejecting equipment:', error);
-        showNotification('❌ Ошибка при отклонении заявки: ' + error.message, 'error');
-    }
-}
-
-// Availability Management
-function loadAvailabilityEquipment() {
-    if (!currentUser) return;
-    
-    const userEquipmentAll = allEquipment.filter(item => item.ownerId === currentUser.uid && item.status === 'approved');
-    const availabilityList = document.getElementById('availability-equipment');
-    if (!availabilityList) return;
-    
-    availabilityList.innerHTML = '';
-    
-    if (userEquipmentAll.length === 0) {
-        availabilityList.innerHTML = `
-            <div class="no-data">
-                <i data-lucide="construction"></i>
-                <p>У вас нет одобренной техники</p>
-            </div>
-        `;
-        return;
-    }
-    
-    userEquipmentAll.forEach(equipment => {
-        const div = document.createElement('div');
-        div.className = `equipment-item ${equipment.available ? 'available' : 'busy'}`;
-        
-        const icon = getEquipmentIcon(equipment.category);
-        
-        div.innerHTML = `
-            <div class="equipment-image">
-                <i data-lucide="${icon}"></i>
-            </div>
-            <div class="equipment-info">
-                <h3>${equipment.name}</h3>
-                <div class="equipment-location">
-                    <i data-lucide="map-pin"></i>
-                    <span>${equipment.location}</span>
-                </div>
-                <div class="equipment-footer">
-                    <div class="equipment-price">${equipment.price} ${getPriceSuffix(equipment.category)}</div>
-                    <div class="equipment-status ${equipment.available ? 'available' : 'busy'}">
-                        ${equipment.available ? '✅ Доступен' : '⏳ Занят'}
-                    </div>
-                </div>
-            </div>
-            <button class="toggle-availability-btn" onclick="toggleAvailability('${equipment.id}', ${!equipment.available})">
-                ${equipment.available ? 'Сделать занятым' : 'Сделать доступным'}
-            </button>
-        `;
-        
-        availabilityList.appendChild(div);
     });
-}
-
-async function toggleAvailability(equipmentId, newAvailability) {
-    try {
-        const equipmentRef = database.ref(`equipment/${equipmentId}`);
-        await equipmentRef.update({
-            available: newAvailability
-        });
-        
-        showNotification(newAvailability ? '✅ Техника теперь доступна' : '⏳ Техника отмечена как занятая', 'success');
-        loadAvailabilityEquipment();
-    } catch (error) {
-        console.error('Error toggling availability:', error);
-        showNotification('❌ Ошибка при изменении статуса', 'error');
+    
+    // Reset upload area
+    const uploadArea = document.getElementById('upload-area');
+    if (uploadArea) {
+        uploadArea.innerHTML = `
+            <i data-lucide="upload"></i>
+            <p>Перетащите фото или нажмите для загрузки</p>
+        `;
     }
 }
+
+// Contact owner
+window.contactOwner = function() {
+    showNotification('Функция связи скоро будет доступна', 'info');
+};
+
+// Request rent
+window.requestRent = function() {
+    showNotification('Функция бронирования скоро будет доступна', 'info');
+};
+
+// Logout
+window.logout = function() {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+        showNotification('Вы вышли из системы', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    }
+};
 
 // Utility functions
-function getCategoryTitle(category) {
-    const titles = {
-        'mixers': 'Автомиксеры',
-        'pumps': 'Автобетононасосы',
-        'dump-trucks': 'Самосвалы',
-        'cranes': 'Краны',
-        'excavators': 'Экскаваторы'
-    };
-    return titles[category] || 'Категория';
-}
-
-function getEquipmentIcon(category) {
+function getCategoryIcon(category) {
     const icons = {
-        'mixers': 'truck',
-        'pumps': 'gauge',
+        'tonar': 'truck',
         'dump-trucks': 'truck',
-        'cranes': 'crane',
-        'excavators': 'hammer'
+        'mixer': 'mixer',
+        'crane': 'crane',
+        'excavator': 'excavator',
+        'pump': 'gauge'
     };
     return icons[category] || 'construction';
 }
 
-function getPriceSuffix(category) {
-    if (category === 'mixers' || category === 'dump-trucks') {
-        return 'сум/ходка';
-    }
-    return 'сум/час';
-}
-
-function callOwner(phone) {
-    if (!phone || phone === 'Не указан') {
-        showNotification('❌ Номер телефона не указан', 'error');
-        return;
-    }
-    window.open(`tel:${phone}`);
-}
-
-function messageOwner(phone, equipmentName) {
-    if (!phone || phone === 'Не указан') {
-        showNotification('❌ Номер телефона не указан', 'error');
-        return;
-    }
-    const message = `Здравствуйте! Интересует ваша техника: ${equipmentName}`;
-    window.open(`https://t.me/${phone.replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank');
-}
-
-// Admin helper functions
-function getAdminStatusText(status) {
-    const statuses = {
-        'pending': 'На модерации',
-        'approved': 'Одобренные',
-        'rejected': 'Отклоненные'
-    };
-    return statuses[status] || status;
-}
-
-function getAdminStatusBadge(status) {
-    const badges = {
-        'pending': '⏳ На модерации',
-        'approved': '✅ Одобрено',
-        'rejected': '❌ Отклонено'
-    };
-    return badges[status] || status;
-}
-
 function getCategoryName(category) {
-    const categories = {
-        'mixers': '🚛 Автомиксер',
-        'pumps': '🏗️ Автобетононасос',
-        'dump-trucks': '🚚 Самосвал',
-        'cranes': '🏗️ Кран',
-        'excavators': '🔧 Экскаватор'
+    const names = {
+        'tonar': 'Тонар',
+        'dump-trucks': 'Самосвал',
+        'mixer': 'Миксер',
+        'crane': 'Кран',
+        'excavator': 'Экскаватор',
+        'pump': 'Насос'
     };
-    return categories[category] || '🚜 Другая техника';
+    return names[category] || 'Техника';
 }
 
-// Notification function
+function formatPrice(price, category) {
+    if (category === 'tonar' || category === 'dump-trucks') {
+        return `${price.toLocaleString()} сум/рейс`;
+    }
+    return `${price.toLocaleString()} сум/час`;
+}
+
+// Notification system
 function showNotification(message, type = 'info') {
-    // Удаляем старые уведомления
-    document.querySelectorAll('.notification').forEach(notification => {
-        notification.remove();
+    // Remove existing notifications
+    document.querySelectorAll('.notification-toast').forEach(toast => {
+        toast.remove();
     });
     
     const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
+    notification.className = `notification-toast notification-${type}`;
+    
+    const icon = type === 'success' ? 'check-circle' : 
+                 type === 'error' ? 'x-circle' : 
+                 type === 'warning' ? 'alert-circle' : 'info';
+    
     notification.innerHTML = `
         <div class="notification-content">
-            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i>
+            <i data-lucide="${icon}"></i>
             <span>${message}</span>
         </div>
     `;
     
     document.body.appendChild(notification);
     
-    // Показываем уведомление
-    setTimeout(() => notification.classList.add('show'), 100);
+    // Add styles for notification
+    if (!document.querySelector('#notification-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'notification-styles';
+        styles.textContent = `
+            .notification-toast {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                padding: 12px 16px;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                z-index: 10000;
+                transform: translateX(400px);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                border-left: 4px solid var(--primary);
+                max-width: 280px;
+            }
+            .notification-success { border-left-color: var(--success); }
+            .notification-error { border-left-color: var(--error); }
+            .notification-warning { border-left-color: var(--warning); }
+            .notification-info { border-left-color: var(--info); }
+            .notification-toast.show {
+                transform: translateX(0);
+            }
+            .notification-content {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .notification-content i {
+                width: 18px;
+                height: 18px;
+            }
+        `;
+        document.head.appendChild(styles);
+    }
     
-    // Автоматически скрываем через 3 секунды
+    // Show notification
+    setTimeout(() => {
+        notification.classList.add('show');
+        lucide.createIcons();
+    }, 10);
+    
+    // Auto hide
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -1628,20 +1008,7 @@ function showNotification(message, type = 'info') {
             }
         }, 300);
     }, 3000);
-    
-    setTimeout(() => lucide.createIcons(), 100);
 }
 
-// Global functions for onclick handlers
-window.callOwner = callOwner;
-window.messageOwner = messageOwner;
-window.saveEquipment = saveEquipment;
-window.toggleAvailability = toggleAvailability;
-window.showAdminEquipmentDetails = showAdminEquipmentDetails;
-window.closeAdminModal = closeAdminModal;
-window.showAdminRejectionForm = showAdminRejectionForm;
-window.approveEquipment = approveEquipment;
-window.rejectEquipment = rejectEquipment;
-
-// Initialize the app when DOM is loaded
+// Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
