@@ -11,12 +11,27 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log("Firebase initialized successfully");
+} catch (error) {
+    console.error("Firebase initialization error:", error);
+}
+
 const database = firebase.database();
 const auth = firebase.auth();
 
 // Telegram Web App instance
-const tg = window.Telegram?.WebApp;
+let tg = null;
+try {
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+        tg.ready();
+        console.log("Telegram Web App initialized");
+    }
+} catch (error) {
+    console.log("Telegram Web App not available:", error);
+}
 
 // Current state
 let currentUser = null;
@@ -29,7 +44,7 @@ let editingEquipmentId = null;
 let currentEquipmentDetails = null;
 let selectedFeatures = [];
 let uploadedImages = [];
-let adminUsers = ['543221724']; // Ваш Telegram ID
+let adminUsers = ['543221724'];
 let currentAdminTab = 'equipment';
 let currentOrderTab = 'active';
 let revenueChart = null;
@@ -126,8 +141,12 @@ async function init() {
     try {
         console.log('🚀 Initializing BuildRent application...');
         
-        // Initialize icons
-        if (lucide) lucide.createIcons();
+        // Initialize icons safely
+        setTimeout(() => {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }, 100);
         
         // Setup event listeners
         setupEventListeners();
@@ -144,15 +163,20 @@ async function init() {
         // Load initial data
         loadAllData();
         
-        // Hide loading screen
+        // Hide loading screen after 1 second
         setTimeout(() => {
             hideLoadingScreen();
             console.log('✅ BuildRent initialized successfully');
-        }, 1500);
+        }, 1000);
         
     } catch (error) {
         console.error('Error initializing app:', error);
         showNotification('Ошибка загрузки приложения', 'error');
+        
+        // Still show main content
+        setTimeout(() => {
+            hideLoadingScreen();
+        }, 1500);
     }
 }
 
@@ -279,6 +303,7 @@ async function checkAuth() {
     } catch (error) {
         console.error('Auth error:', error);
         await createFallbackUser();
+        updateUIForAuthenticatedUser();
     }
 }
 
@@ -293,7 +318,7 @@ async function createFallbackUser() {
         photoUrl: '',
         isPremium: false,
         role: 'user',
-        telegramId: '543221724' // Ваш ID для тестирования админки
+        telegramId: '543221724'
     };
     
     // Check if user is admin
@@ -302,6 +327,7 @@ async function createFallbackUser() {
     }
     
     console.log('Fallback user created:', currentUser);
+    return currentUser;
 }
 
 // Load user from Telegram
@@ -327,9 +353,12 @@ async function loadUserFromTelegram() {
                 currentUser.role = 'admin';
                 console.log('Admin user detected');
             }
+            
+            console.log('Telegram user loaded:', currentUser);
         }
     } catch (error) {
         console.error('Error loading Telegram user:', error);
+        await createFallbackUser();
     }
 }
 
@@ -833,7 +862,6 @@ function handleImageUpload(files) {
     
     // Reset arrays
     uploadedImages = [];
-    selectedFeatures = [];
     
     // Update upload area
     uploadArea.innerHTML = `
@@ -1695,7 +1723,7 @@ async function incrementViewCount(equipmentId) {
     }
 }
 
-// Contact owner (РАБОТАЕТ)
+// Contact owner
 function contactOwner() {
     const equipment = currentEquipmentDetails;
     if (!equipment || !equipment.owner || !equipment.owner.phone) {
@@ -1794,7 +1822,7 @@ function sendEmail(email) {
     closeModal();
 }
 
-// Request rent (РАБОТАЕТ)
+// Request rent
 function requestRent() {
     const equipment = currentEquipmentDetails;
     if (!equipment) return;
@@ -2986,14 +3014,14 @@ function hideLoadingScreen() {
     const mainContent = document.getElementById('main-content');
     
     if (loadingScreen) {
+        loadingScreen.classList.remove('active');
         loadingScreen.classList.add('hidden');
-        setTimeout(() => {
-            loadingScreen.style.display = 'none';
-        }, 500);
+        loadingScreen.style.display = 'none';
     }
     
     if (mainContent) {
         mainContent.classList.remove('hidden');
+        mainContent.style.display = 'block';
     }
 }
 
@@ -3211,6 +3239,11 @@ function showRejectedItems() {
 
 function showUsers() {
     switchAdminTab('users');
+}
+
+// Route details
+function showRouteDetails(route) {
+    showNotification(`Маршрут: ${route.from} → ${route.to}`, 'info');
 }
 
 // Initialize app
