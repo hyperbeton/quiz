@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -41,21 +42,21 @@
 
                 <!-- Stats Cards -->
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="showEquipmentStats()">
                         <div class="stat-icon bg-gradient-blue">
                             <i data-lucide="truck"></i>
                         </div>
                         <div class="stat-info">
-                            <h3>245</h3>
+                            <h3 id="online-count">0</h3>
                             <p>Техники онлайн</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="showRenterStats()">
                         <div class="stat-icon bg-gradient-orange">
                             <i data-lucide="users"></i>
                         </div>
                         <div class="stat-info">
-                            <h3>1.2K</h3>
+                            <h3 id="renter-count">0</h3>
                             <p>Арендаторов</p>
                         </div>
                     </div>
@@ -86,7 +87,7 @@
                             </div>
                             <span>Добавить</span>
                         </button>
-                        <button class="action-card" data-action="orders">
+                        <button class="action-card" data-action="orders" onclick="navigateTo('orders-page')">
                             <div class="action-icon bg-gradient-yellow">
                                 <i data-lucide="package"></i>
                             </div>
@@ -99,30 +100,30 @@
                 <div class="categories-section">
                     <div class="section-title">
                         <h2>Категории</h2>
-                        <a href="#" class="see-all">Все</a>
+                        <a href="#" class="see-all" onclick="showAllCategories()">Все</a>
                     </div>
                     <div class="categories-scroll">
-                        <div class="category-pill active" data-category="all">
+                        <div class="category-pill active" data-category="all" onclick="filterEquipmentByCategory('all')">
                             <i data-lucide="grid"></i>
                             <span>Все</span>
                         </div>
-                        <div class="category-pill" data-category="trucks">
+                        <div class="category-pill" data-category="trucks" onclick="filterEquipmentByCategory('trucks')">
                             <i data-lucide="truck"></i>
                             <span>Тонары/Самосвалы</span>
                         </div>
-                        <div class="category-pill" data-category="mixers">
+                        <div class="category-pill" data-category="mixers" onclick="filterEquipmentByCategory('mixers')">
                             <i data-lucide="mixer"></i>
                             <span>Миксеры</span>
                         </div>
-                        <div class="category-pill" data-category="cranes">
+                        <div class="category-pill" data-category="cranes" onclick="filterEquipmentByCategory('cranes')">
                             <i data-lucide="crane"></i>
                             <span>Краны</span>
                         </div>
-                        <div class="category-pill" data-category="excavators">
+                        <div class="category-pill" data-category="excavators" onclick="filterEquipmentByCategory('excavators')">
                             <i data-lucide="excavator"></i>
                             <span>Экскаваторы</span>
                         </div>
-                        <div class="category-pill" data-category="pumps">
+                        <div class="category-pill" data-category="pumps" onclick="filterEquipmentByCategory('pumps')">
                             <i data-lucide="gauge"></i>
                             <span>Бетононасосы</span>
                         </div>
@@ -133,10 +134,14 @@
                 <div class="featured-section">
                     <div class="section-title">
                         <h2>Рекомендуем</h2>
-                        <a href="#" class="see-all">Все</a>
+                        <a href="#" class="see-all" onclick="showAllEquipment()">Все</a>
                     </div>
                     <div class="featured-grid" id="featured-equipment">
                         <!-- Equipment cards will be loaded here -->
+                        <div class="loading-placeholder">
+                            <i data-lucide="loader" class="spin"></i>
+                            <p>Загрузка техники...</p>
+                        </div>
                     </div>
                 </div>
 
@@ -164,7 +169,7 @@
             <!-- Route Planning Page -->
             <section id="route-page" class="page">
                 <div class="page-header">
-                    <button class="btn-back">
+                    <button class="btn-back" onclick="goBack()">
                         <i data-lucide="chevron-left"></i>
                     </button>
                     <h2 class="page-title">Построение маршрута</h2>
@@ -175,7 +180,7 @@
                         <label class="form-label">Откуда</label>
                         <div class="input-with-icon">
                             <i data-lucide="map-pin"></i>
-                            <input type="text" id="route-from" placeholder="Город отправления" class="modern-input">
+                            <input type="text" id="route-from" placeholder="Город отправления" class="modern-input" value="Ташкент">
                         </div>
                     </div>
 
@@ -183,7 +188,7 @@
                         <label class="form-label">Куда</label>
                         <div class="input-with-icon">
                             <i data-lucide="flag"></i>
-                            <input type="text" id="route-to" placeholder="Город назначения" class="modern-input">
+                            <input type="text" id="route-to" placeholder="Город назначения" class="modern-input" value="Самарканд">
                         </div>
                     </div>
 
@@ -191,7 +196,7 @@
                         <label class="form-label">Груз</label>
                         <div class="input-with-icon">
                             <i data-lucide="package"></i>
-                            <input type="text" id="route-cargo" placeholder="Тип груза, тоннаж" class="modern-input">
+                            <input type="text" id="route-cargo" placeholder="Тип груза, тоннаж" class="modern-input" value="Песок, 20 тонн">
                         </div>
                     </div>
 
@@ -208,7 +213,7 @@
                         <select id="transport-type" class="modern-select">
                             <option value="tonar">Тонар (20-40т)</option>
                             <option value="samosval">Самосвал (10-30т)</option>
-                            <option value="refrigerator">Рефрежиратор</option>
+                            <option value="refrigerator">Рефрижератор</option>
                             <option value="container">Контейнеровоз</option>
                         </select>
                     </div>
@@ -255,13 +260,13 @@
             <section id="search-page" class="page">
                 <div class="page-header">
                     <div class="search-header">
-                        <button class="btn-back">
+                        <button class="btn-back" onclick="goBack()">
                             <i data-lucide="chevron-left"></i>
                         </button>
                         <div class="search-input-container">
                             <i data-lucide="search"></i>
                             <input type="text" id="main-search" placeholder="Поиск техники или маршрутов..." class="modern-input" autofocus>
-                            <button class="clear-search hidden">
+                            <button class="clear-search hidden" onclick="clearSearch()">
                                 <i data-lucide="x"></i>
                             </button>
                         </div>
@@ -270,24 +275,27 @@
 
                 <div class="search-filters">
                     <div class="filter-chips">
-                        <button class="filter-chip active">Все</button>
-                        <button class="filter-chip">Тонары</button>
-                        <button class="filter-chip">Самосвалы</button>
-                        <button class="filter-chip">Миксеры</button>
-                        <button class="filter-chip">Бетононасосы</button>
-                        <button class="filter-chip">Краны</button>
+                        <button class="filter-chip active" onclick="filterSearch('all')">Все</button>
+                        <button class="filter-chip" onclick="filterSearch('tonar')">Тонары</button>
+                        <button class="filter-chip" onclick="filterSearch('samosval')">Самосвалы</button>
+                        <button class="filter-chip" onclick="filterSearch('mixer')">Миксеры</button>
+                        <button class="filter-chip" onclick="filterSearch('pump')">Бетононасосы</button>
+                        <button class="filter-chip" onclick="filterSearch('crane')">Краны</button>
                     </div>
                 </div>
 
                 <div class="search-results" id="search-results-container">
-                    <!-- Results will be loaded here -->
+                    <div class="search-placeholder">
+                        <i data-lucide="search"></i>
+                        <p>Начните вводить название техники или города</p>
+                    </div>
                 </div>
             </section>
 
             <!-- Equipment Details -->
             <section id="details-page" class="page">
                 <div class="page-header sticky">
-                    <button class="btn-back">
+                    <button class="btn-back" onclick="goBack()">
                         <i data-lucide="chevron-left"></i>
                     </button>
                     <h2 class="page-title" id="equipment-title"></h2>
@@ -370,6 +378,9 @@
             <!-- Profile Page -->
             <section id="profile-page" class="page">
                 <div class="page-header">
+                    <button class="btn-back" onclick="goBack()">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
                     <h2 class="page-title">Профиль</h2>
                     <button class="icon-btn" onclick="navigateTo('settings-page')">
                         <i data-lucide="settings"></i>
@@ -395,11 +406,11 @@
 
                     <div class="profile-stats">
                         <div class="stat-item">
-                            <div class="stat-number">12</div>
+                            <div class="stat-number" id="profile-equipment-count">0</div>
                             <div class="stat-label">Техники</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-number">47</div>
+                            <div class="stat-number" id="profile-orders-count">0</div>
                             <div class="stat-label">Заказы</div>
                         </div>
                         <div class="stat-item">
@@ -461,7 +472,7 @@
                                 <span>Финансы</span>
                                 <i data-lucide="chevron-right"></i>
                             </button>
-                            <!-- Admin Panel Button (visible only for admins) -->
+                            <!-- Admin Panel Button -->
                             <button class="menu-item" id="admin-menu-item" onclick="navigateTo('admin-page')" style="display: none;">
                                 <div class="menu-icon bg-gradient-purple">
                                     <i data-lucide="shield"></i>
@@ -477,10 +488,10 @@
             <!-- Add Equipment Page -->
             <section id="add-equipment-page" class="page">
                 <div class="page-header">
-                    <button class="btn-back">
+                    <button class="btn-back" onclick="goBack()">
                         <i data-lucide="chevron-left"></i>
                     </button>
-                    <h2 class="page-title">Новая техника</h2>
+                    <h2 class="page-title" id="add-equipment-title">Новая техника</h2>
                 </div>
 
                 <div class="form-container">
@@ -489,6 +500,7 @@
                         <div class="form-group">
                             <label class="form-label">Тип техники</label>
                             <select id="equipment-category" class="modern-select" onchange="updatePricingFields()">
+                                <option value="">Выберите тип</option>
                                 <option value="tonar">Тонар</option>
                                 <option value="samosval">Самосвал</option>
                                 <option value="mixer">Автомиксер</option>
@@ -506,7 +518,7 @@
                         <div class="form-group">
                             <label class="form-label">Грузоподъемность</label>
                             <div class="input-with-suffix">
-                                <input type="number" id="equipment-capacity" placeholder="0" class="modern-input">
+                                <input type="number" id="equipment-capacity" placeholder="0" class="modern-input" min="1" max="100">
                                 <span class="input-suffix" id="capacity-unit">тонн</span>
                             </div>
                         </div>
@@ -516,7 +528,7 @@
                             <input type="number" id="equipment-year" placeholder="2023" class="modern-input" min="2000" max="2025">
                         </div>
 
-                        <button class="btn-primary gradient-btn" onclick="nextStep(2)">
+                        <button class="btn-primary gradient-btn" onclick="validateStep1()">
                             <span>Продолжить</span>
                             <i data-lucide="arrow-right"></i>
                         </button>
@@ -535,7 +547,7 @@
                         <div class="form-group">
                             <label class="form-label">Тарифы</label>
                             <div class="price-inputs" id="pricing-fields">
-                                <!-- Dynamic pricing fields will be inserted here -->
+                                <!-- Dynamic pricing fields -->
                             </div>
                         </div>
 
@@ -543,18 +555,18 @@
                             <label class="form-label">Мин. срок аренды</label>
                             <select id="min-rental" class="modern-select">
                                 <option value="4">4 часа</option>
-                                <option value="8">Смена (8ч)</option>
+                                <option value="8" selected>Смена (8ч)</option>
                                 <option value="24">Сутки</option>
                                 <option value="168">Неделя</option>
                             </select>
                         </div>
 
                         <div class="form-actions">
-                            <button class="btn-secondary" onclick="prevStep(1)">
+                            <button class="btn-secondary" onclick="prevStep()">
                                 <i data-lucide="arrow-left"></i>
                                 <span>Назад</span>
                             </button>
-                            <button class="btn-primary gradient-btn" onclick="nextStep(3)">
+                            <button class="btn-primary gradient-btn" onclick="validateStep2()">
                                 <span>Далее</span>
                                 <i data-lucide="arrow-right"></i>
                             </button>
@@ -573,7 +585,7 @@
 
                         <div class="form-group">
                             <label class="form-label">Описание</label>
-                            <textarea id="equipment-description" placeholder="Опишите состояние и особенности техники..." class="modern-textarea"></textarea>
+                            <textarea id="equipment-description" placeholder="Опишите состояние и особенности техники..." class="modern-textarea" rows="4"></textarea>
                         </div>
 
                         <div class="form-group">
@@ -583,16 +595,17 @@
                                 <p>Перетащите фото или нажмите для загрузки</p>
                                 <input type="file" id="photo-upload" accept="image/*" multiple hidden>
                             </div>
+                            <div class="upload-preview" id="upload-preview"></div>
                         </div>
 
                         <div class="form-actions">
-                            <button class="btn-secondary" onclick="prevStep(2)">
+                            <button class="btn-secondary" onclick="prevStep()">
                                 <i data-lucide="arrow-left"></i>
                                 <span>Назад</span>
                             </button>
                             <button class="btn-primary gradient-btn" onclick="saveEquipment()">
                                 <i data-lucide="check"></i>
-                                <span>Опубликовать</span>
+                                <span id="save-button-text">Опубликовать</span>
                             </button>
                         </div>
                     </div>
@@ -602,7 +615,7 @@
             <!-- Settings Page -->
             <section id="settings-page" class="page">
                 <div class="page-header">
-                    <button class="btn-back">
+                    <button class="btn-back" onclick="goBack()">
                         <i data-lucide="chevron-left"></i>
                     </button>
                     <h2 class="page-title">Настройки</h2>
@@ -612,7 +625,7 @@
                     <div class="settings-section">
                         <h3 class="settings-title">Аккаунт</h3>
                         <div class="settings-items">
-                            <div class="settings-item">
+                            <button class="settings-item" onclick="editProfile()">
                                 <div class="settings-icon">
                                     <i data-lucide="user"></i>
                                 </div>
@@ -621,8 +634,8 @@
                                     <p>Личная информация</p>
                                 </div>
                                 <i data-lucide="chevron-right"></i>
-                            </div>
-                            <div class="settings-item">
+                            </button>
+                            <button class="settings-item" onclick="showSecurity()">
                                 <div class="settings-icon">
                                     <i data-lucide="shield"></i>
                                 </div>
@@ -631,7 +644,7 @@
                                     <p>Пароль и входы</p>
                                 </div>
                                 <i data-lucide="chevron-right"></i>
-                            </div>
+                            </button>
                         </div>
                     </div>
 
@@ -647,7 +660,7 @@
                                     <p>Звонки и сообщения</p>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" checked>
+                                    <input type="checkbox" id="push-notifications" checked>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -660,7 +673,7 @@
                                     <p>Новости и обновления</p>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" checked>
+                                    <input type="checkbox" id="email-notifications" checked>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -679,7 +692,7 @@
                                     <p>1.0.0</p>
                                 </div>
                             </div>
-                            <div class="settings-item">
+                            <button class="settings-item" onclick="showTerms()">
                                 <div class="settings-icon">
                                     <i data-lucide="file-text"></i>
                                 </div>
@@ -687,7 +700,7 @@
                                     <span>Условия использования</span>
                                 </div>
                                 <i data-lucide="chevron-right"></i>
-                            </div>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -703,7 +716,7 @@
             <!-- Admin Page -->
             <section id="admin-page" class="page">
                 <div class="page-header">
-                    <button class="btn-back">
+                    <button class="btn-back" onclick="goBack()">
                         <i data-lucide="chevron-left"></i>
                     </button>
                     <h2 class="page-title">Панель администратора</h2>
@@ -741,8 +754,17 @@
 
                 <div class="section-card">
                     <h3 class="section-title">Заявки на модерацию</h3>
+                    <div class="admin-actions">
+                        <button class="btn-secondary" onclick="refreshAdminData()">
+                            <i data-lucide="refresh-ccw"></i>
+                            <span>Обновить</span>
+                        </button>
+                    </div>
                     <div class="admin-equipment-list" id="admin-equipment-container">
-                        <!-- Admin equipment cards will be loaded here -->
+                        <div class="loading-placeholder">
+                            <i data-lucide="loader" class="spin"></i>
+                            <p>Загрузка заявок...</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -750,7 +772,7 @@
             <!-- My Equipment Page -->
             <section id="my-equipment-page" class="page">
                 <div class="page-header">
-                    <button class="btn-back">
+                    <button class="btn-back" onclick="goBack()">
                         <i data-lucide="chevron-left"></i>
                     </button>
                     <h2 class="page-title">Моя техника</h2>
@@ -790,42 +812,74 @@
                 </div>
 
                 <div class="user-equipment-list" id="user-equipment-container">
-                    <!-- User equipment cards will be loaded here -->
+                    <div class="loading-placeholder">
+                        <i data-lucide="loader" class="spin"></i>
+                        <p>Загрузка вашей техники...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Orders Page -->
+            <section id="orders-page" class="page">
+                <div class="page-header">
+                    <button class="btn-back" onclick="goBack()">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <h2 class="page-title">Мои заказы</h2>
+                </div>
+
+                <div class="orders-tabs">
+                    <div class="tab-buttons">
+                        <button class="tab-button active" onclick="switchOrderTab('active')">Активные</button>
+                        <button class="tab-button" onclick="switchOrderTab('completed')">Завершенные</button>
+                        <button class="tab-button" onclick="switchOrderTab('cancelled')">Отмененные</button>
+                    </div>
+                </div>
+
+                <div class="orders-list" id="orders-container">
+                    <div class="no-orders">
+                        <i data-lucide="package"></i>
+                        <p>У вас пока нет заказов</p>
+                        <button class="btn-secondary" onclick="navigateTo('search-page')">
+                            <i data-lucide="search"></i>
+                            <span>Найти технику</span>
+                        </button>
+                    </div>
                 </div>
             </section>
         </main>
 
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
-            <div class="nav-item active" data-page="home-page">
+            <button class="nav-item active" data-page="home-page" onclick="navigateTo('home-page')">
                 <div class="nav-icon">
                     <i data-lucide="home"></i>
                 </div>
                 <span>Главная</span>
-            </div>
-            <div class="nav-item" data-page="search-page">
+            </button>
+            <button class="nav-item" data-page="search-page" onclick="navigateTo('search-page')">
                 <div class="nav-icon">
                     <i data-lucide="search"></i>
                 </div>
                 <span>Поиск</span>
-            </div>
-            <div class="nav-item center-item" data-page="add-equipment-page">
+            </button>
+            <button class="nav-item center-item" data-page="add-equipment-page" onclick="navigateTo('add-equipment-page')">
                 <div class="nav-center-icon">
                     <i data-lucide="plus"></i>
                 </div>
-            </div>
-            <div class="nav-item" data-page="route-page">
+            </button>
+            <button class="nav-item" data-page="route-page" onclick="navigateTo('route-page')">
                 <div class="nav-icon">
                     <i data-lucide="route"></i>
                 </div>
                 <span>Маршруты</span>
-            </div>
-            <div class="nav-item" data-page="profile-page">
+            </button>
+            <button class="nav-item" data-page="profile-page" onclick="navigateTo('profile-page')">
                 <div class="nav-icon">
                     <i data-lucide="user"></i>
                 </div>
                 <span>Профиль</span>
-            </div>
+            </button>
         </nav>
     </div>
 

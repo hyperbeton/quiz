@@ -2082,3 +2082,167 @@ html {
     background: rgba(59, 130, 246, 0.2);
     color: var(--text-primary);
 }
+
+
+
+
+/* Additional styles for fixes */
+
+/* Loading spinner */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.loading-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.loading-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    color: var(--primary);
+}
+
+/* Admin actions */
+.admin-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
+/* Orders */
+.orders-tabs {
+    padding: 0 20px;
+    margin-bottom: 20px;
+}
+
+.tab-buttons {
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    padding: 4px;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.tab-button.active {
+    background: var(--primary);
+    color: white;
+}
+
+.tab-button:hover:not(.active) {
+    background: var(--surface-highlight);
+}
+
+.orders-list {
+    padding: 0 20px;
+}
+
+.no-orders {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.no-orders i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    color: var(--text-tertiary);
+}
+
+.no-orders p {
+    margin-bottom: 24px;
+    font-size: 1rem;
+}
+
+/* Upload preview */
+.upload-preview {
+    margin-top: 10px;
+}
+
+/* Button fixes */
+.btn-small {
+    min-width: 32px;
+    min-height: 32px;
+}
+
+/* Responsive improvements */
+@media (max-width: 380px) {
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .category-pill {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+    }
+    
+    .featured-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .form-actions {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+/* Fix for clickable elements */
+button, .btn-back, .action-card, .category-pill, .equipment-card, 
+.search-result-item, .menu-item, .settings-item, .tab-button {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth transitions */
+* {
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                transform var(--transition-normal),
+                opacity var(--transition-normal);
+}
+
+/* Fix for text overflow */
+.equipment-title, .result-content h3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* Better form validation */
+.modern-input:invalid,
+.modern-select:invalid {
+    border-color: var(--error);
+}
+
+.modern-input:valid,
+.modern-select:valid {
+    border-color: var(--success);
+}
