@@ -3248,3 +3248,908 @@ function showRouteDetails(route) {
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', init);
+
+
+// Дополняем существующие функции
+
+// В функции updateUIForAuthenticatedUser() добавляем:
+function updateUIForAuthenticatedUser() {
+    if (!currentUser) return;
+    
+    const profileName = document.getElementById('profile-name');
+    const userGreeting = document.getElementById('user-greeting-text');
+    const adminMenuItem = document.getElementById('admin-menu-item');
+    
+    const displayName = `${currentUser.firstName}${currentUser.lastName ? ' ' + currentUser.lastName : ''}`;
+    const greeting = getTimeBasedGreeting();
+    
+    if (profileName) profileName.textContent = displayName;
+    if (userGreeting) userGreeting.textContent = `${greeting}, ${currentUser.firstName}`;
+    
+    // Show admin menu if user is admin
+    if (adminMenuItem && currentUser.role === 'admin') {
+        adminMenuItem.style.display = 'flex';
+        console.log('Admin menu item shown');
+    }
+    
+    // Also add admin menu item to profile page
+    const profileMenu = document.querySelector('.profile-menu .menu-section:first-child .menu-items');
+    if (profileMenu && currentUser.role === 'admin') {
+        const adminMenuItemProfile = document.getElementById('admin-menu-item-profile');
+        if (!adminMenuItemProfile) {
+            const adminItemHTML = `
+                <button class="menu-item" id="admin-menu-item-profile" onclick="navigateTo('admin-page')">
+                    <div class="menu-icon" style="background: var(--gradient-blue);">
+                        <i data-lucide="shield"></i>
+                    </div>
+                    <span>Панель администратора</span>
+                    <i data-lucide="chevron-right"></i>
+                </button>
+            `;
+            profileMenu.insertAdjacentHTML('beforeend', adminItemHTML);
+        }
+    }
+}
+
+// В функции navigateTo() добавляем проверку для admin-page:
+function navigateTo(pageId) {
+    console.log('Navigating to:', pageId);
+    
+    // Проверка прав для админ-панели
+    if (pageId === 'admin-page' && (!currentUser || currentUser.role !== 'admin')) {
+        showNotification('Доступ запрещен. Только администраторы могут просматривать эту страницу.', 'error');
+        return;
+    }
+    
+    // Hide all pages
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => page.classList.remove('active'));
+    
+    // Show target page
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) {
+        targetPage.classList.add('active');
+        
+        // Update navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        const navItem = document.querySelector(`.nav-item[onclick*="${pageId}"]`);
+        if (navItem) navItem.classList.add('active');
+        
+        // Scroll to top
+        window.scrollTo(0, 0);
+        
+        // Load page-specific content
+        switch(pageId) {
+            case 'home-page':
+                loadFeaturedEquipment();
+                loadFeaturedRoutes();
+                loadStats();
+                break;
+            case 'search-page':
+                if (document.getElementById('main-search')) {
+                    document.getElementById('main-search').focus();
+                }
+                break;
+            case 'my-equipment-page':
+                loadUserEquipment();
+                break;
+            case 'admin-page':
+                loadAdminPage();
+                break;
+            case 'add-equipment-page':
+                if (!editingEquipmentId) {
+                    resetForm();
+                }
+                break;
+            case 'profile-page':
+                updateProfileStats();
+                break;
+            case 'my-routes-page':
+                loadUserRoutes();
+                break;
+            case 'orders-page':
+                loadUserOrders();
+                break;
+            case 'favorites-page':
+                loadFavorites();
+                break;
+        }
+    }
+    
+    // Refresh icons
+    setTimeout(() => {
+        if (lucide) lucide.createIcons();
+    }, 100);
+}
+
+// Добавляем новые функции админ-панели:
+
+// Функции для управления пользователями
+async function blockUser(userId) {
+    if (!confirm('Заблокировать этого пользователя?')) return;
+    
+    try {
+        await database.ref(`users/${userId}`).update({
+            blocked: true,
+            blockedAt: Date.now(),
+            blockedBy: currentUser.uid
+        });
+        
+        showNotification('✅ Пользователь заблокирован', 'success');
+        loadAdminUsers();
+    } catch (error) {
+        console.error('Error blocking user:', error);
+        showNotification('❌ Ошибка при блокировке пользователя', 'error');
+    }
+}
+
+async function unblockUser(userId) {
+    if (!confirm('Разблокировать этого пользователя?')) return;
+    
+    try {
+        await database.ref(`users/${userId}`).update({
+            blocked: false,
+            unblockedAt: Date.now(),
+            unblockedBy: currentUser.uid
+        });
+        
+        showNotification('✅ Пользователь разблокирован', 'success');
+        loadAdminUsers();
+    } catch (error) {
+        console.error('Error unblocking user:', error);
+        showNotification('❌ Ошибка при разблокировке пользователя', 'error');
+    }
+}
+
+function viewUserProfile(userId) {
+    showNotification('Просмотр профиля пользователя в разработке', 'info');
+}
+
+function sendMessageToUser(userId) {
+    const user = allUsers.find(u => u.id === userId);
+    if (!user) return;
+    
+    const message = prompt('Введите сообщение для пользователя:');
+    if (!message) return;
+    
+    // Сохраняем сообщение в базе данных
+    try {
+        const messageRef = database.ref('admin_messages').push();
+        messageRef.set({
+            id: messageRef.key,
+            userId: userId,
+            adminId: currentUser.uid,
+            message: message,
+            createdAt: Date.now(),
+            read: false
+        });
+        
+        showNotification('✅ Сообщение отправлено', 'success');
+    } catch (error) {
+        console.error('Error sending message:', error);
+        showNotification('❌ Ошибка при отправке сообщения', 'error');
+    }
+}
+
+// Функции для модерации оборудования
+async function approveEquipment(equipmentId) {
+    try {
+        const equipment = allEquipment.find(e => e.id === equipmentId);
+        if (!equipment) return;
+        
+        await database.ref(`equipment/${equipmentId}`).update({
+            status: 'approved',
+            approvedAt: Date.now(),
+            approvedBy: currentUser.uid,
+            updatedAt: Date.now()
+        });
+        
+        // Отправляем уведомление владельцу
+        await sendEquipmentNotification(equipment.ownerId, 'approved', equipment.name);
+        
+        showNotification('✅ Техника одобрена', 'success');
+        loadAdminEquipment();
+        updateAdminStats();
+        
+    } catch (error) {
+        console.error('Error approving equipment:', error);
+        showNotification('❌ Ошибка при одобрении', 'error');
+    }
+}
+
+async function rejectEquipment(equipmentId) {
+    const equipment = allEquipment.find(e => e.id === equipmentId);
+    if (!equipment) return;
+    
+    const reason = prompt('Укажите причину отклонения:');
+    if (reason === null) return;
+    
+    if (!reason.trim()) {
+        showNotification('Введите причину отклонения', 'error');
+        return;
+    }
+    
+    try {
+        await database.ref(`equipment/${equipmentId}`).update({
+            status: 'rejected',
+            rejectionReason: reason,
+            rejectedAt: Date.now(),
+            rejectedBy: currentUser.uid,
+            updatedAt: Date.now()
+        });
+        
+        // Отправляем уведомление владельцу
+        await sendEquipmentNotification(equipment.ownerId, 'rejected', equipment.name, reason);
+        
+        showNotification('Техника отклонена', 'success');
+        loadAdminEquipment();
+        updateAdminStats();
+        
+    } catch (error) {
+        console.error('Error rejecting equipment:', error);
+        showNotification('❌ Ошибка при отклонении', 'error');
+    }
+}
+
+// Отправка уведомления владельцу техники
+async function sendEquipmentNotification(ownerId, type, equipmentName, reason = null) {
+    try {
+        const notificationRef = database.ref('notifications').push();
+        
+        let title = '';
+        let message = '';
+        
+        switch(type) {
+            case 'approved':
+                title = 'Техника одобрена';
+                message = `Ваша техника "${equipmentName}" была одобрена и теперь отображается в каталоге`;
+                break;
+            case 'rejected':
+                title = 'Техника отклонена';
+                message = `Ваша техника "${equipmentName}" была отклонена. Причина: ${reason}`;
+                break;
+        }
+        
+        await notificationRef.set({
+            id: notificationRef.key,
+            userId: ownerId,
+            type: 'equipment_moderation',
+            title: title,
+            message: message,
+            data: { equipmentName: equipmentName, reason: reason },
+            read: false,
+            createdAt: Date.now()
+        });
+        
+    } catch (error) {
+        console.error('Error sending equipment notification:', error);
+    }
+}
+
+// Функции для отчетов
+function generateReport() {
+    const period = document.getElementById('report-period')?.value || 'month';
+    
+    // Calculate stats based on period
+    const now = Date.now();
+    let startDate = now;
+    
+    switch(period) {
+        case 'today':
+            startDate = now - 24 * 60 * 60 * 1000;
+            break;
+        case 'week':
+            startDate = now - 7 * 24 * 60 * 60 * 1000;
+            break;
+        case 'month':
+            startDate = now - 30 * 24 * 60 * 60 * 1000;
+            break;
+        case 'quarter':
+            startDate = now - 90 * 24 * 60 * 60 * 1000;
+            break;
+        case 'year':
+            startDate = now - 365 * 24 * 60 * 60 * 1000;
+            break;
+    }
+    
+    // Calculate real statistics
+    const periodEquipment = allEquipment.filter(e => e.createdAt >= startDate);
+    const periodApproved = periodEquipment.filter(e => e.status === 'approved').length;
+    const periodPending = periodEquipment.filter(e => e.status === 'pending').length;
+    const periodRejected = periodEquipment.filter(e => e.status === 'rejected').length;
+    
+    // Calculate revenue (simulated based on equipment prices)
+    const totalRevenue = periodEquipment.reduce((sum, item) => {
+        if (item.status === 'approved' && item.pricing) {
+            let price = 0;
+            if (item.pricing.pricePerHour) {
+                price = item.pricing.pricePerHour * 8 * 5; // 8 hours/day, 5 days
+            } else if (item.pricing.pricePerUnit) {
+                price = item.pricing.pricePerUnit * 10; // 10 units
+            } else if (item.pricing.pricePerShift) {
+                price = item.pricing.pricePerShift * 5; // 5 shifts
+            }
+            return sum + (price || 0);
+        }
+        return sum;
+    }, 0);
+    
+    const totalOrders = Math.floor(periodEquipment.length * 0.5); // Simulated
+    const activeUsers = allUsers.filter(u => u.lastActive && u.lastActive >= startDate).length;
+    const equipmentAdded = periodEquipment.length;
+    
+    // Update display
+    document.getElementById('total-revenue').textContent = totalRevenue.toLocaleString() + ' сум';
+    document.getElementById('total-orders').textContent = totalOrders;
+    document.getElementById('active-users').textContent = activeUsers;
+    document.getElementById('equipment-added').textContent = equipmentAdded;
+    
+    // Update detailed statistics
+    updateDetailedStats(period, periodApproved, periodPending, periodRejected);
+    
+    // Update chart
+    updateRevenueChart(period);
+}
+
+function updateDetailedStats(period, approved, pending, rejected) {
+    const container = document.getElementById('detailed-stats');
+    if (!container) return;
+    
+    const statsHTML = `
+        <div class="detailed-stats-grid">
+            <div class="detailed-stat">
+                <span class="stat-label">Одобрено:</span>
+                <span class="stat-value">${approved}</span>
+            </div>
+            <div class="detailed-stat">
+                <span class="stat-label">На модерации:</span>
+                <span class="stat-value">${pending}</span>
+            </div>
+            <div class="detailed-stat">
+                <span class="stat-label">Отклонено:</span>
+                <span class="stat-value">${rejected}</span>
+            </div>
+            <div class="detailed-stat">
+                <span class="stat-label">Всего заявок:</span>
+                <span class="stat-value">${approved + pending + rejected}</span>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = statsHTML;
+}
+
+// Добавляем обработку поиска пользователей
+function setupAdminSearch() {
+    const userSearch = document.getElementById('user-search');
+    if (userSearch) {
+        userSearch.addEventListener('input', debounce((e) => {
+            const term = e.target.value.trim().toLowerCase();
+            filterAdminUsers(term);
+        }, 300));
+    }
+}
+
+function filterAdminUsers(searchTerm) {
+    const container = document.getElementById('admin-users-container');
+    if (!container) return;
+    
+    let filtered = allUsers;
+    
+    if (searchTerm) {
+        filtered = filtered.filter(user => 
+            (user.firstName && user.firstName.toLowerCase().includes(searchTerm)) ||
+            (user.lastName && user.lastName.toLowerCase().includes(searchTerm)) ||
+            (user.username && user.username.toLowerCase().includes(searchTerm)) ||
+            (user.email && user.email.toLowerCase().includes(searchTerm))
+        );
+    }
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="no-results">
+                <i data-lucide="search-x"></i>
+                <p>Пользователи не найдены</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    filtered.forEach(user => {
+        const card = createAdminUserCard(user);
+        container.appendChild(card);
+    });
+    
+    if (lucide) lucide.createIcons();
+}
+
+// Добавляем в init() вызов setupAdminSearch
+async function init() {
+    try {
+        console.log('🚀 Initializing BuildRent application...');
+        
+        // Initialize icons safely
+        setTimeout(() => {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }, 100);
+        
+        // Setup event listeners
+        setupEventListeners();
+        setupAdminSearch(); // Добавлено
+        
+        // Initialize categories
+        initCategories();
+        
+        // Check authentication
+        await checkAuth();
+        
+        // Set default date
+        setDefaultDate();
+        
+        // Load initial data
+        loadAllData();
+        
+        // Hide loading screen after 1 second
+        setTimeout(() => {
+            hideLoadingScreen();
+            console.log('✅ BuildRent initialized successfully');
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Error initializing app:', error);
+        showNotification('Ошибка загрузки приложения', 'error');
+        
+        // Still show main content
+        setTimeout(() => {
+            hideLoadingScreen();
+        }, 1500);
+    }
+}
+
+// Добавляем функцию для загрузки пользователей для админ-панели
+function loadAdminUsers() {
+    const container = document.getElementById('admin-users-container');
+    if (!container) return;
+    
+    // Get active users (last 30 days)
+    const activeUsers = allUsers.filter(user => 
+        user.lastActive && (Date.now() - user.lastActive) < 30 * 24 * 60 * 60 * 1000
+    );
+    
+    if (activeUsers.length === 0) {
+        container.innerHTML = `
+            <div class="no-results">
+                <i data-lucide="users"></i>
+                <p>Нет активных пользователей</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    activeUsers.forEach(user => {
+        const card = createAdminUserCard(user);
+        container.appendChild(card);
+    });
+    
+    if (lucide) lucide.createIcons();
+}
+
+// Обновляем функцию createAdminUserCard для отображения статуса блокировки
+function createAdminUserCard(user) {
+    const div = document.createElement('div');
+    div.className = 'admin-user-card';
+    
+    const equipmentCount = allEquipment.filter(e => e.ownerId === user.id).length;
+    const lastActive = user.lastActive ? 
+        new Date(user.lastActive).toLocaleDateString() : 'Неизвестно';
+    
+    div.innerHTML = `
+        <div class="admin-user-header">
+            <div class="admin-user-avatar ${user.blocked ? 'blocked' : ''}">
+                <i data-lucide="${user.blocked ? 'user-x' : 'user'}"></i>
+            </div>
+            <div class="admin-user-info">
+                <h4>${user.firstName || ''} ${user.lastName || ''} ${user.blocked ? '(Заблокирован)' : ''}</h4>
+                <p>${user.username || 'Без username'} • ${user.email || 'Нет email'}</p>
+                <p class="admin-user-subtitle">
+                    Техники: ${equipmentCount} | 
+                    Активен: ${lastActive} |
+                    Роль: ${user.role || 'user'}
+                </p>
+            </div>
+        </div>
+        <div class="admin-user-actions">
+            <button class="btn-small" onclick="viewUserProfile('${user.id}')">
+                <i data-lucide="eye"></i>
+            </button>
+            <button class="btn-small ${user.blocked ? 'btn-success' : 'btn-danger'}" 
+                    onclick="${user.blocked ? 'unblockUser' : 'blockUser'}('${user.id}')">
+                <i data-lucide="${user.blocked ? 'unlock' : 'lock'}"></i>
+            </button>
+            <button class="btn-small" onclick="sendMessageToUser('${user.id}')">
+                <i data-lucide="message-square"></i>
+            </button>
+        </div>
+    `;
+    
+    return div;
+}
+
+// Добавляем функцию для экспорта данных
+async function exportEquipmentData() {
+    try {
+        const pendingEquipment = allEquipment.filter(item => item.status === 'pending');
+        
+        if (pendingEquipment.length === 0) {
+            showNotification('Нет данных для экспорта', 'info');
+            return;
+        }
+        
+        const exportData = pendingEquipment.map(item => ({
+            Название: item.name,
+            Тип: item.category,
+            Владелец: item.owner?.name,
+            Телефон: item.owner?.phone,
+            Местоположение: item.location,
+            Грузоподъемность: item.capacity,
+            Год: item.year,
+            Цена: item.pricing ? JSON.stringify(item.pricing) : 'Не указана',
+            Дата_подачи: new Date(item.createdAt).toLocaleString()
+        }));
+        
+        const csvContent = convertToCSV(exportData);
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `equipment_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.click();
+        
+        showNotification('✅ Данные экспортированы', 'success');
+        
+    } catch (error) {
+        console.error('Error exporting data:', error);
+        showNotification('❌ Ошибка при экспорте данных', 'error');
+    }
+}
+
+function convertToCSV(arr) {
+    const array = [Object.keys(arr[0])].concat(arr);
+    return array.map(row => {
+        return Object.values(row).map(value => {
+            return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+        }).toString();
+    }).join('\n');
+}
+
+// Добавляем функцию для фильтрации оборудования в админ-панели
+function filterPendingEquipment() {
+    const modalHTML = `
+        <div class="modal-overlay active" onclick="closeModal()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Фильтр оборудования</h3>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Категория</label>
+                        <select id="filter-category" class="modern-select">
+                            <option value="">Все категории</option>
+                            ${equipmentCategories.map(cat => 
+                                `<option value="${cat.id}">${cat.name}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Дата подачи</label>
+                        <select id="filter-date" class="modern-select">
+                            <option value="">Любая дата</option>
+                            <option value="today">Сегодня</option>
+                            <option value="week">За неделю</option>
+                            <option value="month">За месяц</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Местоположение</label>
+                        <input type="text" id="filter-location" placeholder="Город или регион" class="modern-input">
+                    </div>
+                    <button class="btn-primary gradient-btn" onclick="applyEquipmentFilter()">
+                        Применить фильтр
+                    </button>
+                    <button class="btn-secondary" onclick="resetEquipmentFilter()" style="margin-top: 10px;">
+                        Сбросить фильтр
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (lucide) lucide.createIcons();
+}
+
+function applyEquipmentFilter() {
+    const category = document.getElementById('filter-category')?.value;
+    const dateFilter = document.getElementById('filter-date')?.value;
+    const location = document.getElementById('filter-location')?.value?.toLowerCase();
+    
+    let filtered = allEquipment.filter(item => item.status === 'pending');
+    
+    if (category) {
+        filtered = filtered.filter(item => item.category === category);
+    }
+    
+    if (dateFilter) {
+        const now = Date.now();
+        let startDate = now;
+        
+        switch(dateFilter) {
+            case 'today':
+                startDate = now - 24 * 60 * 60 * 1000;
+                break;
+            case 'week':
+                startDate = now - 7 * 24 * 60 * 60 * 1000;
+                break;
+            case 'month':
+                startDate = now - 30 * 24 * 60 * 60 * 1000;
+                break;
+        }
+        
+        filtered = filtered.filter(item => item.createdAt >= startDate);
+    }
+    
+    if (location) {
+        filtered = filtered.filter(item => 
+            item.location && item.location.toLowerCase().includes(location)
+        );
+    }
+    
+    displayFilteredEquipment(filtered);
+    closeModal();
+}
+
+function resetEquipmentFilter() {
+    loadAdminEquipment();
+    closeModal();
+}
+
+function displayFilteredEquipment(equipment) {
+    const container = document.getElementById('admin-equipment-container');
+    if (!container) return;
+    
+    if (equipment.length === 0) {
+        container.innerHTML = `
+            <div class="no-results">
+                <i data-lucide="search-x"></i>
+                <p>Оборудование не найдено по заданным фильтрам</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    equipment.forEach(item => {
+        const card = createAdminEquipmentCard(item);
+        container.appendChild(card);
+    });
+    
+    if (lucide) lucide.createIcons();
+}
+
+// Добавляем функцию для массовых действий
+async function bulkApproveEquipment() {
+    const selectedItems = document.querySelectorAll('.equipment-checkbox:checked');
+    if (selectedItems.length === 0) {
+        showNotification('Выберите технику для одобрения', 'error');
+        return;
+    }
+    
+    if (!confirm(`Одобрить ${selectedItems.length} единиц техники?`)) return;
+    
+    try {
+        const approvals = Array.from(selectedItems).map(async (checkbox) => {
+            const equipmentId = checkbox.value;
+            await approveEquipment(equipmentId);
+        });
+        
+        await Promise.all(approvals);
+        showNotification(`✅ Одобрено ${selectedItems.length} единиц техники`, 'success');
+        
+    } catch (error) {
+        console.error('Error bulk approving equipment:', error);
+        showNotification('❌ Ошибка при массовом одобрении', 'error');
+    }
+}
+
+// Обновляем createAdminEquipmentCard для добавления чекбоксов
+function createAdminEquipmentCard(equipment) {
+    const div = document.createElement('div');
+    div.className = 'admin-equipment-card';
+    
+    const category = equipmentCategories.find(c => c.id === equipment.category) || equipmentCategories[0];
+    const price = formatPriceForCard(equipment);
+    const date = new Date(equipment.createdAt).toLocaleDateString();
+    
+    div.innerHTML = `
+        <div class="admin-card-header">
+            <div class="admin-card-title">
+                <div class="category-icon">
+                    <i data-lucide="${category.icon}"></i>
+                </div>
+                <div>
+                    <h4>${equipment.name || 'Без названия'}</h4>
+                    <p>${category.name} • ${equipment.location || 'Не указано'}</p>
+                    <p class="admin-card-subtitle">
+                        Владелец: ${equipment.owner?.name || 'Неизвестно'} | 
+                        Дата: ${date}
+                    </p>
+                </div>
+            </div>
+            <div>
+                <input type="checkbox" class="equipment-checkbox" value="${equipment.id}" 
+                       style="margin-right: 10px;">
+                <span class="badge-pending">На модерации</span>
+            </div>
+        </div>
+        <div class="admin-card-body">
+            <p><strong>Грузоподъемность:</strong> ${formatCapacity(equipment)}</p>
+            <p><strong>Год выпуска:</strong> ${equipment.year || 'Н/Д'}</p>
+            <p><strong>Цена:</strong> ${price}</p>
+            <p><strong>Описание:</strong> ${(equipment.description || '').substring(0, 150)}${equipment.description && equipment.description.length > 150 ? '...' : ''}</p>
+            <p><strong>Контакт:</strong> ${equipment.owner?.phone || 'Не указан'}</p>
+        </div>
+        <div class="admin-card-actions">
+            <button class="btn-success" onclick="approveEquipment('${equipment.id}')">
+                <i data-lucide="check"></i>
+                Одобрить
+            </button>
+            <button class="btn-danger" onclick="rejectEquipment('${equipment.id}')">
+                <i data-lucide="x"></i>
+                Отклонить
+            </button>
+            <button class="btn-secondary" onclick="viewEquipmentDetails('${equipment.id}')">
+                <i data-lucide="eye"></i>
+                Подробнее
+            </button>
+        </div>
+    `;
+    
+    return div;
+}
+
+// Добавляем кнопку массового одобрения в админ-панель
+function addBulkActionsButton() {
+    const sectionHeader = document.querySelector('#admin-equipment-section .section-header');
+    if (sectionHeader && !document.getElementById('bulk-approve-btn')) {
+        const bulkButton = `
+            <button class="btn-success" id="bulk-approve-btn" onclick="bulkApproveEquipment()" style="margin-left: 10px;">
+                <i data-lucide="check-square"></i>
+                Массовое одобрение
+            </button>
+        `;
+        
+        const actionsDiv = sectionHeader.querySelector('.section-actions');
+        if (actionsDiv) {
+            actionsDiv.insertAdjacentHTML('beforeend', bulkButton);
+        }
+    }
+}
+
+// Обновляем loadAdminPage для добавления кнопки массовых действий
+function loadAdminPage() {
+    if (!currentUser || currentUser.role !== 'admin') {
+        showNotification('Доступ запрещен. Только администраторы могут просматривать эту страницу.', 'error');
+        navigateTo('home-page');
+        return;
+    }
+    
+    loadAdminEquipment();
+    loadAdminRoutes();
+    loadAdminUsers();
+    updateAdminStats();
+    generateReport();
+    addBulkActionsButton(); // Добавлено
+}
+
+// Добавляем функцию для просмотра всех отклоненных заявок
+function showRejectedItems() {
+    const rejectedItems = allEquipment.filter(item => item.status === 'rejected');
+    
+    if (rejectedItems.length === 0) {
+        showNotification('Нет отклоненных заявок', 'info');
+        return;
+    }
+    
+    const modalHTML = `
+        <div class="modal-overlay active" onclick="closeModal()">
+            <div class="modal-content wide-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Отклоненные заявки (${rejectedItems.length})</h3>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="rejected-list">
+                        ${rejectedItems.map(item => `
+                            <div class="rejected-item">
+                                <div class="rejected-header">
+                                    <h4>${item.name || 'Без названия'}</h4>
+                                    <span class="badge-rejected">Отклонено</span>
+                                </div>
+                                <p><strong>Причина:</strong> ${item.rejectionReason || 'Не указана'}</p>
+                                <p><strong>Владелец:</strong> ${item.owner?.name || 'Неизвестно'}</p>
+                                <p><strong>Дата:</strong> ${new Date(item.rejectedAt).toLocaleDateString()}</p>
+                                <div class="rejected-actions">
+                                    <button class="btn-small" onclick="viewEquipmentDetails('${item.id}')">
+                                        <i data-lucide="eye"></i>
+                                    </button>
+                                    <button class="btn-success btn-small" onclick="approveEquipment('${item.id}')">
+                                        <i data-lucide="check"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (lucide) lucide.createIcons();
+}
+
+// Добавляем функцию для просмотра всех одобренных заявок
+function showApprovedItems() {
+    const approvedItems = allEquipment.filter(item => item.status === 'approved');
+    
+    if (approvedItems.length === 0) {
+        showNotification('Нет одобренных заявок', 'info');
+        return;
+    }
+    
+    const modalHTML = `
+        <div class="modal-overlay active" onclick="closeModal()">
+            <div class="modal-content wide-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Одобренные заявки (${approvedItems.length})</h3>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="approved-list">
+                        ${approvedItems.map(item => `
+                            <div class="approved-item">
+                                <div class="approved-header">
+                                    <h4>${item.name || 'Без названия'}</h4>
+                                    <span class="badge-approved">Одобрено</span>
+                                </div>
+                                <p><strong>Владелец:</strong> ${item.owner?.name || 'Неизвестно'}</p>
+                                <p><strong>Местоположение:</strong> ${item.location || 'Не указано'}</p>
+                                <p><strong>Дата одобрения:</strong> ${new Date(item.approvedAt).toLocaleDateString()}</p>
+                                <div class="approved-actions">
+                                    <button class="btn-small" onclick="viewEquipmentDetails('${item.id}')">
+                                        <i data-lucide="eye"></i>
+                                    </button>
+                                    <button class="btn-danger btn-small" onclick="rejectEquipment('${item.id}')">
+                                        <i data-lucide="x"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (lucide) lucide.createIcons();
+}
